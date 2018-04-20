@@ -25,11 +25,6 @@ class LinkedProcess:
                 raise TypeError
         else:
             self.logger_pipe = None
-        # Optional Pipe() connection object
-        try:
-            self.pipe = kwargs["pipe"]
-        except KeyError:
-            self.pipe = None
         # Process()
         self.proc = None
         # Target function
@@ -43,28 +38,19 @@ class LinkedProcess:
 
     def start(self):
         """Create process and start"""
-        if self.pipe:
-            self.proc = Process(
-                target=self.target,
-                name=self.name,
-                args=[
-                    self.pipe,
-                    self.logger_pipe,
-                    self.signal
-                    ]
-            )
-        else:
-            self.proc = Process(
-                target=self.target,
-                name=self.name,
-                args=(self.logger_pipe, self.signal)
-            )
+        self.proc = Process(
+            target=self.target,
+            name=self.name,
+            args=(self.logger_pipe, self.signal)
+        )
+
         try:
             self.proc.start()
         except Exception as ex:
             print(ex)
             exit(99)
-        # Validate that the process started successfully
+
+        """Validate that the process started successfully"""
         begin = time()
         while time() - begin < 5:
             if self.is_alive() and time() - begin > 3:
@@ -75,7 +61,7 @@ class LinkedProcess:
                         20,
                         time()
                     ])
-                break
+                return True
             sleep(0.5)
         else:
             if self.logger_pipe:
@@ -85,6 +71,7 @@ class LinkedProcess:
                     50,
                     time()
                 ])
+        return False
 
     def restart(self):
         """Restart (create and start a new instance)

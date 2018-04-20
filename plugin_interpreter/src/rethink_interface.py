@@ -27,17 +27,16 @@ class RethinkInterface:
     SupervisorController class.
     """
 
-    def __init__(self, plugins, server):
+    def __init__(self, plugin, server):
         self.host = server[0]
         # Generate dictionary of Queues for each plugin
-        self.plugin_queues = {plugin.name: Queue() for plugin in plugins}
+        self.plugin_queue = Queue()
         self.port = server[1]
         # One Queue for responses from the plugin processes (<name>, <ip>, <port>, <data>)
         self.response_queue = Queue()
         self.rethink_connection = None
         self.stream = None
-        for plugin in plugins:
-            plugin.initialize_queues(self.response_queue, self.plugin_queues[plugin.name])
+        plugin.initialize_queues(self.response_queue, Queue())
 
     def check_client(self, client):
         """

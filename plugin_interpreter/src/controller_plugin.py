@@ -62,13 +62,10 @@ class ControllerPlugin(ABC):
         The 'tooltip' key is a human readable explanation of the function usage. It
         will be displayed to the user through the interface.
         """
-        # Unique identifier for the plugin
         self.name = name
-        # Pipe to connect to TCP/UDP server
-        self.pipe = None
-        # defines server socket requirement
+        """Define server port/proto requirement (TCP/UDP) so docker can be run
+        properly."""
         self.proto, self.port = proto, port
-        # Initialize Abstract Base Class
         super().__init__()
 
     def initialize_queues(self, send_queue, recv_queue):
@@ -91,109 +88,17 @@ class ControllerPlugin(ABC):
             recv_queue {Queue} -- The queue used to receive commands from the
             frontend through the database.
         """
-
         self.db_send = send_queue
         self.db_recv = recv_queue
 
     @abstractmethod
-    def start(self, logger, conn, signal):
+    def start(self, logger, signal):
         """Start the plugin
 
-        The 'start' method is expected to be a control loop which
-        is handles incoming client data from 'conn' - a Pipe() to
-        the server handing its network socket, commands received from
-        the 'recv_queue', and responses send back through the 'send_queue'.
-        It is an abstract method that must be overridden by the
-        inheriting class.
-
-        It is recommended to run the control loop using multiple
-        threads (methods provided below) so that all of the
-        communication can be handled concurrently.
-
-        'start' is used by the supervisor to create a separate Process()
-        the plugin after instantiation and initialization. In order to
-        function properly, it must take exactly one argument which is
-        the previously mentioned Pipe().
-
-        Plugin processes started by the Supervisor will be monitored
-        through the Process().is_alive() method. I the process exits,
-        the Supervisor will attempt to call the 'start' method again
-        to restart the process.
-
-        Arguments:
-
-            logger {Pipe} -- A Pipe to the central logger, used for
-            sending logs.
-            conn {Pipe} -- A Pipe to connect to the server which serves
-            this plugin process.
-            signal {Value} -- A multiprocessing boolean Value which
-            notifies the process that it should stop (kill switch).
+        The 'start' method is...
         
         """
-        self.pipe = conn
-        lock = Lock()
-
-        transmit_queue = Queue()
-        receive_queue = Queue()
-
-        server_receive = Thread(target=self._server_rx_thread,
-                                args=(receive_queue, lock), daemon=True)
-        server_transmit = Thread(target=self._server_tx_thread,
-                                 args=(transmit_queue, lock), daemon=True)
-
-        server_receive.start()
-        server_transmit.start()
-
-        while True:
-            try:
-                if signal.value:
-                    self._stop()
-                try:
-                    address, data = receive_queue.get_nowait()
-                    self.db_send.put(self.name, address, data)
-                except Empty:
-                    sleep(0.1)
-                    continue
-
-                try:
-                    address, data = self.db_recv.get_nowait()
-                    transmit_queue.put(address, data)
-                except Empty:
-                    sleep(0.1)
-                    continue
-                if not server_receive.is_alive() or not server_transmit.is_alive():
-                    raise RuntimeError("Server thread(s) dead!")
-            except KeyboardInterrupt:
-                continue
-            except RuntimeError as ex:
-                print(ex)
-                self._stop()
-
-    """
-    Control threads for server concurrency
-    """
-    def _server_rx_thread(self, receive_queue, lock):
-        while True:
-            lock.acquire(timeout=0.1)
-            try:
-                if self.pipe.poll(0.1):
-                    client_ip, client_port, data = self.pipe.recv()
-                    address = (client_ip, client_port)
-                    receive_queue.put(address, data)
-            finally:
-                lock.release()
-
-    def _server_tx_thread(self, transmit_queue, lock):
-        while True:
-            try:
-                data = transmit_queue.get_nowait()
-                lock.acquire()
-                try:
-                    self.pipe.send(data)
-                finally:
-                    lock.release()
-            except Empty:
-                continue
+        pass
 
     @abstractmethod
     def _stop(self):
@@ -203,8 +108,6 @@ class ControllerPlugin(ABC):
         is sent to the program subprocesses. Execute any cleanup
         required.
         """
-        if self.pipe:
-            self.pipe.close()
         sysexit(0)
 
     """
@@ -219,5 +122,4 @@ class ControllerPlugin(ABC):
     
     Used to pass some configuration data to the client.
     def _config(self):
-        pass
-        """
+        pass"""
