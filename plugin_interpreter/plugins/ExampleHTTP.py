@@ -15,7 +15,7 @@ class ExampleHTTP(controller_plugin.ControllerPlugin):
         controller_plugin.ControllerPlugin.__init__(self, self.name, self.proto, self.port)
 
     def start(self, logger, signal):
-        server_address = ("127.0.0.1", self.port)
+        server_address = ("0.0.0.0", self.port)
         httpd = HTTPServer(server_address, ExampleHTTPRequestHandler)
         try:
             httpd.serve_forever()

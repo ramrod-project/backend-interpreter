@@ -139,13 +139,16 @@ class SupervisorController:
         """
         if environ["STAGE"] == "DEV":
             print("Starting servers and plugins, use <CRTL-C> to exit...")
-
-        if not self.logger_process.start():
-            raise RuntimeError
-        if not self.db_process.start():
-            raise RuntimeError
-        if not self.plugin_process.start():
-            raise RuntimeError
+        try:
+            if not self.logger_process.start():
+                raise RuntimeError
+            if not self.db_process.start():
+                raise RuntimeError
+            if not self.plugin_process.start():
+                raise RuntimeError
+        except RuntimeError as err:
+            print(err)
+            exit(99)
 
     def monitor(self):
         """Monitor loop
