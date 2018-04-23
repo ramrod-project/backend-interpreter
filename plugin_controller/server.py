@@ -1,10 +1,45 @@
 """This is the main server file for the docker
 interpreter controller.
 """
+from os import path as ospath, getcwd
+from time import sleep
 
 import docker
 CLIENT = docker.from_env()
 
 if __name__ == '__main__':
-    CLIENT.containers.run("gotest", detach=True, ports={"9090/tcp": 8080})
-    print(CLIENT.containers.list())
+    interpreter_path = ospath.join("/".join(ospath.abspath(__file__).split("/")[:-2]), "plugin_interpreter")
+
+    CLIENT.networks.create("test")
+    CLIENT.containers.run(
+        "rethinkdb",
+        detach=True,
+        ports={"28015/tcp": 28015},
+        remove=True,
+        network="test"
+    )
+    CLIENT.images.build(
+        path=interpreter_path,
+        tag="example-http/pcp",
+        buildargs={
+            "plugin": "ExampleHTTP",
+            "stage": "PROD"
+        }
+    )
+    CLIENT.containers.run(
+        "example-http/pcp",
+        detach=True,
+        network="test",
+        ports={"8080/tcp": 8080},
+        remove=True
+    )
+    containers = CLIENT.containers.list()
+    while True:
+        try:
+            sleep(1)
+            pass
+        except KeyboardInterrupt:
+            for container in containers:
+                container.stop()
+            CLIENT.networks.prune()
+            exit(0)
