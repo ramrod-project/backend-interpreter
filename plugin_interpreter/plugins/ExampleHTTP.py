@@ -17,8 +17,12 @@ class ExampleHTTP(controller_plugin.ControllerPlugin):
     def start(self, logger, signal):
         server_address = ("127.0.0.1", self.port)
         httpd = HTTPServer(server_address, ExampleHTTPRequestHandler)
-        print("http server running...")
-        httpd.serve_forever()
+        try:
+            httpd.serve_forever()
+        except KeyboardInterrupt:
+            pass
+        finally:
+            exit(0)
 
     def _stop(self):
         pass
