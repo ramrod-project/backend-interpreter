@@ -7,12 +7,13 @@ from time import sleep
 import docker
 CLIENT = docker.from_env()
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     interpreter_path = ospath.join("/".join(ospath.abspath(__file__).split("/")[:-2]), "plugin_interpreter")
 
     CLIENT.networks.create("test")
     CLIENT.containers.run(
         "rethinkdb",
+        name="rethinkdb",
         detach=True,
         ports={"28015/tcp": 28015},
         remove=True,
@@ -33,13 +34,20 @@ if __name__ == '__main__':
         ports={"8080/tcp": 8080},
         remove=True
     )
+    
     containers = CLIENT.containers.list()
+    print("Containers started, press <CTRL-C> to stop...")
     while True:
         try:
             sleep(1)
             pass
         except KeyboardInterrupt:
+            print("\nKill signal received, stopping container(s)...")
             for container in containers:
+                if container.name == "controller":
+                    continue
                 container.stop()
+            sleep(1)
+            print("Pruning networks...")
             CLIENT.networks.prune()
             exit(0)
