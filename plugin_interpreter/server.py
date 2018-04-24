@@ -1,4 +1,4 @@
-"""Main server module
+"""Interpreter server
 
 Starts the main interpreter web server. This initially creates a
 Supervisor class object, loads all of the plugins from the ./plugins
