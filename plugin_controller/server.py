@@ -1,4 +1,6 @@
-"""This is the main server file for the docker
+"""Controller server
+
+This is the main server file for the docker
 interpreter controller.
 """
 from os import path as ospath, getcwd
@@ -8,7 +10,10 @@ import docker
 CLIENT = docker.from_env()
 
 if __name__ == "__main__":
-    interpreter_path = ospath.join("/".join(ospath.abspath(__file__).split("/")[:-2]), "plugin_interpreter")
+    interpreter_path = ospath.join(
+        "/".join(ospath.abspath(__file__).split("/")[:-2]),
+        "plugin_interpreter"
+    )
 
     CLIENT.networks.create("test")
     CLIENT.containers.run(
@@ -29,6 +34,7 @@ if __name__ == "__main__":
     )
     CLIENT.containers.run(
         "example-http/pcp",
+        name="plugin1",
         detach=True,
         network="test",
         ports={"8080/tcp": 8080},

@@ -15,4 +15,6 @@ COPY . .
 ENV STAGE $stage
 ENV PLUGIN $plugin
 
+EXPOSE 8080
+
 ENTRYPOINT python3 server.py "${PLUGIN}"
