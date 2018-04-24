@@ -40,19 +40,12 @@ class ExampleHTTP(controller_plugin.ControllerPlugin):
         super().__init__(self.name, self.proto, self.port)
 
     def start(self, logger, signal):
-        logger.send([
-            self.name,
-            self.name + " starting...",
-            20,
-            time()
-        ])
-
         httpd = ExampleHTTPServer(("0.0.0.0", self.port), self.db_recv, self.db_send)
-        httpd_server = Thread(target=httpd.serve_forever)
+        httpd_server = Thread(target=httpd.serve_forever, daemon=True)
         httpd_server.start()
 
         try:
-            while not signal:
+            while not signal.value:
                 sleep(0.5)
         except KeyboardInterrupt:
             self._stop(logger, httpd)
@@ -62,7 +55,7 @@ class ExampleHTTP(controller_plugin.ControllerPlugin):
     def _stop(self, logger, httpd):
         logger.send([
             self.name,
-            self.name + " shutting down...",
+            self.name + " server shutting down...",
             20,
             time()
         ])
