@@ -36,7 +36,7 @@ class RethinkInterface:
         self.response_queue = Queue()
         self.rethink_connection = None
         self.stream = None
-        plugin.initialize_queues(self.response_queue, Queue())
+        plugin.initialize_queues(self.response_queue, self.plugin_queue)
 
     def check_client(self, client):
         """
@@ -60,24 +60,23 @@ class RethinkInterface:
         Start the Rethinkdb interface process. Control loop that handles
         communication with the database.
         """
-        # Try to connect to RethinkDB and handle error messages
         try:
             self.rethink_connection = rethinkdb.connect(self.host, self.port)
             try:
                 rethinkdb.db('test').table_create('messages').run(self.rethink_connection)
-                logger.send(["dbprocess", "Table 'messages' created.", 20, time()])
+                logger.send(["dbprocess", "Table 'messages' created.", 10, time()])
             except rethinkdb.ReqlOpFailedError as ex:
-                logger.send(["dbprocess", str(ex), 20, time()])
+                logger.send(["dbprocess", str(ex), 10, time()])
             try:
                 rethinkdb.db('test').table_create('hosts').run(self.rethink_connection)
-                logger.send(["dbprocess", "Table 'hosts' created.", 20, time()])
+                logger.send(["dbprocess", "Table 'hosts' created.", 10, time()])
             except rethinkdb.ReqlOpFailedError as ex:
-                logger.send(["dbprocess", str(ex), 20, time()])
+                logger.send(["dbprocess", str(ex), 10, time()])
             try:
                 rethinkdb.db('test').table_create('commands').run(self.rethink_connection)
-                logger.send(["dbprocess", "Table 'commands' created.", 20, time()])
+                logger.send(["dbprocess", "Table 'commands' created.", 10, time()])
             except rethinkdb.ReqlOpFailedError as ex:
-                logger.send(["dbprocess", str(ex), 20, time()])
+                logger.send(["dbprocess", str(ex), 10, time()])
             logger.send(["dbprocess", "Succesfully opened connection to Rethinkdb", 20, time()])
         except rethinkdb.ReqlDriverError as ex:
             logger.send(["dbprocess", str(ex), 50, time()])
@@ -87,7 +86,7 @@ class RethinkInterface:
         while True:
             try:
                 if signal.value:
-                    logger.send(['dbprocess', "Kill signal received - stopping DB process and closing connection...", 20, time()])
+                    logger.send(['dbprocess', "Kill signal received - stopping DB process and closing connection...", 10, time()])
                     self._stop()
                 sleep(0.1)
                 response = self.response_queue.get_nowait()
@@ -119,9 +118,6 @@ class RethinkInterface:
                             "body": str(next_item)
                         }
                     ]).run(self.rethink_connection)
-                # Test response
-                logger.send(['dbprocess', "Sending " + str([client_ip, client_port, b'Ack']) + " to " + self.plugin_queues[plugin_name], 10, time()])
-                self.plugin_queues[plugin_name].put([client_ip, client_port, b'Ack'])
             except Empty:
                 continue
             except KeyboardInterrupt:

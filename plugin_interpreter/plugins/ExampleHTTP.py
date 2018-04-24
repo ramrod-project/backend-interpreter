@@ -40,7 +40,12 @@ class ExampleHTTP(controller_plugin.ControllerPlugin):
         super().__init__(self.name, self.proto, self.port)
 
     def start(self, logger, signal):
-        httpd = ExampleHTTPServer(("0.0.0.0", self.port), self.db_recv, self.db_send)
+        httpd = ExampleHTTPServer(
+            ("0.0.0.0", self.port),
+            self.db_recv,
+            self.db_send,
+            logger
+        )
         httpd_server = Thread(target=httpd.serve_forever, daemon=True)
         httpd_server.start()
 
@@ -66,7 +71,8 @@ class ExampleHTTP(controller_plugin.ControllerPlugin):
 class ExampleHTTPServer(HTTPServer):
 
 
-    def __init__(self, server_address, recv, send):
+    def __init__(self, server_address, recv, send, logger):
+        self.logger = logger
         self.db_recv = recv
         self.db_send = send
         super().__init__(
@@ -91,6 +97,18 @@ class ExampleHTTPRequestHandler(BaseHTTPRequestHandler):
 
 
     def do_GET(self):
+
+        server_id = " ".join([
+            str(self.server.server_address[0]),
+            str(self.server.server_address[1])
+        ])
+        self.server.db_send.put([
+            server_id,
+            self.client_address[0],
+            self.client_address[1],
+            self.requestline
+        ])
+
         self.send_response(200)
         self.send_header('Content-type', 'text/html')
         self.end_headers()
