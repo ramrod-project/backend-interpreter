@@ -1,4 +1,5 @@
-"""***Plugin Template Module***"""
+"""Plugin Template Module
+"""
 
 from abc import ABC, abstractmethod
 from multiprocessing import Lock, Queue
@@ -16,16 +17,20 @@ class ControllerPlugin(ABC):
     #
     For proper instantiation, plugin subclasses should be initialized
     with a 'name' string, and a 'server' tuple of the form
-    (["UDP" or "TCP"], PORT). This information will be used by the
-    supervisor to ensure a server is started to handle the network
-    connections for the plugin.
+    (["UDP" or "TCP"], PORT). This information will be used to
+    keep track of which network resources are allocated to which
+    plugins.
     #
     The initialize_queues method *SHOUD NOT* be overridden by the
     inheriting class, as the Supervisor will attempt to initialize
     the command queues in the exact way prescribed below. The abstract
-    method 'start' *MUST BE* overridden by the inheriting class and
-    must take one argument, which is a multiprocessing Pipe() which
-    connects it to the server which handles its client connections.
+    methods 'start' and '_stop' *MUST BE* overridden by the inheriting
+    class. 
+    #
+    'start' and must take two arguments, a multiprocesing Pipe()
+    connecting the process to a central application logger, and a Value
+    of boolean type, which serves as a kill signal for the process (when
+    set to True). 
     """
 
     def __init__(self, name, proto, port):
