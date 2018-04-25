@@ -1,4 +1,4 @@
-"""Exmaple HTTP module
+"""Example HTTP module
 
 TODO:
 """
