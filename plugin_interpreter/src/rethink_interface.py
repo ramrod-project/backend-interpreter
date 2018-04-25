@@ -2,6 +2,9 @@
 The RethinkInterface is a simple interface to the RethinkDB
 which runs as a Process() and handles transactions between
 the interpreter and the RethinkDB database instance.
+
+TODO:
+- format and lint
 """
 
 from multiprocessing import Queue

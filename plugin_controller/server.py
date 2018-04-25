@@ -2,8 +2,11 @@
 
 This is the main server file for the docker
 interpreter controller.
+
+TODO:
+- multiple plugin names
 """
-from os import path as ospath, getcwd
+from os import environ, path as ospath
 from time import sleep
 
 import docker
@@ -16,25 +19,27 @@ if __name__ == "__main__":
     )
 
     CLIENT.networks.create("test")
-    CLIENT.containers.run(
-        "rethinkdb",
-        name="rethinkdb",
-        detach=True,
-        ports={"28015/tcp": 28015},
-        remove=True,
-        network="test"
-    )
+    if environ["STAGE"] == "DEV":
+        CLIENT.containers.run(
+            "rethinkdb",
+            name="rethinkdb",
+            detach=True,
+            ports={"28015/tcp": 28015},
+            remove=True,
+            network="test"
+        )
     CLIENT.images.build(
         path=interpreter_path,
-        tag="example-http/pcp",
-        buildargs={
-            "plugin": "ExampleHTTP",
-            "stage": "PROD"
-        }
+        tag="example-http/pcp"
     )
     CLIENT.containers.run(
         "example-http/pcp",
         name="plugin1",
+        environment={
+            "STAGE": environ["STAGE"],
+            "LOGLEVEL": environ["LOGLEVEL"],
+            "PLUGIN": "ExampleHTTP"
+        },
         detach=True,
         network="test",
         ports={"8080/tcp": 8080},
@@ -53,7 +58,6 @@ if __name__ == "__main__":
                 if container.name == "controller":
                     continue
                 container.stop()
-            sleep(1)
             print("Pruning networks...")
             CLIENT.networks.prune()
             exit(0)

@@ -18,7 +18,7 @@ from time import asctime, gmtime, sleep, time
 
 class CentralLogger():
 
-    def __init__(self, pipes):
+    def __init__(self, pipes, level):
         # pipes must be a list to be used with select
         if type(pipes) == list:
             self.pipes = pipes
@@ -27,7 +27,15 @@ class CentralLogger():
         logging.basicConfig(format='%(date)s %(name)-12s %(levelname)-8s %(message)s')
         self.lock = Lock()
         self.logger = logging.getLogger('central')
-        self.logger.setLevel(logging.DEBUG if environ['STAGE'] == 'DEV' else logging.INFO)
+        self.logger.setLevel(logging.DEBUG)
+        if level == "INFO":
+            self.logger.setLevel(logging.INFO)
+        elif level == "WARNING":
+            self.logger.setLevel(logging.WARNING)
+        elif level == "ERROR":
+            self.logger.setLevel(logging.ERROR)
+        elif level == "CRITICAL":
+            self.logger.setLevel(logging.CRITICAL)
 
     def start(self, logger, signal):
         """The start() function runs as a Process()
