@@ -8,8 +8,8 @@ From top level repository:
 
 **Running controller in interactive mode (development)**
 
-`sudo docker run --rm --name controller -ti -v /var/run/docker.sock:/var/run/docker.sock <image_name>`
+`sudo docker run --rm --name controller -ti -e "STAGE=DEV" -e "LOGLEVEL=<DEBUG,INFO,WARNING,ERROR,CRITICAL>" -v /var/run/docker.sock:/var/run/docker.sock <image_name>`
 
 **Running controller in detached mode (production)**
 
-`sudo docker run --rm --name controller -d -v /var/run/docker.sock:/var/run/docker.sock <image_name>`
+`sudo docker run --rm --name controller -ti -e "STAGE=PROD" -e "LOGLEVEL=<DEBUG,INFO,WARNING,ERROR,CRITICAL>" -v /var/run/docker.sock:/var/run/docker.sock <image_name>`
