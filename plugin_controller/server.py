@@ -5,6 +5,7 @@ interpreter controller.
 
 TODO:
 - multiple plugin names
+- get port/protocol requirement from plugin
 """
 from os import environ, path as ospath
 from time import sleep
