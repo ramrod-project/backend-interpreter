@@ -1,8 +1,6 @@
 """Exmaple HTTP module
 
 TODO:
-- Run server in separate thread.
-- Link with database interface.
 """
 
 from http.server import BaseHTTPRequestHandler, HTTPServer
@@ -94,14 +92,17 @@ class ExampleHTTPRequestHandler(BaseHTTPRequestHandler):
         BaseHTTPRequestHandler {class} -- Builtin HTTP
         request handler.
     """
-
+    def _set_headers(self):
+        self.send_response(200)
+        self.send_header("Content-type", "text/html")
+        self.end_headers()
 
     def do_GET(self):
-
         server_id = " ".join([
             str(self.server.server_address[0]),
             str(self.server.server_address[1])
         ])
+
         self.server.db_send.put([
             server_id,
             self.client_address[0],
@@ -109,9 +110,28 @@ class ExampleHTTPRequestHandler(BaseHTTPRequestHandler):
             self.requestline
         ])
 
-        self.send_response(200)
-        self.send_header('Content-type', 'text/html')
-        self.end_headers()
+        self._set_headers()
 
         self.wfile.write(b'Hello world!')
-        return
+
+    def do_HEAD(self):
+        self._set_headers()
+
+    def do_POST(self):
+        self._set_headers()
+        data_string = self.rfile.read(int(self.headers["Content-Length"]))
+        
+        server_id = " ".join([
+            str(self.server.server_address[0]),
+            str(self.server.server_address[1])
+        ])
+
+        self.server.db_send.put([
+            server_id,
+            self.client_address[0],
+            self.client_address[1],
+            data_string
+        ])
+
+        self.send_response(200)
+        self.end_headers()

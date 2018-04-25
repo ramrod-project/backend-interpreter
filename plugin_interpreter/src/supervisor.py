@@ -3,9 +3,10 @@
 The Supervisor module...
 
 TODO:
+- Add log-level environment variable support
 """
 
-__version__ = "0.1"
+__version__ = "0.2"
 __author__ = "Christopher Manzi"
 
 
