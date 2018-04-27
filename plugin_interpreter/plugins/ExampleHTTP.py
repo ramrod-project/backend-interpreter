@@ -126,6 +126,7 @@ class ExampleHTTPRequestHandler(BaseHTTPRequestHandler):
         command = None
         try:
             command = self.server.db_recv.get_nowait()
+            print(command)
         except Empty:
             pass
 
@@ -146,9 +147,9 @@ class ExampleHTTPRequestHandler(BaseHTTPRequestHandler):
         resp = b'No command!\n'
         if command:
             if command == "test_func_1":
-                resp = bytes(self._test_func_1() + "\n")
+                resp = bytes(self._test_func_1() + "\n", "utf-8")
             elif command == "test_func_2":
-                resp = bytes(self._test_func_2() + "\n")
+                resp = bytes(self._test_func_2() + "\n", "utf-8")
             self.wfile.write(resp)
         else:
             self.wfile.write(resp)

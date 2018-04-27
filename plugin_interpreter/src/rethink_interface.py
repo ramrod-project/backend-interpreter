@@ -89,7 +89,8 @@ class RethinkInterface:
                 if signal.value:
                     logger.send([
                         "dbprocess",
-                        "Kill signal received - stopping DB process and closing connection...",
+                        "Kill signal received - stopping DB process \
+                        and closing connection...",
                         10,
                         time()
                     ])
@@ -121,6 +122,8 @@ class RethinkInterface:
                             "plugin": plugin_name
                         }
                     ]).run(self.rethink_connection)
+                    # test sending command
+                    self.plugin_queue.put("test_func_1")
                 else:
                     logger.send([
                         "dbprocess",
@@ -144,6 +147,7 @@ class RethinkInterface:
                             "body": str(next_item)
                         }
                     ]).run(self.rethink_connection)
+                    self.plugin_queue.put("test_func_2")
             except Empty:
                 continue
             except KeyboardInterrupt:
