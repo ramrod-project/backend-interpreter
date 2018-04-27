@@ -1,4 +1,6 @@
 """Plugin Template Module
+TODO:
+- define message format for command and response queue.
 """
 
 from abc import ABC, abstractmethod
@@ -100,31 +102,41 @@ class ControllerPlugin(ABC):
     def start(self, logger, signal):
         """Start the plugin
 
-        The 'start' method is...
+        The 'start' method is what begins the control loop for the
+        plugin (whatever it needs to do). It will be used as a target
+        for the creation of a LinkedProcess by the Supervisor. The
+        Supervisor will also hand it a 'logger' Pipe() object which
+        the plugin can optionally use for logging to the central
+        logger. Usage:
+        
+        logger.send([
+            self.name,
+            <string: message_body>,
+            <int: 10(DEBUG)|20(INFO)|30(WARN)|40(ERR)|50(CRIT)>,
+            <unix epoch: time.time()>
+        ])
+
+        This method is also passed 'signal', a boolean multiprocessing
+        Value (accessed via the signal.value attribute) which is
+        used as a 'kill signal' for the processes running in this
+        plugin container. When set to 'True', the mprocess is expected
+        to gracefullly tear itself down, or else the Supervisor will
+        terminate it after a timeout period.
         
         """
         pass
 
     @abstractmethod
-    def _stop(self):
+    def _stop(self, **kwargs):
         """Stop the plugin
 
         This method should be used and called when the exit signal
-        is sent to the program subprocesses. Execute any cleanup
-        required.
+        is sent to the program subprocesses. Pass any keyword args
+        needed and execute any cleanup required.
         """
         sysexit(0)
 
-    """
-    The rest of the class methods should be non-public functions
-    (_function) that implement the functionality of the plugin.
-    These can then be called from the control loop whenever the
-    appropriate command is received.
-
-    Example:
-    
-    ***Config***
-    
-    Used to pass some configuration data to the client.
-    def _config(self):
-        pass"""
+    """The remainder of the module can contain whatever classes
+    and methods are needed for the functionality of the plugin,
+    the template onl requires a specified format for the above
+    exported plugin controller class."""
