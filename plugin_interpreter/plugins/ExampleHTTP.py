@@ -46,8 +46,7 @@ class ExampleHTTP(controller_plugin.ControllerPlugin):
         httpd = ExampleHTTPServer(
             ("0.0.0.0", self.port),
             self.db_recv,
-            self.db_send,
-            logger
+            self.db_send
         )
         httpd_server = Thread(target=httpd.serve_forever, daemon=True)
         httpd_server.start()
@@ -85,16 +84,13 @@ class ExampleHTTPServer(HTTPServer):
         class.
 
     Attributes:
-        logger {Pipe} -- a multiprocessing Pipe for sending
-        logs to a central logger process.
         db_recv {Queue} -- a Multiprocessing Queue for
         receiving commands from the database/frontend.
         db_send {Queue} -- a multiprocessing Queue for
         sending responses to the database/frontend.
     """
 
-    def __init__(self, server_address, recv, send, logger):
-        self.logger = logger
+    def __init__(self, server_address, recv, send):
         self.db_recv = recv
         self.db_send = send
         super().__init__(
@@ -127,7 +123,7 @@ class ExampleHTTPRequestHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         """GET method handler.
         """
-
+        command = None
         try:
             command = self.server.db_recv.get_nowait()
         except Empty:
@@ -156,13 +152,6 @@ class ExampleHTTPRequestHandler(BaseHTTPRequestHandler):
             self.wfile.write(resp)
         else:
             self.wfile.write(resp)
-
-        self.server.logger.send([
-            server_id,
-            str(resp) + " sent to client " + self.client_address,
-            20,
-            time()
-        ])
 
     def do_HEAD(self):
         """HEAD method handler
