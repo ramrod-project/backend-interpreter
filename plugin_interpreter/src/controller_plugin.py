@@ -34,10 +34,10 @@ class ControllerPlugin(ABC):
     set to True). 
     """
 
-    def __init__(self, name, proto, port):
+    def __init__(self, name, proto, port, functionality):
         self.db_send = None
         self.db_recv = None
-        self.functionality = []
+        self.functionality = functionality
         """
         List of dictionaries which advertises functionality of the plugin.
         Example:

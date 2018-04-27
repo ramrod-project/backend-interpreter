@@ -34,7 +34,21 @@ class ExampleHTTP(controller_plugin.ControllerPlugin):
         self.name = "ExampleHTTP"
         self.port = 8080
         self.proto = "TCP"
-        super().__init__(self.name, self.proto, self.port)
+        self.functionality = [
+            {
+                "name": "test_func_1",
+                "input": ["string"],
+                "output": "string",
+                "tooltip": "This is a test"
+            },
+            {
+                "name": "test_func_2",
+                "input": ["string"],
+                "output": "string",
+                "tooltip": "This is also a test"
+            }
+        ]
+        super().__init__(self.name, self.proto, self.port, self.functionality)
 
     def start(self, logger, signal):
         logger.send([
@@ -43,7 +57,15 @@ class ExampleHTTP(controller_plugin.ControllerPlugin):
             20,
             time()
         ])
+
+        self.db_send.put({
+            "type": "functionality",
+            "name": self.name,
+            "data": self.functionality
+        })
+
         httpd = ExampleHTTPServer(
+            self.name,
             ("0.0.0.0", self.port),
             self.db_recv,
             self.db_send
@@ -90,7 +112,8 @@ class ExampleHTTPServer(HTTPServer):
         sending responses to the database/frontend.
     """
 
-    def __init__(self, server_address, recv, send):
+    def __init__(self, name, server_address, recv, send):
+        self.name = name
         self.db_recv = recv
         self.db_send = send
         super().__init__(
@@ -130,17 +153,12 @@ class ExampleHTTPRequestHandler(BaseHTTPRequestHandler):
         except Empty:
             pass
 
-        server_id = " ".join([
-            str(self.server.server_address[0]),
-            str(self.server.server_address[1])
-        ])
-
-        self.server.db_send.put([
-            server_id,
-            self.client_address[0],
-            self.client_address[1],
-            self.requestline
-        ])
+        self.server.db_send.put({
+            "type": "message",
+            "name": self.server.name,
+            "client": self.client_address,
+            "data": self.requestline
+        })
 
         self._set_headers()
 
@@ -165,17 +183,13 @@ class ExampleHTTPRequestHandler(BaseHTTPRequestHandler):
         self._set_headers()
         data_string = self.rfile.read(int(self.headers["Content-Length"]))
 
-        server_id = " ".join([
-            str(self.server.server_address[0]),
-            str(self.server.server_address[1])
-        ])
-
-        self.server.db_send.put([
-            server_id,
+        """self.server.db_send.put([
+            "message",
+            self.server.name,
             self.client_address[0],
             self.client_address[1],
             data_string
-        ])
+        ])"""
 
         self.send_response(200)
         self.end_headers()
