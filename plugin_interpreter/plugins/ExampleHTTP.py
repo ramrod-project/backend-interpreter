@@ -5,6 +5,7 @@ TODO:
 """
 
 from http.server import BaseHTTPRequestHandler, HTTPServer
+from queue import Empty
 from threading import Thread
 from time import sleep, time
 
@@ -92,7 +93,6 @@ class ExampleHTTPServer(HTTPServer):
         sending responses to the database/frontend.
     """
 
-
     def __init__(self, server_address, recv, send, logger):
         self.logger = logger
         self.db_recv = recv
@@ -128,6 +128,11 @@ class ExampleHTTPRequestHandler(BaseHTTPRequestHandler):
         """GET method handler.
         """
 
+        try:
+            command = self.server.db_recv.get_nowait()
+        except Empty:
+            pass
+
         server_id = " ".join([
             str(self.server.server_address[0]),
             str(self.server.server_address[1])
@@ -142,7 +147,22 @@ class ExampleHTTPRequestHandler(BaseHTTPRequestHandler):
 
         self._set_headers()
 
-        self.wfile.write(b'Hello world!')
+        resp = b'No command!\n'
+        if command:
+            if command == "test_func_1":
+                resp = bytes(self._test_func_1() + "\n")
+            elif command == "test_func_2":
+                resp = bytes(self._test_func_2() + "\n")
+            self.wfile.write(resp)
+        else:
+            self.wfile.write(resp)
+
+        self.server.logger.send([
+            server_id,
+            str(resp) + " sent to client " + self.client_address,
+            20,
+            time()
+        ])
 
     def do_HEAD(self):
         """HEAD method handler
@@ -169,3 +189,13 @@ class ExampleHTTPRequestHandler(BaseHTTPRequestHandler):
 
         self.send_response(200)
         self.end_headers()
+
+    def _test_func_1(self):
+        """A test function
+        """
+        return "Sending command 1..."
+
+    def _test_func_2(self):
+        """Another test function
+        """
+        return "Sending command 2..."

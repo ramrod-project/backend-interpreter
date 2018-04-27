@@ -6,7 +6,6 @@ TODO:
 from abc import ABC, abstractmethod
 from multiprocessing import Lock, Queue
 from queue import Empty
-from sys import exit as sysexit
 from threading import Thread
 from time import sleep
 
@@ -134,7 +133,7 @@ class ControllerPlugin(ABC):
         is sent to the program subprocesses. Pass any keyword args
         needed and execute any cleanup required.
         """
-        sysexit(0)
+        exit(0)
 
     """The remainder of the module can contain whatever classes
     and methods are needed for the functionality of the plugin,
