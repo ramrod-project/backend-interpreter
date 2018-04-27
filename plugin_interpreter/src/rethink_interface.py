@@ -192,59 +192,23 @@ class RethinkInterface:
     def _database_init(self, logger):
         try:
             self.rethink_connection = rethinkdb.connect(self.host, self.port)
-            try:
-                rethinkdb.db("test").table_create(
-                    "messages"
-                ).run(self.rethink_connection)
-                logger.send([
-                    "dbprocess",
-                    "Table 'messages' created.",
-                    10,
-                    time()
-                ])
-            except rethinkdb.ReqlOpFailedError as ex:
-                logger.send([
-                    "dbprocess",
-                    str(ex),
-                    10,
-                    time()
-                ])
-            try:
-                rethinkdb.db("test").table_create(
-                    "hosts"
-                ).run(self.rethink_connection)
-                logger.send([
-                    "dbprocess",
-                    "Table 'hosts' created.",
-                    10,
-                    time()
-                ])
-            except rethinkdb.ReqlOpFailedError as ex:
-                logger.send(["dbprocess", str(ex), 10, time()])
-            try:
-                rethinkdb.db("test").table_create(
-                    "commands"
-                ).run(self.rethink_connection)
-                logger.send([
-                    "dbprocess",
-                    "Table 'commands' created.",
-                    10,
-                    time()
-                ])
-            except rethinkdb.ReqlOpFailedError as ex:
-                logger.send(["dbprocess", str(ex), 10, time()])
-            try:
-                rethinkdb.db("test").table_create(
-                    "plugins"
-                ).run(self.rethink_connection)
-                logger.send([
-                    "dbprocess",
-                    "Table 'plugins' created.",
-                    10,
-                    time()
-                ])
-            except rethinkdb.ReqlOpFailedError as ex:
-                logger.send(["dbprocess", str(ex), 10, time()])
+            for table_name in ["messages", "plugins", "commands", "hosts"]:
+                ex = self._create_table(table_name)
+                if not ex:
+                    logger.send([
+                        "dbprocess",
+                        "Table '" + table_name + "'created.",
+                        10,
+                        time()
+                    ])
+                else:
+                    logger.send([
+                        "dbprocess",
+                        str(ex),
+                        10,
+                        time()
+                    ])
+    
             logger.send([
                 "dbprocess",
                 "Succesfully opened connection to Rethinkdb",
@@ -254,6 +218,26 @@ class RethinkInterface:
         except rethinkdb.ReqlDriverError as ex:
             logger.send(["dbprocess", str(ex), 50, time()])
             sysexit(111)
+
+    def _create_table(self, table_name):
+        """Create a table in the database
+        
+        Arguments:
+            logger {Pipe} -- a multiprocessing Pipe to the central
+            logger.
+            table_name {string} -- name of table to be created.
+        
+        Returns:
+            {Exception} -- returns an exception if the table already
+            exists.
+        """
+        try:
+            rethinkdb.db("test").table_create(
+                table_name
+            ).run(self.rethink_connection)
+            return None
+        except rethinkdb.ReqlOpFailedError as ex:
+            return ex
 
     def _stop(self):
         try:
