@@ -3,9 +3,10 @@
 The Supervisor module...
 
 TODO:
+- Add log-level environment variable support
 """
 
-__version__ = "0.1"
+__version__ = "0.2"
 __author__ = "Christopher Manzi"
 
 
@@ -26,7 +27,12 @@ def get_class_instance(plugin_name):
     Returns:
         list -- List containing class instances of all plugins.
     """
-    path = ospath.join("/" + ''.join([d + "/" for d in ospath.dirname(__file__).split("/")[:-1] if d]), "plugins")
+    path = ospath.join(
+        "/" + ''.join([
+            d + "/" for d in ospath.dirname(__file__).split("/")[:-1] if d
+            ]),
+        "plugins"
+    )
     modules = iter_modules(path=[path])
 
     for _, mod_name, _ in modules:
@@ -85,7 +91,6 @@ class SupervisorController:
         logger_pipes = []
 
         """Create plugin process..."""
-        plugin_conn, db_conn = Pipe()
         log_receiver, log_sender = Pipe()
 
         self.plugin_process = linked_process.LinkedProcess(
@@ -103,7 +108,7 @@ class SupervisorController:
         if environ["STAGE"] == "DEV":
             self.db_interface = rethink_interface.RethinkInterface(
                 self.plugin,
-                ("127.0.0.1", 28015)
+                ("rethinkdb", 28015)
             )
         elif environ["STAGE"] == "PROD":
             self.db_interface = rethink_interface.RethinkInterface(
@@ -125,7 +130,7 @@ class SupervisorController:
         logger_pipes.append(log_receiver)
 
         """Create CentralLogger instance and process"""
-        self.logger_instance = central_logger.CentralLogger(logger_pipes)
+        self.logger_instance = central_logger.CentralLogger(logger_pipes, environ["LOGLEVEL"])
         self.logger_process = linked_process.LinkedProcess(
             name="loggerprocess",
             target=self.logger_instance.start,
@@ -137,8 +142,6 @@ class SupervisorController:
 
         This starts all...
         """
-        if environ["STAGE"] == "DEV":
-            print("Starting servers and plugins, use <CRTL-C> to exit...")
         try:
             if not self.logger_process.start():
                 raise RuntimeError
@@ -180,14 +183,9 @@ class SupervisorController:
             monitoring loop (0 is normal, other codes can be
             passed by child processes)
         """
-        if environ["STAGE"] == "DEV":
-            print("\nStopping servers and plugins...\n")
 
         self.signal.value = True
         sleep(5)
-
-        if environ["STAGE"] == "DEV":
-            print("Exiting main process...")
 
         if self.db_process.is_alive():
             self.db_process.terminate()

@@ -8,10 +8,6 @@ RUN apk add --no-cach python3 && \
     if [[ ! -e /usr/bin/python ]]; then ln -sf /usr/bin/python3 /usr/bin/python; fi && \
     rm -r /root/.cache
 
-# Build arguments, stage=PROD or DEV
-ARG stage=DEV
-ARG plugin
-
 WORKDIR /tmp
 COPY ./requirements.txt .
 
@@ -19,9 +15,6 @@ RUN pip install -r requirements.txt
 
 WORKDIR /opt/app-root/src
 COPY . .
-
-ENV STAGE $stage
-ENV PLUGIN $plugin
 
 EXPOSE 8080
 
