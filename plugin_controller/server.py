@@ -56,9 +56,13 @@ if __name__ == "__main__":
         except KeyboardInterrupt:
             print("\nKill signal received, stopping container(s)...")
             for container in containers:
-                if container.name == "controller":
+                try:
+                    if container.name == "controller":
+                        continue
+                    container.stop()
+                except:
+                    print(container.name, "stopped or not running")
                     continue
-                container.stop()
             print("Pruning networks...")
             CLIENT.networks.prune()
             exit(0)
