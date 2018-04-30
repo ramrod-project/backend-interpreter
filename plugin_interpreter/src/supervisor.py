@@ -12,7 +12,7 @@ __author__ = "Christopher Manzi"
 
 from ctypes import c_bool
 from multiprocessing import Pipe, Value
-from os import environ, getcwd, path as ospath
+from os import environ, getcwd, path as ospath, name as osname
 from pkgutil import iter_modules
 from sys import modules as sysmods, exit as sysexit
 from time import sleep
@@ -27,12 +27,15 @@ def get_class_instance(plugin_name):
     Returns:
         list -- List containing class instances of all plugins.
     """
-    path = ospath.join(
-        "/" + ''.join([
-            d + "/" for d in ospath.dirname(__file__).split("/")[:-1] if d
-            ]),
-        "plugins"
-    )
+    if (osname == "nt"):
+        path = ospath.abspath(ospath.join(ospath.dirname(__file__), "../")+"/plugins")
+    else: #leaving functional linux path generation in place, windows might work on linux too.
+        path = ospath.join(
+            "/" + ''.join([
+                d + "/" for d in ospath.dirname(__file__).split("/")[:-1] if d
+                ]),
+            "plugins"
+        )
     modules = iter_modules(path=[path])
 
     for _, mod_name, _ in modules:
