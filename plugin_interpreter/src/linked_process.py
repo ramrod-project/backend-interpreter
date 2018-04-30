@@ -21,7 +21,8 @@ class LinkedProcess:
         # Pipe fo logging
         if self.name is not "loggerprocess":
             self.logger_pipe = kwargs["logger_pipe"]
-            if type(self.logger_pipe) is not connection.Connection:
+            if type(self.logger_pipe) is not connection.Connection and\
+                    type(self.logger_pipe) is not connection.PipeConnection:
                 raise TypeError
         else:
             self.logger_pipe = None
