@@ -2,6 +2,8 @@ astroid==1.6.2
 attrs==17.4.0
 certifi==2018.1.18
 chardet==3.0.4
+docker==3.3.0
+docker-pycreds==0.2.3
 get==0.0.39
 idna==2.6
 isort==4.3.4
@@ -16,7 +18,9 @@ pylint==1.8.3
 pytest==3.5.0
 query-string==0.0.28
 request==0.0.26
+requests==2.18.4
 rethinkdb==2.3.0.post6
 six==1.11.0
 urllib3==1.22
+websocket-client==0.47.0
 wrapt==1.10.11

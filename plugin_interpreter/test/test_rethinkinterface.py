@@ -3,11 +3,14 @@
 
 from ctypes import c_bool
 from multiprocessing import Value
-from pytest import fixture, raises
 from threading import Thread
 from time import sleep
 
-from plugins import plugin_1
+from pytest import fixture, raises
+import docker
+CLIENT = docker.from_env()
+
+from plugins import *
 from src import rethink_interface
 
 
@@ -22,18 +25,25 @@ class mock_logger():
 
 @fixture(scope='module')
 def rethink():
-    plugins = []
-    for _ in range(5):
-        c = plugin_1.TestPlugin1()
-        plugins.append(c)
+    plugin = ExampleHTTP()
+    CLIENT.containers.run(
+        "rethinkdb",
+        name="rethinkdb",
+        detach=True,
+        ports={"28015/tcp": 28015},
+        remove=True,
+    )
     server = ('127.0.0.1', 28015)
-    yield rethink_interface.RethinkInterface(plugins, server)
+    yield rethink_interface.RethinkInterface(plugin, server)
+    containers = CLIENT.containers.list()
+    for container in containers:
+        if container.name == "rethinkdb":
+            container.stop()
+            break
 
 
 def test_rethink_setup(rethink):
-    with raises(TypeError):
-        re = rethink_interface.RethinkInterface()
-    assert type(rethink) == rethink_interface.RethinkInterface
+    assert isinstance(rethink, rethink_interface.RethinkInterface)
 
 
 def test_rethink_start(rethink):
