@@ -4,18 +4,33 @@
 from ctypes import c_bool
 from multiprocessing import connection, Pipe, Value
 from os import environ
-from pytest import fixture, raises
 
+from pytest import fixture, raises
+import docker
+CLIENT = docker.from_env()
 
 from src import central_logger, controller_plugin, linked_process, rethink_interface, supervisor
-import server
 
 
-@fixture(scope='module')
+@fixture(scope="module")
 def sup():
-    sup = supervisor.SupervisorController()
+    environ["LOGLEVEL"] = "DEBUG"
+    CLIENT.containers.run(
+        "rethinkdb",
+        name="rethinkdb",
+        detach=True,
+        ports={"28015/tcp": 28015},
+        remove=True,
+    )
+    sup = supervisor.SupervisorController("ExampleHTTP")
     yield sup
     try:
+        environ["LOGLEVEL"] = ""
+        containers = CLIENT.containers.list()
+        for container in containers:
+            if container.name == "rethinkdb":
+                container.stop()
+                break
         sup.teardown(0)
     except SystemExit:
         pass
@@ -25,18 +40,18 @@ def test_supervisor_setup(sup):
     """Test the Supervisor class.
     """
     # DEV environment test
-    assert type(sup) == supervisor.SupervisorController
-    environ['STAGE'] = ''
+    assert isinstance(sup, supervisor.SupervisorController)
+    environ["STAGE"] = ""
     with raises(KeyError):
         sup.create_servers()
-    environ['STAGE'] = 'DEV'
-    for plugin in sup.plugins:
-        assert type(plugin) == controller_plugin.ControllerPlugin
+    environ["STAGE"] = "DEV"
+    assert isinstance(sup.plugin, controller_plugin.ControllerPlugin)
 
 
 def test_supervisor_server_creation(sup):
     # Test server creation
     sup.create_servers()
+    sup.db_interface.host = "127.0.0.1"
 
     for proc in [sup.logger_process, sup.db_process, sup.plugin_process]:
         assert isinstance(proc, linked_process.LinkedProcess)
@@ -45,16 +60,9 @@ def test_supervisor_server_creation(sup):
     assert isinstance(sup.db_interface, rethink_interface.RethinkInterface)
     assert isinstance(sup.logger_instance, central_logger.CentralLogger)
 
-    assert sup.db_interface.host == '127.0.0.1'
-
-
 def test_supervisor_server_spawn(sup):
     # Test server supawning
     sup.spawn_servers()
     
-    assert sup.logger_process.is_alive() == True
-    assert sup.db_process.is_alive() == True
-    for _, proc in sup.controller_processes.items():
-        assert proc.is_alive() == True
-    for _, proc in sup.plugin_processes.items():
-        assert proc.is_alive() == True
+    for proc in [sup.logger_process, sup.db_process, sup.plugin_process]:
+        assert proc.is_alive()
