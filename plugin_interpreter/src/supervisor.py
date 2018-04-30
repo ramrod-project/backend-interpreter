@@ -3,7 +3,7 @@
 The Supervisor module...
 
 TODO:
-- Add log-level environment variable support
+- Add handler class for SIGTERM event (docker stop is received)
 """
 
 __version__ = "0.2"
