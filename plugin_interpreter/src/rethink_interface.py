@@ -98,7 +98,7 @@ class RethinkInterface:
             return
         try:
             rethinkdb.db("Plugins").table(plugin_data[0]).insert(plugin_data[1]).run(self.rethink_connection)
-        except Exception as ex:
+        except rethinkdb.ReqlDriverError as ex:
             self.logger.send([
                 "dbprocess",
                 "Unable to add command to table '" + plugin_data[0] +"'",
