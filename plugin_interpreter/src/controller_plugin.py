@@ -164,13 +164,10 @@ class ControllerPlugin(ABC):
                 "type": "job_request",
                 "data": self.name
             })
-            job = None
-            now = time()
-            while time() - now < 3:
-                try:
-                    job = self.db_recv.get_nowait()
-                except Empty:
-                    sleep(0.5)
+            try:
+                job = self.db_recv.get(timeout=3)
+            except Empty:
+                job=None
         return job
 
     @abstractmethod
