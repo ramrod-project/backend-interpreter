@@ -1,7 +1,9 @@
+
+from os import environ as _environ
 try:
     from ..src import controller_plugin as cp
     from .__harness_content import content as _content
-    from os import environ as _environ
+
 except (ValueError, SystemError):  #allow this plugin to be run from commandline
     import os.path
     import sys
@@ -18,8 +20,7 @@ from flask import Flask, request, stream_with_context, Response
 #from flask import g, jsonify, render_template, abort
 
 _i = 0
-_G_SEND = None
-_G_RECV = None
+_G_HARNESS = None
 
 class Harness(cp.ControllerPlugin):
     functionality = _commands
@@ -34,14 +35,12 @@ class Harness(cp.ControllerPlugin):
         super().__init__(self.name, self.proto, self.port, self.functionality)
 
     def start(self, logger, ext_signal):
+        #self._advertise_functionality() #TODO: Put this in later
         httpd = _app
-        print("in the process")
         httpd_server = Thread(target=httpd.run, daemon=True)
         httpd_server.start()
-        global _G_RECV
-        global _G_SEND
-        _G_RECV = self.db_recv
-        _G_SEND = self.db_send
+        global _G_HARNESS
+        _G_HARNESS = self
         try:
             while not ext_signal.value:
                 sleep(0.5)
