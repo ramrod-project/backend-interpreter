@@ -7,7 +7,7 @@ except (ValueError, SystemError):  #allow this plugin to be run from commandline
     _path = os.path.abspath(os.path.join(os.path.abspath(__file__), "../../"))
     sys.path.append(_path)
     from src import controller_plugin as cp
-    from plugins.__harness_content import content as _content
+    from plugins.__harness_content import content as _content, commands as _commands
     #raise
 
 from threading import Thread
@@ -21,15 +21,7 @@ _G_SEND = None
 _G_RECV = None
 
 class Harness(cp.ControllerPlugin):
-    functionality = [
-        {
-            "name": "read_file",
-            "input": ["string"],
-            "family": "filesystem",
-            "tooltip": "Provided a full directory path, this function reads a file.",
-            "reference": "<reference url>"
-        },
-    ]
+    functionality = _commands
 
     def __init__(self):
         self.name = "Harness"
