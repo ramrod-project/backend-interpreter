@@ -151,7 +151,7 @@ class ControllerPlugin(ABC):
                 "JobTarget": {dict} -- target from Targets table,
                 "Status": {string} -- the status of the job,
                 "StartTime": {int} -- unix epoch start time,
-                "JobCommand": {string} -- command to run
+                "JobCommand": {dict} -- command to run
             }
         """
         job = None
