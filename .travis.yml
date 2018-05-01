@@ -1,0 +1,28 @@
+sudo: required
+
+language: python
+
+python:
+  - "3.6"
+
+services:
+  - docker
+
+before_install:
+  - git clone https://github.com/ramrod-project/backend-interpreter.git
+
+install:
+  - pip install -r plugin_interpreter/requirements.txt
+
+before_script:
+  - pytest plugin_interpreter/test
+
+script:
+  - docker build -t ramrodpcp/backend-interpreter .
+  - docker run -d --rm --name test-controller ramrodpcp/backend-interpreter
+#  - test stuff...
+  - docker stop test-controller
+
+# after_success:
+#   - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
+#   - docker push ramrodpcp/backend-interpreter

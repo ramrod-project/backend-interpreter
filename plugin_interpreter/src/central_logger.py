@@ -20,7 +20,7 @@ class CentralLogger():
 
     def __init__(self, pipes, level):
         # pipes must be a list to be used with select
-        if type(pipes) == list:
+        if isinstance(pipes, list):
             self.pipes = pipes
         else:
             raise TypeError
@@ -36,6 +36,7 @@ class CentralLogger():
             self.logger.setLevel(logging.ERROR)
         elif level == "CRITICAL":
             self.logger.setLevel(logging.CRITICAL)
+
 
     def start(self, logger, signal):
         """The start() function runs as a Process()
