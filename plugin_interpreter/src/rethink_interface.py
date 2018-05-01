@@ -7,6 +7,7 @@ TODO:
 """
 
 from multiprocessing import Queue
+from os import environ
 from queue import Empty
 from sys import exit as sysexit
 from time import sleep, time
@@ -29,7 +30,9 @@ class RethinkInterface:
     """
 
     def __init__(self, plugin, server):
+        self.job_cursor = None
         self.host = server[0]
+        self.logger = None
         # Generate dictionary of Queues for each plugin
         self.plugin_queue = Queue()
         self.port = server[1]
@@ -57,18 +60,65 @@ class RethinkInterface:
         except KeyError:
             return False
 
+    def update_job(self, job_id, status):
+        pass
+    
+    def _get_next_job(self, plugin_name):
+        """
+        Adds the next job to the plugin's queue
+        
+        Arguments:
+            plugin_name {str} -- The name of the plugin to filter jobs with
+        """
+
+        self.job_cursor = rethinkdb.table("Jobs").filter(
+            rethinkdb.row["JobTarget"]["PluginName"] == plugin_name \
+            and rethinkdb.row["Status"] == "Ready"
+        ).run(self.rethink_connection)
+        self.plugin_queue.put(self.job_cursor.next)
+    
+    def _create_plugin_table(self, plugin_data):
+        """
+        Adds a new plugin to the Plugins Database
+        
+        Arguments:
+            plugin_data {Tuple} -- Tuple containing the name of the plugin and the list
+            of Commands
+        """
+
+        try:
+            self._create_table("Plugins",plugin_data[0])
+        except rethinkdb.ReqlOpFailedError:
+            self.logger.send([
+                "dbprocess",
+                "Table '" + plugin_data[0] + "' exists",
+                20,
+                time()
+            ])
+            return
+        try:
+            rethinkdb.db("Plugins").table(plugin_data[0]).insert(plugin_data[1]).run(self.rethink_connection)
+        except rethinkdb.ReqlDriverError as ex:
+            self.logger.send([
+                "dbprocess",
+                "Unable to add command to table '" + plugin_data[0] +"'",
+                20,
+                time()
+            ])
+
     def start(self, logger, signal):
         """
         Start the Rethinkdb interface process. Control loop that handles
         communication with the database.
         """
-        self._database_init(logger)
+        self.logger = logger
+        self._database_init()
 
         # Control loop, reads from incoming queue and sends to RethinkDB
         while True:
             try:
                 if signal.value:
-                    logger.send([
+                    self.logger.send([
                         "dbprocess",
                         "Kill signal received - stopping DB process \
                         and closing connection...",
@@ -78,110 +128,42 @@ class RethinkInterface:
                     self._stop()
                 sleep(0.1)
 
-                next_item, plugin_name = None, None
-                client_ip, client_port = None, None
                 response = self.response_queue.get_nowait()
-                if response["type"] == "functionality":
-                    plugin_name = response["name"]
-                    next_item = response["data"]
-                elif response["type"] == "message":
-                    plugin_name = response["name"]
-                    client_ip, client_port = response["client"]
-                    next_item = response["data"]
-                if response["type"] == "message":
-                    client = self.check_client(plugin_name + "-" + client_ip)
-                    if not client:
-                        logger.send([
-                            "dbprocess",
-                            "New client "
-                            + client_ip
-                            + " " + str(client_port)
-                            + " " + plugin_name,
-                            10,
-                            time()
-                        ])
-                        rethinkdb.db("test").table("hosts").insert([
-                            {
-                                "name": plugin_name + "-" + client_ip,
-                                "ip": client_ip,
-                                "port": client_port,
-                                "plugin": plugin_name
-                            }
-                        ]).run(self.rethink_connection)
-                        # test sending command
-                        self.plugin_queue.put("test_func_1")
-                    else:
-                        logger.send([
-                            "dbprocess",
-                            "Existing client "
-                            + client["name"]
-                            + ", updating port to "
-                            + str(client_port),
-                            10,
-                            time()
-                        ])
-                        rethinkdb.db("test").table("hosts").filter(
-                            rethinkdb.row["name"] == client["name"]).update({
-                                "port": client_port
-                            }).run(self.rethink_connection)
-                    if self.rethink_connection:
-                        rethinkdb.db("test").table("messages").insert([
-                            {
-                                "type": "message",
-                                "plugin": plugin_name,
-                                "client": plugin_name + "-" + client_ip,
-                                "body": str(next_item)
-                            }
-                        ]).run(self.rethink_connection)
-                        self.plugin_queue.put("test_func_2")
-                elif response["type"] == "functionality":
-                    if self.rethink_connection:
-                        rethinkdb.db("test").table("plugins").insert([
-                            {
-                                "plugin": plugin_name,
-                                "functions": next_item
-                            }
-                        ]).run(self.rethink_connection)
-                        logger.send([
-                            "dbprocess",
-                            "Functionality for "
-                            + plugin_name
-                            + " set to "
-                            + str(next_item),
-                            10,
-                            time()
-                        ])
+                if response["type"] == "Functionality":
+                    self._create_plugin_table(response["data"])
+                if response["type"] == "job_request":
+                    self._get_next_job(response["data"])
             except Empty:
                 continue
             except KeyboardInterrupt:
                 continue
             except rethinkdb.ReqlError as err:
-                self._log_db_error(err, logger)
+                self._log_db_error(err)
 
-    def _log_db_error(self, err, logger):
+    def _log_db_error(self, err):
         if isinstance(err, rethinkdb.ReqlTimeoutError):
-            logger.send([
+            self.logger.send([
                 "dbprocess",
                 "Database operation timeout: " + str(err),
                 40,
                 time()
             ])
         elif isinstance(err, rethinkdb.ReqlAvailabilityError):
-            logger.send([
+            self.logger.send([
                 "dbprocess",
                 "Database operation failed: " + str(err),
                 40,
                 time()
             ])
         elif isinstance(err, rethinkdb.ReqlRuntimeError):
-            logger.send([
+            self.logger.send([
                 "dbprocess",
                 "Database runtime error: " + str(err),
                 40,
                 time()
             ])
         elif isinstance(err, rethinkdb.ReqlDriverError):
-            logger.send([
+            self.logger.send([
                 "dbprocess",
                 "Database driver error: " + str(err),
                 50,
@@ -189,37 +171,56 @@ class RethinkInterface:
             ])
             self._stop()
 
-    def _database_init(self, logger):
+    def _database_init(self):
         try:
             self.rethink_connection = rethinkdb.connect(self.host, self.port)
-            for table_name in ["messages", "plugins", "commands", "hosts"]:
-                ex = self._create_table(table_name)
-                if not ex:
-                    logger.send([
+            if environ["STAGE"] == "DEV":
+                try:
+                    rethinkdb.db_create("Brain").run(self.rethink_connection)
+                except rethinkdb.ReqlRuntimeError:
+                    self.logger.send([
                         "dbprocess",
-                        "Table '" + table_name + "'created.",
-                        10,
+                        "Database 'Brain' exists",
+                        20,
                         time()
                     ])
-                else:
-                    logger.send([
+                try:
+                    rethinkdb.db_create("Plugins").run(self.rethink_connection)
+                except rethinkdb.ReqlRuntimeError:
+                    self.logger.send([
                         "dbprocess",
-                        str(ex),
-                        10,
+                        "Database 'Plugins' exists",
+                        20,
                         time()
                     ])
+                for table_name in ["Targets","Jobs"]:
+                    ex = self._create_table("Brain", table_name)
+                    if not ex:
+                        self.logger.send([
+                            "dbprocess",
+                            "Table '" + table_name + "'created.",
+                            10,
+                            time()
+                        ])
+                    else:
+                        self.logger.send([
+                            "dbprocess",
+                            str(ex),
+                            40,
+                            time()
+                        ])
     
-            logger.send([
+            self.logger.send([
                 "dbprocess",
                 "Succesfully opened connection to Rethinkdb",
                 20,
                 time()
             ])
         except rethinkdb.ReqlDriverError as ex:
-            logger.send(["dbprocess", str(ex), 50, time()])
+            self.logger.send(["dbprocess", str(ex), 50, time()])
             sysexit(111)
 
-    def _create_table(self, table_name):
+    def _create_table(self, database_name, table_name):
         """Create a table in the database
         
         Arguments:
@@ -232,7 +233,7 @@ class RethinkInterface:
             exists.
         """
         try:
-            rethinkdb.db("test").table_create(
+            rethinkdb.db(database_name).table_create(
                 table_name
             ).run(self.rethink_connection)
             return None
