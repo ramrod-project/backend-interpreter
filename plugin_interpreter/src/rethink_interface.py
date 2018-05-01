@@ -74,7 +74,7 @@ class RethinkInterface:
         self.job_cursor = rethinkdb.table("Jobs").filter(
             rethinkdb.row["JobTarget"]["PluginName"] == plugin_name \
             and rethinkdb.row["Status"] == "Ready"
-        ).run
+        ).run(self.rethink_connection)
         self.plugin_queue.put(self.job_cursor.next)
     
     def _create_plugin_table(self, plugin_data):
@@ -88,26 +88,23 @@ class RethinkInterface:
 
         try:
             self._create_table("Plugins",plugin_data[0])
-        except Exception as ex:
+        except rethinkdb.ReqlOpFailedError:
             self.logger.send([
                 "dbprocess",
                 "Table '" + plugin_data[0] + "' exists",
                 20,
                 time()
             ])
-            return None
-        for command in plugin_data[1]:
-            try:
-                rethinkdb.db("Plugins").table(plugin_data[0]).insert([
-                    command
-                ]).run(self.rethink_connection)
-            except Exception as ex:
-                self.logger.send([
-                    "dbprocess",
-                    "Unable to add command to table '" + plugin_data[0] +"'",
-                    20,
-                    time()
-                ])
+            return
+        try:
+            rethinkdb.db("Plugins").table(plugin_data[0]).insert(plugin_data[1]).run(self.rethink_connection)
+        except Exception as ex:
+            self.logger.send([
+                "dbprocess",
+                "Unable to add command to table '" + plugin_data[0] +"'",
+                20,
+                time()
+            ])
 
     def start(self, logger, signal):
         """
@@ -115,7 +112,7 @@ class RethinkInterface:
         communication with the database.
         """
         self.logger = logger
-        self._database_init(self.logger)
+        self._database_init()
 
         # Control loop, reads from incoming queue and sends to RethinkDB
         while True:
@@ -174,35 +171,53 @@ class RethinkInterface:
             ])
             self._stop()
 
-    def _database_init(self, logger):
+    def _database_init(self):
         try:
             self.rethink_connection = rethinkdb.connect(self.host, self.port)
             if environ["STAGE"] == "DEV":
+                try:
+                    rethinkdb.db_create("Brain").run(self.rethink_connection)
+                except rethinkdb.ReqlRuntimeError:
+                    self.logger.send([
+                        "dbprocess",
+                        "Database 'Brain' exists",
+                        20,
+                        time()
+                    ])
+                try:
+                    rethinkdb.db_create("Plugins").run(self.rethink_connection)
+                except rethinkdb.ReqlRuntimeError:
+                    self.logger.send([
+                        "dbprocess",
+                        "Database 'Plugins' exists",
+                        20,
+                        time()
+                    ])
                 for table_name in ["Targets","Jobs"]:
                     ex = self._create_table("Brain", table_name)
                     if not ex:
-                        logger.send([
+                        self.logger.send([
                             "dbprocess",
                             "Table '" + table_name + "'created.",
                             10,
                             time()
                         ])
                     else:
-                        logger.send([
+                        self.logger.send([
                             "dbprocess",
                             str(ex),
                             40,
                             time()
                         ])
     
-            logger.send([
+            self.logger.send([
                 "dbprocess",
                 "Succesfully opened connection to Rethinkdb",
                 20,
                 time()
             ])
         except rethinkdb.ReqlDriverError as ex:
-            logger.send(["dbprocess", str(ex), 50, time()])
+            self.logger.send(["dbprocess", str(ex), 50, time()])
             sysexit(111)
 
     def _create_table(self, database_name, table_name):
