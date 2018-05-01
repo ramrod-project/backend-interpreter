@@ -1,13 +1,14 @@
 """Plugin Template Module
 TODO:
-- define message format for command and response queue.
+- add helper function for function advertisement
+- add helper function for job request
 """
 
 from abc import ABC, abstractmethod
 from multiprocessing import Lock, Queue
 from queue import Empty
 from threading import Thread
-from time import sleep
+from time import sleep, time
 
 
 class ControllerPlugin(ABC):
@@ -124,6 +125,50 @@ class ControllerPlugin(ABC):
         
         """
         pass
+
+    def _advertise_functionality(self):
+        """Advertises functionality to database
+
+        This will send the contents of the self.functionality
+        attribute to the database interface. The table for
+        the plugin will be named the exact same string as the
+        self.name attribute.
+        """
+        self.db_send.put({
+            "type": "functionality",
+            "data": (self.name, self.functionality)
+        })
+
+    def _request_job(self):
+        """Request next job
+
+        This first checks the receive queue to see if there is
+        a job waiting, then if the queue is empty, it sends a
+        request to the database handler to reply with the next
+        new job whose start time is in the past.
+        
+        Returns:
+            {dict} -- a dictionary describing the job containing
+            {
+                "id": {string} -- GUID, not needed for plugin,
+                "JobTarget": {dict} -- target from Targets table,
+                "Status": {string} -- the status of the job,
+                "StartTime": {int} -- unix epoch start time,
+                "JobCommand": {dict} -- command to run
+            }
+        """
+        try:
+            job = self.db_recv.get_nowait()
+        except Empty:
+            self.db_send.put({
+                "type": "job_request",
+                "data": self.name
+            })
+            try:
+                job = self.db_recv.get(timeout=3)
+            except Empty:
+                job = None
+        return job
 
     @abstractmethod
     def _stop(self, **kwargs):
