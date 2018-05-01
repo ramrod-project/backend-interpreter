@@ -167,7 +167,7 @@ class ControllerPlugin(ABC):
             try:
                 job = self.db_recv.get(timeout=3)
             except Empty:
-                job=None
+                job = None
         return job
 
     @abstractmethod
