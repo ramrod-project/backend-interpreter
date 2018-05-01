@@ -1,6 +1,7 @@
 try:
     from ..src import controller_plugin as cp
     from .__harness_content import content as _content
+    from os import environ as _environ
 except (ValueError, SystemError):  #allow this plugin to be run from commandline
     import os.path
     import sys
@@ -25,7 +26,10 @@ class Harness(cp.ControllerPlugin):
 
     def __init__(self):
         self.name = "Harness"
-        self.port = 5005
+        if _environ['STAGE'] == "DEV":
+            self.port = 5005
+        else:
+            self.port = 5000
         self.proto = "TCP"
         super().__init__(self.name, self.proto, self.port, self.functionality)
 
