@@ -73,6 +73,7 @@ class ControllerPlugin(ABC):
         """Define server port/proto requirement (TCP/UDP) so docker can be run
         properly."""
         self.proto, self.port = proto, port
+        self._advertise_functionality()
         super().__init__()
 
     def initialize_queues(self, send_queue, recv_queue):
