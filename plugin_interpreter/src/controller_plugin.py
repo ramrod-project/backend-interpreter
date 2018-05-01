@@ -134,7 +134,10 @@ class ControllerPlugin(ABC):
         the plugin will be named the exact same string as the
         self.name attribute.
         """
-        self.db_send.put((self.name, self.functionality))
+        self.db_send.put({
+            "type": "functionality",
+            "data": (self.name, self.functionality)
+        })
 
     def _request_job(self):
         """Request next job
@@ -154,21 +157,20 @@ class ControllerPlugin(ABC):
                 "JobCommand": {dict} -- command to run
             }
         """
-        job = None
         try:
             job = self.db_recv.get_nowait()
-            return job
         except Empty:
-            pass
-
-        self.db_send.put(self.name)
-        job = None
-        now = time()
-        while time() - now < 3:
-            try:
-                job = self.db_recv.get_nowait()
-            except Empty:
-                sleep(0.5)
+            self.db_send.put({
+                "type": "job_request",
+                "data": self.name
+            })
+            job = None
+            now = time()
+            while time() - now < 3:
+                try:
+                    job = self.db_recv.get_nowait()
+                except Empty:
+                    sleep(0.5)
         return job
 
     @abstractmethod
