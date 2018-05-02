@@ -20,7 +20,8 @@ class LinkedProcess:
         self.logger_pipe = None
         if self.name is not "loggerprocess":
             self.logger_pipe = kwargs["logger_pipe"]
-        if not isinstance(self.logger_pipe, connection._ConnectionBase):
+        if self.logger_pipe and \
+        not isinstance(self.logger_pipe, connection._ConnectionBase):
             raise TypeError
         self.proc = None
         self.target = kwargs["target"]
