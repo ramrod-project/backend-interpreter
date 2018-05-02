@@ -15,7 +15,7 @@ from time import sleep, time
 import rethinkdb
 
 # TODO:
-# - have db respond with test data and client
+#
 
 class RethinkInterface:
     """
@@ -61,14 +61,33 @@ class RethinkInterface:
             return False
 
     def update_job(self, job_id, status):
-        pass
+        """Update's the specified job's status to the given status
+
+        
+        Arguments:
+            job_id {GUID} -- The JobID of the job that needs updating
+            status {String} -- The new status that should be set. Interpreter should be setting
+            "Ready" status to "Pending" or the "Pending" status to either "Done" or "Error"
+        """
+
+        try:
+            rethinkdb.table("Jobs").get(job_id).update(
+                {"Status": status}
+                ).run(self.rethink_connection)
+        except rethinkdb.ReqlDriverError:
+            self.logger.send([
+                "dbprocess",
+                "Unable to update job '" + job_id +"' to " + status,
+                20,
+                time()
+            ])
     
     def _get_next_job(self, plugin_name):
         """
         Adds the next job to the plugin's queue
         
         Arguments:
-            plugin_name {str} -- The name of the plugin to filter jobs with
+            plugin_name {string} -- The name of the plugin to filter jobs with
         """
 
         self.job_cursor = rethinkdb.table("Jobs").filter(
@@ -98,7 +117,7 @@ class RethinkInterface:
             return
         try:
             rethinkdb.db("Plugins").table(plugin_data[0]).insert(plugin_data[1]).run(self.rethink_connection)
-        except rethinkdb.ReqlDriverError as ex:
+        except rethinkdb.ReqlDriverError:
             self.logger.send([
                 "dbprocess",
                 "Unable to add command to table '" + plugin_data[0] +"'",
@@ -193,7 +212,7 @@ class RethinkInterface:
                         20,
                         time()
                     ])
-                for table_name in ["Targets","Jobs"]:
+                for table_name in ["Targets", "Jobs", "Outputs"]:
                     ex = self._create_table("Brain", table_name)
                     if not ex:
                         self.logger.send([
