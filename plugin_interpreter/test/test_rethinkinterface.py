@@ -28,7 +28,7 @@ def rethink():
     plugin = ExampleHTTP()
     CLIENT.containers.run(
         "rethinkdb",
-        name="rethinkdb",
+        name="rethinkdb_rethink",
         detach=True,
         ports={"28015/tcp": 28015},
         remove=True,
@@ -37,7 +37,7 @@ def rethink():
     yield rethink_interface.RethinkInterface(plugin, server)
     containers = CLIENT.containers.list()
     for container in containers:
-        if container.name == "rethinkdb":
+        if container.name == "rethinkdb_rethink":
             container.stop()
             break
 
