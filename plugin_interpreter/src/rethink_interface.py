@@ -60,24 +60,24 @@ class RethinkInterface:
         except KeyError:
             return False
 
-    def update_job(self, job_id, status):
+    def _update_job(self, job_data):
         """Update's the specified job's status to the given status
 
         
         Arguments:
-            job_id {GUID} -- The JobID of the job that needs updating
-            status {String} -- The new status that should be set. Interpreter should be setting
-            "Ready" status to "Pending" or the "Pending" status to either "Done" or "Error"
+            job_data {tuple} -- tuple containing the job id and the new status.
+            Interpreter should  in most cases be setting "Ready" status to 
+            "Pending" or the "Pending" status to either "Done" or "Error"
         """
 
         try:
-            rethinkdb.table("Jobs").get(job_id).update(
-                {"Status": status}
+            rethinkdb.table("Jobs").get(job_data[0]).update(
+                {"Status": job_data[1]}
                 ).run(self.rethink_connection)
         except rethinkdb.ReqlDriverError:
             self.logger.send([
                 "dbprocess",
-                "Unable to update job '" + job_id +"' to " + status,
+                "Unable to update job '" + job_data[0] +"' to " + job_data[1],
                 20,
                 time()
             ])
@@ -152,6 +152,8 @@ class RethinkInterface:
                     self._create_plugin_table(response["data"])
                 if response["type"] == "job_request":
                     self._get_next_job(response["data"])
+                if response["type"] == "job_update":
+                    self._update_job(response["data"])
             except Empty:
                 continue
             except KeyboardInterrupt:
