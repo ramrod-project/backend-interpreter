@@ -18,6 +18,7 @@ before_script:
   - pytest plugin_interpreter/test
 
 script:
+  - if [ "$TRAVIS_BRANCH" != "master"  ]; then docker build -t ramrodpcp/backend-interpreter:$TRAVIS_BRANCH .; else docker build -t ramrodpcp/backend-interpreter:latest .; fi
   - docker build -t ramrodpcp/backend-interpreter .
   - docker run -d --rm --name controller -e "STAGE=DEV" -e "LOGLEVEL=DEBUG" -v /var/run/docker.sock:/var/run/docker.sock ramrodpcp/backend-interpreter
   # This will eventually be for more integration testing
@@ -28,8 +29,9 @@ script:
   - docker stop controller
 
 after_success:
-  - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
-  - docker push ramrodpcp/backend-interpreter
+  - if [ "$TRAVIS_BRANCH" = "qa"  ] || [ "$TRAVIS_BRANCH" = "master"  ]; then echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin; fi
+  - if [ "$TRAVIS_BRANCH" = "qa"  ]; then docker push ramrodpcp/backend-interpreter:$TRAVIS_BRANCH; fi
+  - if [ "$TRAVIS_BRANCH" = "master"  ]; then docker push ramrodpcp/backend-interpreter:latest; fi
 
 notifications:
   slack: ramrod-project:GDF82rRYDg3KSekrT3GA24qO
