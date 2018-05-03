@@ -49,8 +49,8 @@ class RethinkInterface:
         information from the database
         """
         cursor = None
-        cursor = rethinkdb.db("test").table("hosts").filter(
-            rethinkdb.row["name"] == client
+        cursor = rethinkdb.db("Brain").table("Targets").filter(
+            rethinkdb.row["PluginName"] == client
         ).run(self.rethink_connection)
         try:
             client = cursor.items[0]
@@ -71,7 +71,7 @@ class RethinkInterface:
         """
 
         try:
-            rethinkdb.table("Jobs").get(job_data[0]).update(
+            rethinkdb.db("Brain").table("Jobs").get(job_data[0]).update(
                 {"Status": job_data[1]}
                 ).run(self.rethink_connection)
         except rethinkdb.ReqlDriverError:
@@ -90,7 +90,7 @@ class RethinkInterface:
             plugin_name {string} -- The name of the plugin to filter jobs with
         """
 
-        self.job_cursor = rethinkdb.table("Jobs").filter(
+        self.job_cursor = rethinkdb.db("Brain").table("Jobs").filter(
             rethinkdb.row["JobTarget"]["PluginName"] == plugin_name \
             and rethinkdb.row["Status"] == "Ready"
         ).run(self.rethink_connection)
