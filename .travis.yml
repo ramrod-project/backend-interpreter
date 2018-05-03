@@ -28,8 +28,9 @@ script:
   - docker stop controller
 
 after_success:
-  - if [ "$TRAVIS_BRANCH" = "qa"  ]; then echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin; fi
-  - if [ "$TRAVIS_BRANCH" = "qa"  ]; then docker push ramrodpcp/backend-interpreter; fi
+  - if [ "$TRAVIS_BRANCH" = "qa"  ] || [ "$TRAVIS_BRANCH" = "master"  ]; then echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin; fi
+  - if [ "$TRAVIS_BRANCH" = "qa"  ]; then docker push ramrodpcp/backend-interpreter:$TRAVIS_BRANCH; fi
+  - if [ "$TRAVIS_BRANCH" = "master"  ]; then docker push ramrodpcp/backend-interpreter:latest; fi
 
 notifications:
   slack: ramrod-project:GDF82rRYDg3KSekrT3GA24qO
