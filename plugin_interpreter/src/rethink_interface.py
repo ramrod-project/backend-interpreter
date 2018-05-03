@@ -15,7 +15,7 @@ from time import sleep, time
 import rethinkdb
 
 # TODO:
-# - have db respond with test data and client
+#
 
 class RethinkInterface:
     """
@@ -42,36 +42,37 @@ class RethinkInterface:
         self.stream = None
         plugin.initialize_queues(self.response_queue, self.plugin_queue)
 
-    def check_client(self, client):
-        """
-        Validate that a single client is present in the database and
-        check what plugin it is associated with. Return the client
-        information from the database
-        """
-        cursor = None
-        cursor = rethinkdb.db("test").table("hosts").filter(
-            rethinkdb.row["name"] == client
-        ).run(self.rethink_connection)
-        try:
-            client = cursor.items[0]
-            return client
-        except IndexError:
-            return False
-        except KeyError:
-            return False
+    def _update_job(self, job_data):
+        """Update's the specified job's status to the given status
 
-    def update_job(self, job_id, status):
-        pass
+        
+        Arguments:
+            job_data {tuple} -- tuple containing the job id and the new status.
+            Interpreter should  in most cases be setting "Ready" status to 
+            "Pending" or the "Pending" status to either "Done" or "Error"
+        """
+
+        try:
+            rethinkdb.db("Brain").table("Jobs").get(job_data[0]).update(
+                {"Status": job_data[1]}
+                ).run(self.rethink_connection)
+        except rethinkdb.ReqlDriverError:
+            self.logger.send([
+                "dbprocess",
+                "Unable to update job '" + job_data[0] +"' to " + job_data[1],
+                20,
+                time()
+            ])
     
     def _get_next_job(self, plugin_name):
         """
         Adds the next job to the plugin's queue
         
         Arguments:
-            plugin_name {str} -- The name of the plugin to filter jobs with
+            plugin_name {string} -- The name of the plugin to filter jobs with
         """
 
-        self.job_cursor = rethinkdb.table("Jobs").filter(
+        self.job_cursor = rethinkdb.db("Brain").table("Jobs").filter(
             rethinkdb.row["JobTarget"]["PluginName"] == plugin_name \
             and rethinkdb.row["Status"] == "Ready"
         ).run(self.rethink_connection)
@@ -98,7 +99,7 @@ class RethinkInterface:
             return
         try:
             rethinkdb.db("Plugins").table(plugin_data[0]).insert(plugin_data[1]).run(self.rethink_connection)
-        except rethinkdb.ReqlDriverError as ex:
+        except rethinkdb.ReqlDriverError:
             self.logger.send([
                 "dbprocess",
                 "Unable to add command to table '" + plugin_data[0] +"'",
@@ -133,6 +134,8 @@ class RethinkInterface:
                     self._create_plugin_table(response["data"])
                 if response["type"] == "job_request":
                     self._get_next_job(response["data"])
+                if response["type"] == "job_update":
+                    self._update_job(response["data"])
             except Empty:
                 continue
             except KeyboardInterrupt:
@@ -193,7 +196,7 @@ class RethinkInterface:
                         20,
                         time()
                     ])
-                for table_name in ["Targets","Jobs"]:
+                for table_name in ["Targets", "Jobs", "Outputs"]:
                     ex = self._create_table("Brain", table_name)
                     if not ex:
                         self.logger.send([
