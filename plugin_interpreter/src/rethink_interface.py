@@ -42,24 +42,6 @@ class RethinkInterface:
         self.stream = None
         plugin.initialize_queues(self.response_queue, self.plugin_queue)
 
-    def check_client(self, client):
-        """
-        Validate that a single client is present in the database and
-        check what plugin it is associated with. Return the client
-        information from the database
-        """
-        cursor = None
-        cursor = rethinkdb.db("Brain").table("Targets").filter(
-            rethinkdb.row["PluginName"] == client
-        ).run(self.rethink_connection)
-        try:
-            client = cursor.items[0]
-            return client
-        except IndexError:
-            return False
-        except KeyError:
-            return False
-
     def _update_job(self, job_data):
         """Update's the specified job's status to the given status
 
