@@ -96,13 +96,15 @@ class RethinkInterface:
                 20,
                 time()
             ])
-            return
+
         try:
-            rethinkdb.db("Plugins").table(plugin_data[0]).insert(plugin_data[1]).run(self.rethink_connection)
+            #attempt to insert the list of commands, updating any conflicts
+            rethinkdb.db("Plugins").table(plugin_data[0]).insert(plugin_data[1],
+            conflict="update").run(self.rethink_connection)
         except rethinkdb.ReqlDriverError:
             self.logger.send([
                 "dbprocess",
-                "Unable to add command to table '" + plugin_data[0] +"'",
+                "Unable to add command to table '" + plugin_data[0] + "'",
                 20,
                 time()
             ])
@@ -236,9 +238,14 @@ class RethinkInterface:
             exists.
         """
         try:
-            rethinkdb.db(database_name).table_create(
-                table_name
-            ).run(self.rethink_connection)
+            if database_name == "Plugins":
+                rethinkdb.db(database_name).table_create(
+                    table_name, primary_key='CommandName'
+                    ).run(self.rethink_connection)
+            else:
+                rethinkdb.db(database_name).table_create(
+                    table_name
+                    ).run(self.rethink_connection)
             return None
         except rethinkdb.ReqlOpFailedError as ex:
             return ex
