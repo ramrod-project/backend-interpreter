@@ -46,15 +46,13 @@ def test_supervisor_setup(sup):
     environ["STAGE"] = ""
     with raises(KeyError):
         sup.create_servers()
-    environ["STAGE"] = "DEV"
+    environ["STAGE"] = "TESTING"
     assert isinstance(sup.plugin, controller_plugin.ControllerPlugin)
 
 
 def test_supervisor_server_creation(sup):
     # Test server creation
     sup.create_servers()
-    sup.db_interface.host = "127.0.0.1"
-
     for proc in [sup.logger_process, sup.db_process, sup.plugin_process]:
         assert isinstance(proc, linked_process.LinkedProcess)
 
