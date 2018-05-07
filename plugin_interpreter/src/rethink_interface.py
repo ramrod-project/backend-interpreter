@@ -113,7 +113,6 @@ class RethinkInterface:
                 20,
                 time()
             ])
-        return self.get_table_contents(plugin_data[0])
 
     def start(self, logger, signal):
         """
