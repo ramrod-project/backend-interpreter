@@ -4,6 +4,7 @@
 from ctypes import c_bool
 from multiprocessing import connection, Pipe, Value
 from os import environ
+from time import sleep
 
 from pytest import fixture, raises
 import docker
@@ -22,6 +23,7 @@ def sup():
         ports={"28015/tcp": 28015},
         remove=True,
     )
+    sleep(3)
     sup = supervisor.SupervisorController("ExampleHTTP")
     yield sup
     try:
