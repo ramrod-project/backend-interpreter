@@ -38,9 +38,14 @@ class RethinkInterface:
         self.port = server[1]
         # One Queue for responses from the plugin processes
         self.response_queue = Queue()
-        self.rethink_connection = None
+        try:
+            self.rethink_connection = rethinkdb.connect(self.host, self.port)
+        except rethinkdb.ReqlDriverError as ex:
+            self.logger.send(["dbprocess", str(ex), 50, time()])
+            sysexit(111)
         self.stream = None
         plugin.initialize_queues(self.response_queue, self.plugin_queue)
+        
 
     def _update_job(self, job_data):
         """Update's the specified job's status to the given status
@@ -179,7 +184,7 @@ class RethinkInterface:
 
     def _database_init(self):
         try:
-            self.rethink_connection = rethinkdb.connect(self.host, self.port)
+            
             if environ["STAGE"] == "DEV":
                 try:
                     rethinkdb.db_create("Brain").run(self.rethink_connection)
