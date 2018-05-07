@@ -55,10 +55,10 @@ def compare_to(list1, list2):
 #     assert isinstance(rethink, rethink_interface.RethinkInterface)
 
 def test_init(rethink):
+    rethink.logger = mock_logger()
     rethink._database_init()
 
 # def test_rethink_start(rethink):
-#     logger = mock_logger()
 #     val = Value(c_bool, False)
 #     rethink_thread = Thread(target=rethink.start, args=(logger, val))
 #     rethink_thread.start()
