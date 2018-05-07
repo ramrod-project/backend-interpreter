@@ -46,7 +46,7 @@ def rethink():
             break
 
 def compare_to(table_name, compare_list):
-    tablecheck = rethinkdb.db("Plugins")rethinkdb.table(table_name).run(rethink.rethink_connection)
+    tablecheck = rethinkdb.db("Plugins").table(table_name).run(rethink.rethink_connection)
     for i in tablecheck:
         if i not in compare_list:
             return False
@@ -124,11 +124,11 @@ def test_rethink_plugin_create(rethink):
     # plugin_data = ("TestNoKey", command_list)
     # rethink._create_plugin_table(plugin_data)
     # assert(compare_to(rethink._create_plugin_table(plugin_data), [{
-                "CommandName": "test_func_2",
-                "Input": ["string"],
-                "Output": "string",
-                "Tooltip": "This is also a test"
-            }]))
+    #             "CommandName": "test_func_2",
+    #             "Input": ["string"],
+    #             "Output": "string",
+    #             "Tooltip": "This is also a test"
+    #         }]))
     
 def test_next_job(rethink):
     new_job = {
