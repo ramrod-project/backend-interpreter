@@ -51,16 +51,18 @@ def compare_to(list1, list2):
 def test_rethink_setup(rethink):
     assert isinstance(rethink, rethink_interface.RethinkInterface)
 
+def test_init(rethink):
+    rethink._database_init()
 
-def test_rethink_start(rethink):
-    logger = mock_logger()
-    val = Value(c_bool, False)
-    rethink_thread = Thread(target=rethink.start, args=(logger, val))
-    rethink_thread.start()
-    assert rethink_thread.is_alive()
-    val.value = False
-    sleep(1)
-    assert not rethink_thread.is_alive()
+# def test_rethink_start(rethink):
+#     logger = mock_logger()
+#     val = Value(c_bool, False)
+#     rethink_thread = Thread(target=rethink.start, args=(logger, val))
+#     rethink_thread.start()
+#     assert rethink_thread.is_alive()
+#     val.value = False
+#     sleep(1)
+#     assert not rethink_thread.is_alive()
 
 def test_rethink_plugin_create(rethink):
     #test adding a valid table

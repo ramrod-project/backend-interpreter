@@ -183,53 +183,48 @@ class RethinkInterface:
             self._stop()
 
     def _database_init(self):
-        try:
-            
-            if environ["STAGE"] == "DEV":
-                try:
-                    rethinkdb.db_create("Brain").run(self.rethink_connection)
-                except rethinkdb.ReqlRuntimeError:
+        if environ["STAGE"] == "DEV":
+            try:
+                rethinkdb.db_create("Brain").run(self.rethink_connection)
+            except rethinkdb.ReqlRuntimeError:
+                self.logger.send([
+                    "dbprocess",
+                    "Database 'Brain' exists",
+                    20,
+                    time()
+                ])
+            try:
+                rethinkdb.db_create("Plugins").run(self.rethink_connection)
+            except rethinkdb.ReqlRuntimeError:
+                self.logger.send([
+                    "dbprocess",
+                    "Database 'Plugins' exists",
+                    20,
+                    time()
+                ])
+            for table_name in ["Targets", "Jobs", "Outputs"]:
+                ex = self._create_table("Brain", table_name)
+                if not ex:
                     self.logger.send([
                         "dbprocess",
-                        "Database 'Brain' exists",
-                        20,
+                        "Table '" + table_name + "'created.",
+                        10,
                         time()
                     ])
-                try:
-                    rethinkdb.db_create("Plugins").run(self.rethink_connection)
-                except rethinkdb.ReqlRuntimeError:
+                else:
                     self.logger.send([
                         "dbprocess",
-                        "Database 'Plugins' exists",
-                        20,
+                        str(ex),
+                        40,
                         time()
                     ])
-                for table_name in ["Targets", "Jobs", "Outputs"]:
-                    ex = self._create_table("Brain", table_name)
-                    if not ex:
-                        self.logger.send([
-                            "dbprocess",
-                            "Table '" + table_name + "'created.",
-                            10,
-                            time()
-                        ])
-                    else:
-                        self.logger.send([
-                            "dbprocess",
-                            str(ex),
-                            40,
-                            time()
-                        ])
-    
-            self.logger.send([
-                "dbprocess",
-                "Succesfully opened connection to Rethinkdb",
-                20,
-                time()
-            ])
-        except rethinkdb.ReqlDriverError as ex:
-            self.logger.send(["dbprocess", str(ex), 50, time()])
-            sysexit(111)
+
+        self.logger.send([
+            "dbprocess",
+            "Succesfully opened connection to Rethinkdb",
+            20,
+            time()
+        ])
 
     def _create_table(self, database_name, table_name):
         """Create a table in the database
