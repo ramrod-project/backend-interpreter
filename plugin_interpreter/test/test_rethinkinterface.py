@@ -35,6 +35,7 @@ def rethink():
         remove=True,
     )
     server = ('127.0.0.1', 28015)
+    sleep(4)
     yield rethink_interface.RethinkInterface(plugin, server)
     containers = CLIENT.containers.list()
     for container in containers:
