@@ -108,6 +108,7 @@ class RethinkInterface:
                 20,
                 time()
             ])
+        return self.get_table_contents(plugin_data[0])
 
     def start(self, logger, signal):
         """
@@ -249,6 +250,13 @@ class RethinkInterface:
             return None
         except rethinkdb.ReqlOpFailedError as ex:
             return ex
+    
+    def get_table_contents(self, table_name):
+        cursor = rethinkdb.table(table_name).run(self.rethink_connection)
+        command_list = []
+        for document in cursor:
+            command_list.extend(document)
+        return command_list
 
     def _stop(self):
         try:

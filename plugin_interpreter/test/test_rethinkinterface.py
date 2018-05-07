@@ -41,6 +41,11 @@ def rethink():
             container.stop()
             break
 
+def compare_to(list1, list2):
+    for i in list2:
+        if i not in list1:
+            return False
+    return True
 
 def test_rethink_setup(rethink):
     assert isinstance(rethink, rethink_interface.RethinkInterface)
@@ -55,3 +60,66 @@ def test_rethink_start(rethink):
     val.value = False
     sleep(1)
     assert not rethink_thread.is_alive()
+
+def test_rethink_plugin_create(rethink):
+    #test adding a valid table
+    command_list = [{
+                "CommandName": "test_func_1",
+                "Input": ["string"],
+                "Output": "string",
+                "Tooltip": "This is a test"
+            },
+            {
+                "CommandName": "test_func_2",
+                "Input": ["string"],
+                "Output": "string",
+                "Tooltip": "This is also a test"
+            }]
+    plugin_data = ("TestTable",command_list)
+    assert(compare_to(rethink._create_plugin_table(plugin_data), command_list))
+
+    #test updating a table
+    command_list = [{
+                "CommandName": "test_func_1",
+                "Input": ["string"],
+                "Output": "string",
+                "Tooltip": "This is a test"
+            },
+            {
+                "CommandName": "test_func_2",
+                "Input": ["string"],
+                "Output": "string",
+                "Tooltip": "This is also a test"
+            },
+            {
+                "CommandName": "test_func_3",
+                "Input": [],
+                "Output": "",
+                "Tooltip": "a bonus command"
+            }]
+    plugin_data = ("TestTable",command_list)
+    assert(compare_to(rethink._create_plugin_table(plugin_data), command_list))
+
+    #test table with entries without primary key
+    # command_list = [{
+    #             "name": "test_func_1",
+    #             "Input": ["string"],
+    #             "Output": "string",
+    #             "Tooltip": "This is a test"
+    #         },
+    #         {
+    #             "CommandName": "test_func_2",
+    #             "Input": ["string"],
+    #             "Output": "string",
+    #             "Tooltip": "This is also a test"
+    #         }]
+    # plugin_data = ("TestNoKey", command_list)
+    # rethink._create_plugin_table(plugin_data)
+    # assert(compare_to(rethink._create_plugin_table(plugin_data), [{
+    #             "CommandName": "test_func_2",
+    #             "Input": ["string"],
+    #             "Output": "string",
+    #             "Tooltip": "This is also a test"
+    #         }]))
+    
+
