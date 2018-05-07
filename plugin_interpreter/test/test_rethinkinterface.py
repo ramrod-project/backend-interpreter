@@ -130,23 +130,23 @@ def test_init(rethink):
     #             "Tooltip": "This is also a test"
     #         }]))
     
-def test_next_job(rethink):
-    new_job = {
-        "JobTarget":{
-            "PluginName": "jobtester",
-            "Location": "8.8.8.8",
-            "Port": "80"
-        },
-        "JobCommand":{
-            "CommandName": "TestJob",
-            "Tooltip": "for testing jobs",
-            "Inputs":[]
-        },
-        "Status": "Ready",
-        "StartTime" : 0
-    }
-    rethinkdb.db("Brain").Table("Jobs").Insert(new_job).run(rethink.rethink_connection)
-    rethink._get_next_job("jobtester")
+# def test_next_job(rethink):
+#     new_job = {
+#         "JobTarget":{
+#             "PluginName": "jobtester",
+#             "Location": "8.8.8.8",
+#             "Port": "80"
+#         },
+#         "JobCommand":{
+#             "CommandName": "TestJob",
+#             "Tooltip": "for testing jobs",
+#             "Inputs":[]
+#         },
+#         "Status": "Ready",
+#         "StartTime" : 0
+#     }
+#     rethinkdb.db("Brain").Table("Jobs").Insert(new_job).run(rethink.rethink_connection)
+#     rethink._get_next_job("jobtester")
 
 def test_update_job(rethink):
     pass
