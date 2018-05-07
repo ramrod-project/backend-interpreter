@@ -3,6 +3,7 @@
 
 from ctypes import c_bool
 from multiprocessing import Value
+from os import environ
 from threading import Thread
 from time import sleep
 
@@ -35,6 +36,7 @@ def rethink():
         remove=True,
     )
     server = ('127.0.0.1', 28015)
+    environ["STAGE"] = "DEV"
     sleep(4)
     yield rethink_interface.RethinkInterface(plugin, server)
     containers = CLIENT.containers.list()
