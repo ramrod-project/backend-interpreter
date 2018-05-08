@@ -29,7 +29,7 @@ class mock_logger():
 def rethink():
     plugin = ExampleHTTP()
     CLIENT.containers.run(
-        "rethinkdb",
+        "ramrodpcp/database-brain:latest",
         name="rethinkdb_rethink",
         detach=True,
         ports={"28015/tcp": 28015},
@@ -48,8 +48,9 @@ def rethink():
 def compare_to(table_name, compare_list):
     tablecheck = rethinkdb.db("Plugins").table(table_name).run(rethink.rethink_connection)
     for i in tablecheck:
-        if i not in compare_list:
-            return False
+        for j in i:
+            if j not in compare_list:
+                return False
     return True
 
 # def test_rethink_setup(rethink):
