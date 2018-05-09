@@ -19,8 +19,10 @@ before_script:
 
 script:
   - if [ "$TRAVIS_BRANCH" != "master"  ]; 
-    then docker build -t ramrodpcp/backend-interpreter:$TRAVIS_BRANCH .; 
-    else docker build -t ramrodpcp/backend-interpreter:latest .; fi
+    then docker build -t ramrodpcp/backend-interpreter:$TRAVIS_BRANCH ./plugin_controller/ &&
+    docker build -t ramrodpcp/interpreter-plugin:$TRAVIS_BRANCH ./plugin_interpreter/; 
+    else docker build -t ramrodpcp/backend-interpreter:latest ./plugin_controller/ &&
+    docker build -t ramrodpcp/interpreter-plugin:latest ./plugin_interpreter/; fi
   - if [ "$TRAVIS_BRANCH" != "master"  ]; 
     then docker run -d --rm --name controller -e "STAGE=DEV" -e "LOGLEVEL=DEBUG" 
     -v /var/run/docker.sock:/var/run/docker.sock ramrodpcp/backend-interpreter:$TRAVIS_BRANCH;
@@ -38,9 +40,11 @@ after_success:
   - if [ "$TRAVIS_BRANCH" = "qa"  ] || [ "$TRAVIS_BRANCH" = "master"  ]; 
     then echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin; fi
   - if [ "$TRAVIS_BRANCH" = "qa"  ]; 
-    then docker push ramrodpcp/backend-interpreter:$TRAVIS_BRANCH; fi
+    then docker push ramrodpcp/backend-interpreter:$TRAVIS_BRANCH &&
+    docker push ramrodpcp/interpreter-plugin:$TRAVIS_BRANCH; fi
   - if [ "$TRAVIS_BRANCH" = "master"  ]; 
-    then docker push ramrodpcp/backend-interpreter:latest; fi
+    then docker push ramrodpcp/backend-interpreter:latest &&
+    docker push ramrodpcp/interpreter-plugin:latest; fi
 
 notifications:
   slack: ramrod-project:GDF82rRYDg3KSekrT3GA24qO
