@@ -29,12 +29,12 @@ if __name__ == "__main__":
             remove=True,
             network="test"
         )
-    CLIENT.images.build(
+    """CLIENT.images.build(
         path=interpreter_path,
         tag="example-http/pcp"
-    )
+    )"""
     CLIENT.containers.run(
-        "example-http/pcp",
+        "ramrodpcp/interpreter-plugin",
         name="plugin1",
         environment={
             "STAGE": environ["STAGE"],
