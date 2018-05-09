@@ -82,7 +82,9 @@ class SupervisorController:
         the servers, plugins, and database handler.
         """
         try:
-            if environ["STAGE"] == "DEV" or environ["STAGE"] == "PROD":
+            if environ["STAGE"] == "DEV" \
+            or environ["STAGE"] == "PROD" \
+            or environ["STAGE"] == "TESTING":
                 pass
             else:
                 print("Environment variable STAGE must be set to DEV or PROD!")
@@ -108,12 +110,12 @@ class SupervisorController:
         Checks if environment variable STAGE is DEV or PROD. This env
         variable is automatically set to PROD in the application 
         Dockerfile, but can be overridden."""
-        if environ["STAGE"] == "DEV":
+        if environ["STAGE"] == "TESTING":
             self.db_interface = rethink_interface.RethinkInterface(
                 self.plugin,
-                ("rethinkdb", 28015)
+                ("127.0.0.1", 28015)
             )
-        elif environ["STAGE"] == "PROD":
+        else:
             self.db_interface = rethink_interface.RethinkInterface(
                 self.plugin,
                 ("rethinkdb", 28015)

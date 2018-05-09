@@ -36,16 +36,16 @@ class ExampleHTTP(controller_plugin.ControllerPlugin):
         self.proto = "TCP"
         self.functionality = [
             {
-                "name": "test_func_1",
-                "input": ["string"],
-                "output": "string",
-                "tooltip": "This is a test"
+                "CommandName": "test_func_1",
+                "Input": ["string"],
+                "Output": "string",
+                "Tooltip": "This is a test"
             },
             {
-                "name": "test_func_2",
-                "input": ["string"],
-                "output": "string",
-                "tooltip": "This is also a test"
+                "CommandName": "test_func_2",
+                "Input": ["string"],
+                "Output": "string",
+                "Tooltip": "This is also a test"
             }
         ]
         super().__init__(self.name, self.proto, self.port, self.functionality)
