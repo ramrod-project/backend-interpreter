@@ -29,9 +29,11 @@ script:
     else docker run -d --rm --name controller -e "STAGE=DEV" -e "LOGLEVEL=DEBUG" 
     -v /var/run/docker.sock:/var/run/docker.sock ramrodpcp/backend-interpreter:latest; fi
   # This will eventually be for more integration testing
-  - sleep 15
-  - docker ps
-  - docker stop controller
+  - sleep 30
+  - containers=$(docker ps -a | awk '{print $1}')
+  # print the logs for each plugin
+  - for c in "${containers[@]}"; do docker logs $c; done 
+  - for c in "${containers[@]}"; do docker stop $c; done
 
 after_success:
   - if [ "$TRAVIS_BRANCH" = "qa"  ] || [ "$TRAVIS_BRANCH" = "master"  ]; 
