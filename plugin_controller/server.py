@@ -29,10 +29,6 @@ if __name__ == "__main__":
             remove=True,
             network="test"
         )
-    """CLIENT.images.build(
-        path=interpreter_path,
-        tag="example-http/pcp"
-    )"""
     CLIENT.containers.run(
         "ramrodpcp/interpreter-plugin",
         name="plugin1",
