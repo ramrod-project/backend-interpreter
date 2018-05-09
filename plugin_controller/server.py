@@ -45,7 +45,7 @@ if __name__ == "__main__":
     CLIENT.networks.create("test")
     if environ["STAGE"] == "DEV":
         CLIENT.containers.run(
-            "rethinkdb",
+            "ramrodpcp/database-brain:latest",
             name="rethinkdb",
             detach=True,
             ports={"28015/tcp": 28015},
