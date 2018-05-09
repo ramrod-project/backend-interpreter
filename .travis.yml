@@ -29,11 +29,8 @@ script:
     else docker run -d --rm --name controller -e "STAGE=DEV" -e "LOGLEVEL=DEBUG" 
     -v /var/run/docker.sock:/var/run/docker.sock ramrodpcp/backend-interpreter:latest; fi
   # This will eventually be for more integration testing
-  - sleep 30
-  - containers=$(docker ps | grep -vi "\(CONTAINER\|controller\|rethinkdb\)" | 
-    awk '{print $1}')
-  # print the logs for each plugin
-  - for c in "${containers[@]}"; do docker logs $c; done 
+  - sleep 15
+  - docker ps
   - docker stop controller
 
 after_success:
