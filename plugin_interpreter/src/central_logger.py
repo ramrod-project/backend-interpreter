@@ -30,6 +30,7 @@ class CentralLogger():
         else:
             raise TypeError
         self.logger = logging.getLogger('central')
+        self.logger.addHandler(logging.StreamHandler())
         self.logger.setLevel(logging.DEBUG)
         if level == "INFO":
             self.logger.setLevel(logging.INFO)

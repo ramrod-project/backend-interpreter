@@ -11,16 +11,30 @@ import logging
 from os import environ, path as ospath
 from time import asctime, gmtime, sleep, time
 
-logger = logging.getLogger("controller")
-logger.setLevel(logging.INFO)
 logging.basicConfig(
+    filename="logfile",
+    filemode="a",
     format='%(date)s %(name)-12s %(levelname)-8s %(message)s'
 )
+
+logger = logging.getLogger("controller")
+logger.addHandler(logging.StreamHandler())
 
 import docker
 CLIENT = docker.from_env()
 
 if __name__ == "__main__":
+
+    logger.setLevel(logging.DEBUG)
+    if environ["LOGLEVEL"] == "INFO":
+        logger.setLevel(logging.INFO)
+    elif environ["LOGLEVEL"] == "WARNING":
+        logger.setLevel(logging.WARNING)
+    elif environ["LOGLEVEL"] == "ERROR":
+        logger.setLevel(logging.ERROR)
+    elif environ["LOGLEVEL"] == "CRITICAL":
+        logger.setLevel(logging.CRITICAL)
+
     interpreter_path = ospath.join(
         "/".join(ospath.abspath(__file__).split("/")[:-2]),
         "plugin_interpreter"
@@ -79,11 +93,10 @@ if __name__ == "__main__":
                 except:
                     logger.log(
                         20,
-                        "\nKill signal received, stopping container(s)...",
+                        container.name + " stopped or not running",
                         extra={ 'date': asctime(gmtime(time()))
                         }
                     )
-                    logger.info(container.name, "stopped or not running")
                     continue
             logger.log(
                 20,
