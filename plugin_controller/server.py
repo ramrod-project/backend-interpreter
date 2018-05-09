@@ -7,8 +7,11 @@ TODO:
 - multiple plugin names
 - get port/protocol requirement from plugin
 """
+import logging
 from os import environ, path as ospath
 from time import sleep
+
+logger = logging.getLogger()
 
 import docker
 CLIENT = docker.from_env()
@@ -44,21 +47,21 @@ if __name__ == "__main__":
     )
     
     containers = CLIENT.containers.list()
-    print("Containers started, press <CTRL-C> to stop...")
+    logger.info("Containers started, press <CTRL-C> to stop...")
     while True:
         try:
             sleep(1)
             pass
         except KeyboardInterrupt:
-            print("\nKill signal received, stopping container(s)...")
+            logger.info("\nKill signal received, stopping container(s)...")
             for container in containers:
                 try:
                     if container.name == "controller":
                         continue
                     container.stop()
                 except:
-                    print(container.name, "stopped or not running")
+                    logger.info(container.name, "stopped or not running")
                     continue
-            print("Pruning networks...")
+            logger.info("Pruning networks...")
             CLIENT.networks.prune()
             exit(0)

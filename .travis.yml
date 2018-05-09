@@ -24,9 +24,9 @@ script:
     else docker build -t ramrodpcp/backend-interpreter:latest ./plugin_controller/ &&
     docker build -t ramrodpcp/interpreter-plugin:latest ./plugin_interpreter/; fi
   - if [ "$TRAVIS_BRANCH" != "master"  ]; 
-    then docker run -d --rm --name controller -e "STAGE=DEV" -e "LOGLEVEL=DEBUG" 
+    then docker run -d --name controller -e "STAGE=DEV" -e "LOGLEVEL=DEBUG" 
     -v /var/run/docker.sock:/var/run/docker.sock ramrodpcp/backend-interpreter:$TRAVIS_BRANCH;
-    else docker run -d --rm --name controller -e "STAGE=DEV" -e "LOGLEVEL=DEBUG" 
+    else docker run -d --name controller -e "STAGE=DEV" -e "LOGLEVEL=DEBUG" 
     -v /var/run/docker.sock:/var/run/docker.sock ramrodpcp/backend-interpreter:latest; fi
   # This will eventually be for more integration testing
   - sleep 2

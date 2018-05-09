@@ -15,9 +15,13 @@ from select import select
 from sys import stdout, exit as sysexit
 from time import asctime, gmtime, sleep, time
 
-logging.basicConfig(
+"""logging.basicConfig(
     filename="logfile",
     filemode="a",
+    format='%(date)s %(name)-12s %(levelname)-8s %(message)s'
+)"""
+
+logging.basicConfig(
     format='%(date)s %(name)-12s %(levelname)-8s %(message)s'
 )
 
