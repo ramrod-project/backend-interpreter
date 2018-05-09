@@ -22,6 +22,8 @@ if __name__ == "__main__":
         "plugin_interpreter"
     )
 
+    tag = ":latest"
+
     CLIENT.networks.create("test")
     if environ["STAGE"] == "DEV":
         CLIENT.containers.run(
@@ -32,8 +34,9 @@ if __name__ == "__main__":
             remove=True,
             network="test"
         )
+        tag = ":dev"
     CLIENT.containers.run(
-        "ramrodpcp/interpreter-plugin",
+        "ramrodpcp/interpreter-plugin" + tag,
         name="plugin1",
         environment={
             "STAGE": environ["STAGE"],
