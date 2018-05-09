@@ -222,7 +222,8 @@ None
 Returns:
 None
 """
-commands = [
+
+command_templates = [
 {
 "CommandName":"get_file",
 "Tooltip":read_file_tt,

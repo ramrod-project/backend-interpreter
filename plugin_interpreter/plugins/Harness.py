@@ -10,23 +10,25 @@ except (ValueError, SystemError):  #allow this plugin to be run from commandline
     _path = os.path.abspath(os.path.join(os.path.abspath(__file__), "../../"))
     sys.path.append(_path)
     from src import controller_plugin as cp
-    from plugins.__harness_content import content as _content, commands as _commands
+    from plugins.__harness_content import content as _content, command_templates as _command_templates
     #raise
 
 from threading import Thread, Lock
 from time import sleep, time
 import json
-from flask import Flask, request, stream_with_context, Response
 from collections import defaultdict
-#from flask import g, jsonify, render_template, abort
 
-_i = 0
+
+
+__STANDALONE__ = False
 _G_HARNESS = None
 _G_LOCK = Lock()
 _LOCK_WAIT = 3
 
+
+
 class Harness(cp.ControllerPlugin):
-    functionality = _commands
+    functionality = _command_templates
 
     def __init__(self):
         self.name = "Harness"
@@ -137,7 +139,16 @@ class Harness(cp.ControllerPlugin):
 
 
 
+####------------------------------------------------------------------------------
+####----  Everything below here should work with or without the interpreter
+####------------------------------------------------------------------------------
 
+
+from flask import Flask, request, stream_with_context, Response
+#from flask import g, jsonify, render_template, abort
+
+
+_i = 0
 
 _translated_commands = [
     {"output":True,
@@ -259,7 +270,7 @@ def _checkin(serial):
     global _G_LOCK
     remote = (json.dumps(request.args))
     command_string = "sleep,15000"
-    if _G_LOCK.acquire(timeout=_LOCK_WAIT):
+    if not __STANDALONE__ and _G_LOCK.acquire(timeout=_LOCK_WAIT):
         if _G_HARNESS._work[validated['Location']]:
             cmd = _G_HARNESS._work[validated['Location']].pop(0)
             if cmd['output']:
@@ -278,7 +289,7 @@ def _checkin(serial):
 def _respond_to_work(serial):
     validated = parse_serial(serial)
     print(request.form['data'])
-    if _G_LOCK.acquire(timeout=_LOCK_WAIT):
+    if not __STANDALONE__ and _G_LOCK.acquire(timeout=_LOCK_WAIT):
         if _G_HARNESS._output[validated['Location']]:
             cmd = _G_HARNESS._output[validated['Location']].pop(0)
             cmd['output'] = request.form['data']
@@ -291,9 +302,10 @@ def _respond_to_work(serial):
 def _get_blob(serial, file_id):
     validated = parse_serial(serial)
     def gens(file_id):
-        file_content = _content[file_id]
-        for next_byte in file_content:
-            yield next_byte
+        if file_id in _content:
+            file_content = _content[file_id]
+            for next_byte in file_content:
+                yield next_byte
 
     return Response(stream_with_context(gens(file_id)))
 
@@ -302,7 +314,7 @@ def _get_blob(serial, file_id):
 def _put_blob(serial, file_id):
     validated = parse_serial(serial)
     _content[file_id] = request.form['data']
-    if _G_LOCK.acquire(timeout=_LOCK_WAIT):
+    if not __STANDALONE__ and _G_LOCK.acquire(timeout=_LOCK_WAIT):
         if _G_HARNESS._output[validated['Location']]:
             cmd = _G_HARNESS._output[validated['Location']].pop(0)
             cmd['output'] = request.form['data']
@@ -316,6 +328,7 @@ if __name__ == "__main__":
     from multiprocessing import Value
     from ctypes import c_bool
     if len(argv) < 2:
+        __STANDALONE__ = True
         _app.run(debug=True, port=5005) #5005 is the non-default Debug port
     else:
         ext_signal = Value(c_bool, False)
