@@ -150,7 +150,7 @@ def test_next_job(rethink):
         "Status": "Ready",
         "StartTime" : 0
     }
-    rethinkdb.db("Brain").Table("Jobs").Insert(new_job).run(rethink.rethink_connection)
+    rethinkdb.db("Brain").table("Jobs").insert(new_job).run(rethink.rethink_connection)
     rethink._get_next_job("jobtester")
     test_job = rethink.plugin_queue.get()
     assert compare_to(test_job,new_job)
