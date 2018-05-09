@@ -78,8 +78,7 @@ class RethinkInterface:
         """
 
         self.job_cursor = rethinkdb.db("Brain").table("Jobs").filter(
-            rethinkdb.row["JobTarget"]["PluginName"] == plugin_name \
-            and rethinkdb.row["Status"] == "Ready"
+            rethinkdb.row["JobTarget"]["PluginName"] == plugin_name & rethinkdb.row["Status"] == "Ready"
         ).run(self.rethink_connection)
         self.plugin_queue.put(self.job_cursor.next)
     
