@@ -86,7 +86,7 @@ def test_rethink_plugin_create(rethink):
             }]
     plugin_data = ("TestTable",command_list)
     rethink._create_plugin_table(plugin_data)
-    tablecheck = rethinkdb.db("Plugins").table(table_name).run(rethink.rethink_connection)
+    tablecheck = rethinkdb.db("Plugins").table("TestTable").run(rethink.rethink_connection)
     compare_to(tablecheck, command_list)
 
     # #test updating a table
