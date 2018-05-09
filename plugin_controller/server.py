@@ -9,9 +9,13 @@ TODO:
 """
 import logging
 from os import environ, path as ospath
-from time import sleep
+from time import asctime, gmtime, sleep, time
 
-logger = logging.getLogger()
+logger = logging.getLogger("controller")
+logger.setLevel(logging.INFO)
+logging.basicConfig(
+    format='%(date)s %(name)-12s %(levelname)-8s %(message)s'
+)
 
 import docker
 CLIENT = docker.from_env()
@@ -50,21 +54,42 @@ if __name__ == "__main__":
     )
     
     containers = CLIENT.containers.list()
-    logger.info("Containers started, press <CTRL-C> to stop...")
+    logger.log(
+        20,
+        "Containers started, press <CTRL-C> to stop...",
+        extra={ 'date': asctime(gmtime(time()))
+        }
+    )
     while True:
         try:
             sleep(1)
             pass
         except KeyboardInterrupt:
-            logger.info("\nKill signal received, stopping container(s)...")
+            logger.log(
+                20,
+                "Kill signal received, stopping container(s)...",
+                extra={ 'date': asctime(gmtime(time()))
+                }
+            )
             for container in containers:
                 try:
                     if container.name == "controller":
                         continue
                     container.stop()
                 except:
+                    logger.log(
+                        20,
+                        "\nKill signal received, stopping container(s)...",
+                        extra={ 'date': asctime(gmtime(time()))
+                        }
+                    )
                     logger.info(container.name, "stopped or not running")
                     continue
-            logger.info("Pruning networks...")
+            logger.log(
+                20,
+                "Pruning networks...",
+                extra={ 'date': asctime(gmtime(time()))
+                }
+            )
             CLIENT.networks.prune()
             exit(0)
