@@ -47,10 +47,12 @@ def rethink():
 
 def compare_to(table_name, compare_list):
     tablecheck = rethinkdb.db("Plugins").table(table_name).run(rethink.rethink_connection)
+    print("Table check")
     for i in tablecheck:
-        for j in i:
-            if j not in compare_list:
-                return False
+        print(i)
+    for i in tablecheck:
+        if i not in compare_list:
+            return False
     return True
 
 # def test_rethink_setup(rethink):
@@ -69,23 +71,23 @@ def test_init(rethink):
 #     sleep(1)
 #     assert not rethink_thread.is_alive()
 
-# def test_rethink_plugin_create(rethink):
-#     #test adding a valid table
-#     command_list = [{
-#                 "CommandName": "test_func_1",
-#                 "Input": ["string"],
-#                 "Output": "string",
-#                 "Tooltip": "This is a test"
-#             },
-#             {
-#                 "CommandName": "test_func_2",
-#                 "Input": ["string"],
-#                 "Output": "string",
-#                 "Tooltip": "This is also a test"
-#             }]
-#     plugin_data = ("TestTable",command_list)
-#     rethink._create_plugin_table(plugin_data)
-#     assert(compare_to("TestTable", command_list))
+def test_rethink_plugin_create(rethink):
+    #test adding a valid table
+    command_list = [{
+                "CommandName": "test_func_1",
+                "Input": ["string"],
+                "Output": "string",
+                "Tooltip": "This is a test"
+            },
+            {
+                "CommandName": "test_func_2",
+                "Input": ["string"],
+                "Output": "string",
+                "Tooltip": "This is also a test"
+            }]
+    plugin_data = ("TestTable",command_list)
+    rethink._create_plugin_table(plugin_data)
+    compare_to("TestTable", command_list)
 
     # #test updating a table
     # command_list = [{
