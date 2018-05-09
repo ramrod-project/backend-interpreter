@@ -87,29 +87,31 @@ def test_rethink_plugin_create(rethink):
     plugin_data = ("TestTable",command_list)
     rethink._create_plugin_table(plugin_data)
     tablecheck = rethinkdb.db("Plugins").table("TestTable").run(rethink.rethink_connection)
-    compare_to(tablecheck, command_list)
+    assert compare_to(tablecheck, command_list)
 
-    # #test updating a table
-    # command_list = [{
-    #             "CommandName": "test_func_1",
-    #             "Input": ["string"],
-    #             "Output": "string",
-    #             "Tooltip": "This is a test"
-    #         },
-    #         {
-    #             "CommandName": "test_func_2",
-    #             "Input": ["string"],
-    #             "Output": "string",
-    #             "Tooltip": "This is also a test"
-    #         },
-    #         {
-    #             "CommandName": "test_func_3",
-    #             "Input": [],
-    #             "Output": "",
-    #             "Tooltip": "a bonus command"
-    #         }]
-    # plugin_data = ("TestTable",command_list)
-    # assert(compare_to(rethink._create_plugin_table(plugin_data), command_list))
+    #test updating a table
+    command_list = [{
+                "CommandName": "test_func_1",
+                "Input": ["string"],
+                "Output": "string",
+                "Tooltip": "This is a test"
+            },
+            {
+                "CommandName": "test_func_2",
+                "Input": ["string"],
+                "Output": "string",
+                "Tooltip": "This is also a test"
+            },
+            {
+                "CommandName": "test_func_3",
+                "Input": [],
+                "Output": "",
+                "Tooltip": "a bonus command"
+            }]
+    plugin_data = ("TestTable",command_list)
+    rethink._create_plugin_table(plugin_data)
+    tablecheck = rethinkdb.db("Plugins").table("TestTable").run(rethink.rethink_connection)
+    assert compare_to(tablecheck, command_list)
 
     # #test table with entries without primary key
     # command_list = [{
