@@ -29,7 +29,7 @@ script:
     else docker run -d --name controller -e "STAGE=DEV" -e "LOGLEVEL=DEBUG" 
     -v /var/run/docker.sock:/var/run/docker.sock ramrodpcp/backend-interpreter:latest; fi
   # This will eventually be for more integration testing
-  - sleep 10
+  - sleep 30
   - docker ps -a
   - containers=$(docker ps -a | grep -v CONTAINER | awk '{print $1}')
   # print the logs for each plugin
