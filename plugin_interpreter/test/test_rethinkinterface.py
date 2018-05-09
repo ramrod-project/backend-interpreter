@@ -45,8 +45,7 @@ def rethink():
             container.stop()
             break
 
-def compare_to(table_name, compare_list):
-    tablecheck = rethinkdb.db("Plugins").table(table_name).run(rethink.rethink_connection)
+def compare_to(tablecheck, compare_list):
     print("Table check")
     for i in tablecheck:
         print(i)
@@ -87,7 +86,8 @@ def test_rethink_plugin_create(rethink):
             }]
     plugin_data = ("TestTable",command_list)
     rethink._create_plugin_table(plugin_data)
-    compare_to("TestTable", command_list)
+    tablecheck = rethinkdb.db("Plugins").table(table_name).run(rethink.rethink_connection)
+    compare_to(tablecheck, command_list)
 
     # #test updating a table
     # command_list = [{
