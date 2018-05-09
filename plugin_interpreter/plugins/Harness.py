@@ -13,14 +13,17 @@ except (ValueError, SystemError):  #allow this plugin to be run from commandline
     from plugins.__harness_content import content as _content, commands as _commands
     #raise
 
-from threading import Thread
+from threading import Thread, Lock
 from time import sleep, time
 import json
 from flask import Flask, request, stream_with_context, Response
+from collections import defaultdict
 #from flask import g, jsonify, render_template, abort
 
 _i = 0
 _G_HARNESS = None
+_G_LOCK = Lock()
+_LOCK_WAIT = 3
 
 class Harness(cp.ControllerPlugin):
     functionality = _commands
@@ -29,25 +32,15 @@ class Harness(cp.ControllerPlugin):
         self.name = "Harness"
         if _environ['STAGE'] == "DEV":
             self.port = 5005
+            self.debug = True
         else:
             self.port = 5000
+            self.debug = False
         self.proto = "TCP"
+        self._work = defaultdict(list)
+        self._output = defaultdict(list)
+        self._complete = defaultdict(list)
         super().__init__(self.name, self.proto, self.port, self.functionality)
-
-    def start(self, logger, ext_signal):
-        #self._advertise_functionality() #TODO: Put this in later
-        httpd = _app
-        httpd_server = Thread(target=httpd.run, daemon=True)
-        httpd_server.start()
-        global _G_HARNESS
-        _G_HARNESS = self
-        try:
-            while not ext_signal.value:
-                sleep(0.5)
-        except KeyboardInterrupt:
-            self._stop(logger, httpd)
-        finally:
-            exit(0)
 
     def _stop(self, logger, httpd):
         logger.send([
@@ -60,74 +53,192 @@ class Harness(cp.ControllerPlugin):
         exit(0)
 
 
+    def start(self, logger, ext_signal):
+        global _G_LOCK
+        #self._advertise_functionality() #TODO: Put this in later
+        _G_LOCK.acquire()
+        self._populate_work("172.22.64.1")
+        self._populate_work("127.0.0.1")
+
+        _G_LOCK.release()
+        httpd_server = Thread(target=_app.run,
+                              daemon=True,
+                              kwargs={"port": self.port}
+                              )
+        httpd_server.start()
+        global _G_HARNESS
+        _G_HARNESS = self
+        try:
+            while not ext_signal.value:
+                if _G_LOCK.acquire(timeout=_LOCK_WAIT):
+                    self._collect_new_jobs()
+                    self._push_complete_output()
+
+                    # add those jobs to the work
+                    _G_LOCK.release()
+                sleep(15)
+        except KeyboardInterrupt:
+            self._stop(logger, _app)
+        finally:
+            exit(0)
 
 
-_commands = [
-    {"name": "echo",
+
+    def _collect_new_jobs(self):
+        new_job = self._request_job()  # <dict> or None
+        if new_job:
+            location = new_job['JobTarget']['Location']
+            self._work[location].append(new_job)
+
+    def _push_complete_output(self):
+        for location in self._complete:
+            job = self._complete[location].pop(0)
+            output = job['output']
+            job['output'] = ""
+
+            output_object = {"OutputJob":job,
+                             "Content": output}
+            #self._respond_output() #TODO: This function in base does not exist
+        raise NotImplementedError
+
+    def _provide_status_update(self, job_id, status):
+        raise NotImplementedError
+
+    def _put_blob_in_content_table(self, file_id, blob):
+        raise NotImplementedError
+
+
+    def _populate_work(self, location):
+        '''
+        This function is test  code intended to be removed once
+            the plugin is integrated
+        :param location: IP address of the calling hostname
+        :return: None
+        '''
+        [self._work[location].append(x) for x in _translated_commands]
+
+    def _convert_job(self, job):
+        loc = job['JobTarget']['Location']
+        cmd = job['JobCommand']['CommandName']
+        out = job['JobCommand']['Output']
+        args = [job_input['Value'] for job_input in job['JobCommand']['Inputs']]
+        return (loc, out, cmd, args)
+
+    def _add_job_to_worklist(self, job):
+        (loc, out, cmd, args) = self._convert_job(job)
+        self._work[loc].append({"output":out,
+                                "name":cmd,
+                                "argv":args})
+
+    def _dump_internal_worklist(self):
+        from json import dumps
+        return dumps(self._work)
+
+
+
+
+
+
+_translated_commands = [
+    {"output":True,
+     "name": "echo",
      "argv": ["Hello World"]},
-    {"name": "sleep",
+    {"output":False,
+     "name": "sleep",
      "argv": ["4000", ]},
-    {"name": "list_processes",
+    {"output":True,
+     "name": "list_processes",
      "argv": []},
-    {"name": "list_files",
+    {"output":True,
+     "name": "list_files",
      "argv": ["%appdata%\\"]},
-    {"name": "read_registry",
+    {"output":True,
+     "name": "read_registry",
      "argv": ["HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion",
               "ProgramFilesDir"]},
-    {"name": "write_registry",
+    {"output":False,
+     "name": "write_registry",
      "argv": ["HKEY_CURRENT_USER\\Software\\Ramrod_Example",
               "Key1",
               "REG_SZ",
               "Ramrod testing 0x000000000000000"]},
-    {"name": "read_registry",
+    {"output":True,
+     "name": "read_registry",
      "argv": ["HKEY_CURRENT_USER\\Software\\Ramrod_Example",
               "Key1"]},
-    {"name": "sleep",
+    {"output":False,
+     "name": "sleep",
      "argv": ["4000", ]},
-    {"name": "delete_registry",
+    {"output":False,
+     "name": "delete_registry",
      "argv": ["HKEY_CURRENT_USER\\Software\\Ramrod_Example"]},
     #this file pulls from _harness content
-    #"name":"get_file",
-    #"argv":["399",
-    #"C:\\Users\\bauma\\Documents\\ait\\dumb_exe.exe"]},
-    {"name": "put_file",
+    #{"output":True,
+    # "name":"get_file",
+    # "argv":["399",
+    #         "C:\\Users\\bauma\\Documents\\ait\\dumb_exe.exe"]},
+    {"output":False,
+     "name": "put_file",
      "argv": ["399",
               "%appdata%\\test_file-9000.exe"]},
 
-    {"name": "sleep",
+    {"output":False,
+     "name": "sleep",
      "argv": ["10000", ]},
-    {"name": "create_process",
+    {"output":False,
+     "name": "create_process",
      "argv": ["%appdata%\\test_file-9000.exe"]},
     #this file pulls from _harness content
-    #"name": "get_file",
-    #"argv": ["501",
-    #"C:\\Users\\bauma\\Documents\\ait\\dumb_sleeper.exe"]},
-    {"name": "put_file",
+    #{"output":True,
+    # "name": "get_file",
+    # "argv": ["501",
+    #          "C:\\Users\\bauma\\Documents\\ait\\dumb_sleeper.exe"]},
+    {"output":False,
+     "name": "put_file",
      "argv": ["501",
               "%appdata%\\gosleep.exe"]},
 
-    {"name": "sleep",
+    {"output": False,
+     "name": "sleep",
      "argv": ["3000", ]},
-    {"name": "create_process",
+    {"output": False,
+     "name": "create_process",
      "argv": ["%appdata%\\gosleep.exe"]},
-    {"name": "sleep",
+    {"output": False,
+     "name": "sleep",
      "argv": ["30000"]},
-    {"name": "terminate_process",
+    {"output": False,
+     "name": "terminate_process",
      "argv": ["gosleep.exe"]},
-    {"name": "list_files",
+    {"output":True,
+     "name": "list_files",
      "argv": ["%appdata%"]},
-    {"name": "delete_file",
+    {"output":False,
+     "name": "delete_file",
      "argv": ["%appdata%\gosleep.exe"]},
-    {"name": "delete_file",
+    {"output":False,
+     "name": "delete_file",
      "argv": ["%appdata%\\test_file-9000.exe"]},
-    {"name": "list_files",
+    {"output":True,
+     "name": "list_files",
      "argv": ["%appdata%\\"]},
-    {"name": "terminate",
+    {"output":False,
+     "name": "terminate",
      "argv": []}
 ]
 
 _app = Flask(__name__)
 _app.config.from_object(__name__)
+
+def parse_serial(serial):
+    validated = {}
+    potential = serial.split("_")
+    if len(potential) == 3:
+        validated["Drive"] = potential[0]
+        validated["InternalLocation"] = potential[1]
+        validated["Location"] = request.environ['REMOTE_ADDR']
+        validated['Admin'] = potential[2]
+    return validated
 
 
 @_app.before_request
@@ -141,29 +252,44 @@ def _teardown_request(exception):
 
 
 @_app.route("/harness/<serial>", methods=['GET'])
-def _show_command_builder(serial):
-    global _i
+def _checkin(serial):
+    validated = parse_serial(serial)
+    print ( validated )
+    global _G_HARNESS
+    global _G_LOCK
     remote = (json.dumps(request.args))
-    try:
-        comman_to_apply = _commands[_i] #todo: integrate upstream
-    except IndexError:
-        print("sequence complete")
-        return "sleep,10000"
-    _i += 1
-    command_string = "%s,%s" % (comman_to_apply['name'],
-                                ",".join(comman_to_apply['argv']))
-    print(command_string)
+    command_string = "sleep,15000"
+    if _G_LOCK.acquire(timeout=_LOCK_WAIT):
+        if _G_HARNESS._work[validated['Location']]:
+            cmd = _G_HARNESS._work[validated['Location']].pop(0)
+            if cmd['output']:
+                _G_HARNESS._output[validated['Location']].append(cmd)
+            command_string = "%s,%s" %(cmd['name'],
+                                       ",".join(cmd['argv']))
+            print (command_string)
+            if "terminate" in command_string:
+                print (json.dumps(_G_HARNESS._output))
+                print (json.dumps(_G_HARNESS._complete))
+        _G_LOCK.release()
     return command_string
 
 
 @_app.route("/response/<serial>", methods=['POST'])
-def _get_capability(serial):
+def _respond_to_work(serial):
+    validated = parse_serial(serial)
     print(request.form['data'])
-    return "thanks"
+    if _G_LOCK.acquire(timeout=_LOCK_WAIT):
+        if _G_HARNESS._output[validated['Location']]:
+            cmd = _G_HARNESS._output[validated['Location']].pop(0)
+            cmd['output'] = request.form['data']
+            _G_HARNESS._complete[validated['Location']].append(cmd)
+        _G_LOCK.release()
+    return "1"
 
 
 @_app.route("/givemethat/<serial>/<file_id>", methods=['GET'])
 def _get_blob(serial, file_id):
+    validated = parse_serial(serial)
     def gens(file_id):
         file_content = _content[file_id]
         for next_byte in file_content:
@@ -174,10 +300,15 @@ def _get_blob(serial, file_id):
 
 @_app.route("/givemethat/<serial>/<file_id>", methods=['POST'])
 def _put_blob(serial, file_id):
-    # print (id)
-    # print ("Len - %s" %(len(request.form['data'])))
+    validated = parse_serial(serial)
     _content[file_id] = request.form['data']
-    return "thanks"
+    if _G_LOCK.acquire(timeout=_LOCK_WAIT):
+        if _G_HARNESS._output[validated['Location']]:
+            cmd = _G_HARNESS._output[validated['Location']].pop(0)
+            cmd['output'] = request.form['data']
+            _G_HARNESS._complete[validated['Location']].append(cmd)
+        _G_LOCK.release()
+    return "1"
 
 
 if __name__ == "__main__":
