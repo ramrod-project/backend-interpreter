@@ -170,6 +170,34 @@ class ControllerPlugin(ABC):
                 job = None
         return job
 
+    def _job_response(self, job, output):
+        """Provide job response output
+
+        This method is a helper method for the plugin
+        which is inheriting this base class. The plugin
+        must pass this function the job object it
+        received from the _request_job helper function
+        and the corresponding output from the
+        command.
+
+        This method also performs some basic type
+        checking on the output.
+        
+        Arguments:
+            job {dict} -- the dictionary object for
+            the job received from the database/frontend.
+            output {} -- [description]
+        """
+        if not isinstance(output, (bytes, str, int, float)):
+            raise TypeError
+        self.db_send.put({
+            "type": "job_response",
+            "data": {
+                "job": job,
+                "output": output
+            }
+        })
+
     @abstractmethod
     def _stop(self, **kwargs):
         """Stop the plugin
