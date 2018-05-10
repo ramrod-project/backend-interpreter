@@ -17,6 +17,7 @@ from threading import Thread, Lock
 from time import sleep, time
 import json
 from collections import defaultdict
+from random import randint
 
 
 
@@ -282,6 +283,9 @@ def _checkin(serial):
                 print (json.dumps(_G_HARNESS._output))
                 print (json.dumps(_G_HARNESS._complete))
         _G_LOCK.release()
+    elif __STANDALONE__:
+        cmd = _translated_commands[randint(0,1)]
+        command_string = "%s,%s" %(cmd['name'], ",".join(cmd['argv']))
     return command_string
 
 
