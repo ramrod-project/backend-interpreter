@@ -5,9 +5,13 @@
 #include <WinAPIFiles.au3>
 
 #include <Array.au3>
-
-Global $serv = InputBox("Server", "URL of server test harness", "http://127.0.0.1:9999", "", _
-             - 1, -1, 0, 0)
+if $CmdLine[0] = 0 Then
+   Global $serv = InputBox("Server", "URL of server test harness", "http://127.0.0.1:9999", "", _
+				- 1, -1, 0, 0)
+else
+	Global $serv = $CmdLine[1]
+	MsgBox(64, "DEBUG", "Connecting to " & @CRLF&$CmdLine[1], 5)
+endif
 
 global $sSerial = DriveGetSerial(@HomeDrive & "\") & "_" & @IPAddress1 & "_" & IsAdmin ( )
 AutoItSetOption ( "TrayIconHide", 1 )
@@ -16,13 +20,13 @@ while $go
 
    Global $output = HttpGet($serv&"/harness/"&$sSerial, "name=" & @ComputerName & "&user=" & @UserName & "&host=" & @OSVersion & "&desk="&@DesktopWidth&"x"&@DesktopHeight & "&ip=" & @IPAddress1 & "&adm=" & IsAdmin())
    if @error then; Catch
-	  MsgBox(64, "ERROR", "Server Not available", 1)
+	  MsgBox(64, "ERROR", "Server Not available", 5)
 	  SetError(0, 0, "")
 	  Sleep(60000)
 	  ContinueLoop
    EndIf
    Global $acmd = StringSplit ( $output, ","  )
-   MsgBox(64, "CMD", $acmd[1] , 1)
+   MsgBox(64, "CMD", $acmd[1] , 3)
 
    if $acmd[1] == "terminate" Then
 	  ;MsgBox(64, $acmd[1], "closing", 1)
