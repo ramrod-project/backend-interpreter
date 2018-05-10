@@ -151,11 +151,11 @@ def test_next_job(rethink):
         "StartTime" : 0
     }
     rethinkdb.db("Brain").table("Jobs").insert(new_job).run(rethink.rethink_connection)
-    test_job = rethinkdb.db("Brain").table("Jobs").run(rethink.rethink_connection)
-    print(test_job)
     rethink._get_next_job("jobtester")
     test_job = rethink.plugin_queue.get(timeout=1)
-    assert compare_to(test_job,new_job)
+    print(test_job)
+    print(new_job)
+    assert compare_to(new_job,test_job)
 
 def test_update_job(rethink):
     pass
