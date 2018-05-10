@@ -165,6 +165,10 @@ def test_update_job(rethink):
         print(test_job)
         job_tuple = (test_job,new_status)
         rethink._update_job(job_tuple)
-
+        job_cursor = rethinkdb.db("Brain").table("Jobs").filter(
+            (rethinkdb.row["JobTarget"]["PluginName"] == "jobtester") & (rethinkdb.row["Status"] == new_status)
+            ).pluck("id").run(rethink.rethink_connection)
+        test_job = job_cursor.next().get("id")
+        assert(test_job == new_status)
     except rethinkdb.ReqlCursorEmpty:
         print("Failed to get job in test_update_job")
