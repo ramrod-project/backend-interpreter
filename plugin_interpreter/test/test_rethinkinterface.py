@@ -183,6 +183,8 @@ def test_next_job(rethink):
         "Status": "Ready",
         "StartTime" : 0
     }
+    rethink._get_next_job("jobtester")
+    assert(rethink.plugin_queue.get(timeout=1) == None)
     rethinkdb.db("Brain").table("Jobs").insert(new_job).run(rethink.rethink_connection)
     rethink._get_next_job("jobtester")
     test_job = rethink.plugin_queue.get(timeout=1)
