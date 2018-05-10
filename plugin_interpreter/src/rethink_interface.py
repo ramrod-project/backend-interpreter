@@ -81,7 +81,11 @@ class RethinkInterface:
             rethinkdb.row["JobTarget"]["PluginName"] == plugin_name \
             and rethinkdb.row["Status"] == "Ready"
         ).run(self.rethink_connection)
-        self.plugin_queue.put(self.job_cursor.next)
+        try:
+            new_job = self.job_cursor.next()
+            self.plugin_queue.put(new_job)
+        except rethinkdb.ReqlCursorEmpty:
+            pass #because error checking is good
     
     def _create_plugin_table(self, plugin_data):
         """
