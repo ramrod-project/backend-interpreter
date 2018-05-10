@@ -17,7 +17,7 @@ from src import central_logger, controller_plugin, linked_process, rethink_inter
 def sup():
     environ["LOGLEVEL"] = "DEBUG"
     CLIENT.containers.run(
-        "rethinkdb",
+        "ramrodpcp/database-brain:latest",
         name="rethinkdb",
         detach=True,
         ports={"28015/tcp": 28015},
