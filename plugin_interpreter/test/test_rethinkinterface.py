@@ -162,6 +162,7 @@ def test_update_job(rethink):
         ).pluck("id").run(rethink.rethink_connection)
     try:
         test_job = job_cursor.next()
+        print(test_job)
         job_tuple = (test_job,new_status)
         rethink._update_job(job_tuple)
 
