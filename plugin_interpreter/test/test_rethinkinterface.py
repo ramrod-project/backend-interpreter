@@ -153,9 +153,16 @@ def test_next_job(rethink):
     rethinkdb.db("Brain").table("Jobs").insert(new_job).run(rethink.rethink_connection)
     rethink._get_next_job("jobtester")
     test_job = rethink.plugin_queue.get(timeout=1)
-    print(test_job)
-    print(new_job)
     assert compare_to(new_job,test_job)
 
 def test_update_job(rethink):
-    pass
+    new_status = "Pending"
+    job_cursor = rethinkdb.db("Brain").table("Jobs").filter(
+        (rethinkdb.row["JobTarget"]["PluginName"] == plugin_name) & (rethinkdb.row["Status"] == "Ready")
+        ).pluck("id").run(rethink.rethink_connection)
+    try:
+        test_job = job_cursor.next()
+        job_tuple = (test_job,new_status)
+        rethink._update_job(job_tuple)
+    except rethinkdb.ReqlCursorEmpty:
+        print("Failed to get job in test_update_job")
