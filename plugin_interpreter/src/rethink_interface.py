@@ -119,6 +119,13 @@ class RethinkInterface:
                     30,
                     time()
                 ])
+        else:
+            self.logger.send([
+                "dbprocess",
+                "Theere is no job with an id of " + output_data[0],
+                30,
+                time()
+            ])
 
     def _update_target(self,target_data):
         pass

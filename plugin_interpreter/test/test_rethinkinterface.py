@@ -214,3 +214,39 @@ def test_update_job(rethink):
         assert(test_job == new_status)
     except rethinkdb.ReqlCursorEmpty:
         print("Failed to get job in test_update_job")
+
+def test_send_output(rethink):
+    content = "This is some output"
+    output_job = {
+        "JobTarget":{
+            "PluginName": "texter",
+            "Location": "8.8.8.8",
+            "Port": "80"
+        },
+        "JobCommand":{
+            "CommandName": "GetText",
+            "Tooltip": "for getting text",
+            "Inputs":[]
+        },
+        "Status": "Ready",
+        "StartTime" : 0
+    }
+    try:
+        rethinkdb.db("Brain").table("Jobs").insert(output_job).run(rethink.rethink_connection)
+        job_cursor = rethinkdb.db("Brain").table("Jobs").filter(
+            rethinkdb.row["JobTarget"]["PluginName"] == "texter"
+            ).pluck("id").run(rethink.rethink_connection)
+        try:
+            job_id = job_cursor.next().get("id")
+            output_data = (job_id,content)
+            rethink._send_output(output_data)
+            output_cursor = rethinkdb.db("Brain").table("Outputs").run(rethink.rethink_connection)
+            output_cursor.next()
+            db_output = output_cursor.get("Content")
+            db_job = output_cursor.get("OutputJob")
+            assert(db_output == content)
+            assert(db_job == output_job)
+        except rethinkdb.ReqlCursorEmpty:
+            print("id could not be found after placing job into database")
+    except rethinkdb.ReqlDriverError:
+        print("Could not insert test job into table")
