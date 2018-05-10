@@ -30,6 +30,19 @@ SAMPLE_JOB = {
 }
 
 class SamplePlugin(controller_plugin.ControllerPlugin):
+    """Sample plugin for testing
+
+    Sample plugin inheriting from ControllerPlugin base
+    class. All it does is initialize an instance of
+    itself with some basic parameters, since the
+    ControllerPlugin Abstract Base Class cannot be
+    directly instanced.
+    
+    Arguments:
+        controller_plugin {class} -- The base class
+        for plugins, which is the subject of testing.
+    """
+
 
     def __init__(self):
         super().__init__(
@@ -55,13 +68,28 @@ class SamplePlugin(controller_plugin.ControllerPlugin):
         )
     
     def start(self):
+        """abstractmethod overload"""
         pass
     
     def _stop(self):
+        """abstractmethod overload"""
         pass
 
 
 def dummy_interface():
+    """Simulates database interface
+    
+    Raises:
+        KeyError -- if the 'type' in the
+        message from the plugin queue
+        isn't one that is defined.
+    
+    Returns:
+        object -- returns the 'data'
+        value from the message received
+        on the plugin queue.
+    """
+
     next_item = FROM_PLUGIN.get()
     if next_item["type"] == "job_request":
         TO_PLUGIN.put(SAMPLE_JOB)
@@ -74,11 +102,22 @@ def dummy_interface():
 
 @fixture(scope="module")
 def plugin_base():
+    """Generates SamplePlugin instance
+    
+    This fixture instances a SamplePlugin
+    for use in testing.
+    """
     plugin = SamplePlugin()
     plugin.initialize_queues(FROM_PLUGIN, TO_PLUGIN)
     yield plugin
 
 def test_instantiate():
+    """Test plugin instancing
+
+    Instantiates the SamplePlugin and attempts
+    to populate its queue attributes.
+    """
+
     with raises(TypeError):
         plugin = controller_plugin.ControllerPlugin()
     plugin = SamplePlugin()
@@ -88,24 +127,46 @@ def test_instantiate():
     assert isinstance(plugin.db_recv, multiprocessing.queues.Queue)
 
 def test_advertise(plugin_base):
+    """Test functionality advertisement
+    
+    Arguments:
+        plugin_base {fixture} -- yields the SamplePlugin
+        instance needed for testing.
+    """
     plugin_base._advertise_functionality()
     result = dummy_interface()
     assert result[0] == "SamplePlugin"
     assert result[1] == plugin_base.functionality
 
 def test_request_job(plugin_base):
+    """Test requesting a job
+
+    Start a dummy_interface thread to send
+    the response, then request a job.
+    
+    Arguments:
+        plugin_base {fixture} -- yields the SamplePlugin
+        instance needed for testing.
+    """
     responder = Thread(target=dummy_interface)
     responder.start()
     result = plugin_base._request_job()
     assert result == SAMPLE_JOB
 
 def test_respond_to_job(plugin_base):
+    """Test sending job response
+
+    Tests the various types of allowed response
+    data types.
+    
+    Arguments:
+        plugin_base {fixture} -- yields the SamplePlugin
+        instance needed for testing.
+    """
     with raises(TypeError):
         plugin_base._job_response(SAMPLE_JOB, None)
-    def func():
-        pass
     with raises(TypeError):
-        plugin_base._job_response(SAMPLE_JOB, func)
+        plugin_base._job_response(SAMPLE_JOB, dummy_interface)
 
     plugin_base._job_response(SAMPLE_JOB, "Sample Job Response")
     result = dummy_interface()
