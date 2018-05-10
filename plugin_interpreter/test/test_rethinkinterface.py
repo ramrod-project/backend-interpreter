@@ -161,7 +161,7 @@ def test_update_job(rethink):
         (rethinkdb.row["JobTarget"]["PluginName"] == "jobtester") & (rethinkdb.row["Status"] == "Ready")
         ).pluck("id").run(rethink.rethink_connection)
     try:
-        test_job = job_cursor.next()
+        test_job = job_cursor.next().get("id")
         print(test_job)
         job_tuple = (test_job,new_status)
         rethink._update_job(job_tuple)
