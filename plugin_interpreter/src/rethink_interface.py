@@ -80,7 +80,11 @@ class RethinkInterface:
         self.job_cursor = rethinkdb.db("Brain").table("Jobs").filter(
             (rethinkdb.row["JobTarget"]["PluginName"] == plugin_name) & (rethinkdb.row["Status"] == "Ready")
         ).run(self.rethink_connection)
-        self.plugin_queue.put(self.job_cursor.next())
+        try:
+            new_job = self.job_cursor.next()
+            self.plugin_queue.put(new_job)
+        except rethinkdb.ReqlCursorEmpty:
+           self.plugin_queue.put(None)
     
     def _create_plugin_table(self, plugin_data):
         """
@@ -136,7 +140,7 @@ class RethinkInterface:
                 sleep(0.1)
 
                 response = self.response_queue.get_nowait()
-                if response["type"] == "Functionality":
+                if response["type"] == "functionality":
                     self._create_plugin_table(response["data"])
                 if response["type"] == "job_request":
                     self._get_next_job(response["data"])
