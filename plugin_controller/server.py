@@ -41,16 +41,18 @@ if __name__ == "__main__":
     )
 
     tag = ":latest"
+    network_name = "pcp"
 
-    CLIENT.networks.create("test")
     if environ["STAGE"] == "DEV":
+        network_name = "test"
+        CLIENT.networks.create(network_name)
         CLIENT.containers.run(
             "ramrodpcp/database-brain:latest",
             name="rethinkdb",
             detach=True,
             ports={"28015/tcp": 28015},
             remove=True,
-            network="test"
+            network=network_name
         )
         tag = ":dev"
     CLIENT.containers.run(
@@ -62,8 +64,8 @@ if __name__ == "__main__":
             "PLUGIN": "ExampleHTTP"
         },
         detach=True,
-        network="test",
-        ports={"8080/tcp": 8080},
+        network=network_name,
+        ports={"8080/tcp": 8090},
         remove=True
     )
     
@@ -98,11 +100,12 @@ if __name__ == "__main__":
                         }
                     )
                     continue
-            logger.log(
-                20,
-                "Pruning networks...",
-                extra={ 'date': asctime(gmtime(time()))
-                }
-            )
-            CLIENT.networks.prune()
+            if environ["STAGE"] == "DEV":
+                logger.log(
+                    20,
+                    "Pruning networks...",
+                    extra={ 'date': asctime(gmtime(time()))
+                    }
+                )
+                CLIENT.networks.prune()
             exit(0)
