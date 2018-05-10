@@ -2,9 +2,10 @@
 """
 
 import multiprocessing
-from pytest import fixture, raises
 from threading import Thread
 from time import time
+
+from pytest import fixture, raises
 
 from src import controller_plugin
 
@@ -37,7 +38,7 @@ class SamplePlugin(controller_plugin.ControllerPlugin):
     itself with some basic parameters, since the
     ControllerPlugin Abstract Base Class cannot be
     directly instanced.
-    
+
     Arguments:
         controller_plugin {class} -- The base class
         for plugins, which is the subject of testing.
@@ -54,42 +55,38 @@ class SamplePlugin(controller_plugin.ControllerPlugin):
                     "name": "read_file",
                     "input": ["string"],
                     "family": "filesystem",
-                    "tooltip": "Provided a full directory path, this function reads a file.",
+                    "tooltip": "Provided a full directory path, this function \
+                    reads a file.",
                     "reference": "http://reference.url"
                 },
                 {
                     "name": "send_file",
                     "input": ["string", "binary"],
                     "family": "filesystem",
-                    "tooltip": "Provided a file and destination directory, this function sends a file.",
+                    "tooltip": "Provided a file and destination directory, \
+                    this function sends a file.",
                     "reference": "http://reference.url"
                 }
             ]
         )
-    
-    def start(self):
+
+    def start(self, logger, signal):
         """abstractmethod overload"""
         pass
-    
-    def _stop(self):
+
+    def _stop(self, **kwargs):
         """abstractmethod overload"""
         pass
 
 
 def dummy_interface():
     """Simulates database interface
-    
-    Raises:
-        KeyError -- if the 'type' in the
-        message from the plugin queue
-        isn't one that is defined.
-    
+
     Returns:
         object -- returns the 'data'
         value from the message received
         on the plugin queue.
     """
-
     next_item = FROM_PLUGIN.get()
     if next_item["type"] == "job_request":
         TO_PLUGIN.put(SAMPLE_JOB)
@@ -97,13 +94,12 @@ def dummy_interface():
         return next_item["data"]
     elif next_item["type"] == "job_response":
         return next_item["data"]
-    else:
-        raise KeyError
+    return None
 
 @fixture(scope="module")
 def plugin_base():
     """Generates SamplePlugin instance
-    
+
     This fixture instances a SamplePlugin
     for use in testing.
     """
@@ -117,7 +113,6 @@ def test_instantiate():
     Instantiates the SamplePlugin and attempts
     to populate its queue attributes.
     """
-
     with raises(TypeError):
         plugin = controller_plugin.ControllerPlugin()
     plugin = SamplePlugin()
@@ -128,7 +123,7 @@ def test_instantiate():
 
 def test_advertise(plugin_base):
     """Test functionality advertisement
-    
+
     Arguments:
         plugin_base {fixture} -- yields the SamplePlugin
         instance needed for testing.
@@ -143,7 +138,7 @@ def test_request_job(plugin_base):
 
     Start a dummy_interface thread to send
     the response, then request a job.
-    
+
     Arguments:
         plugin_base {fixture} -- yields the SamplePlugin
         instance needed for testing.
@@ -158,7 +153,7 @@ def test_respond_to_job(plugin_base):
 
     Tests the various types of allowed response
     data types.
-    
+
     Arguments:
         plugin_base {fixture} -- yields the SamplePlugin
         instance needed for testing.
