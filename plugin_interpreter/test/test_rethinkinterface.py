@@ -46,6 +46,18 @@ def rethink():
             break
 
 def compare_to(tablecheck, compare_list):
+    """[summary]
+    
+    Arguments:
+        tablecheck {[type]} -- the item to check
+        compare_list {same as tablecheck} -- the standard to check against, it
+        may contain more items in it than tablecheck
+    
+    Returns:
+        boolean -- whether or not items in table check are in compare_list
+        if any items in tablecheck are not in compare_list return false
+    """
+
     print("Table check")
     for i in tablecheck:
         print(i)
@@ -58,6 +70,11 @@ def compare_to(tablecheck, compare_list):
 #     assert isinstance(rethink, rethink_interface.RethinkInterface)
 
 def test_init(rethink):
+    """sets up the testing database
+    
+    Arguments:
+        rethink {Fixture} -- An instance of rethink interface    """
+
     rethink.logger = mock_logger()
     rethink._database_init()
 
@@ -71,6 +88,14 @@ def test_init(rethink):
 #     assert not rethink_thread.is_alive()
 
 def test_rethink_plugin_create(rethink):
+    """Tests if the _plugin_create() function can successfully add a table to
+    the plugin database and fill it with Commands. it then tests if the table
+    can be updated with new Commands
+    
+    Arguments:
+        rethink {Fixture} -- An instance of rethink interface
+    """
+
     #test adding a valid table
     command_list = [{
                 "CommandName": "test_func_1",
@@ -136,6 +161,14 @@ def test_rethink_plugin_create(rethink):
     #         }]))
     
 def test_next_job(rethink):
+    """Tests the _get_next_job() function by inserting a job into the
+    Brain and testing if the function correctly gets the job and adds it to the
+    plugin_queue
+    
+    Arguments:
+        rethink {Fixture} -- An instance of rethink interface
+    """
+
     new_job = {
         "JobTarget":{
             "PluginName": "jobtester",
@@ -156,6 +189,13 @@ def test_next_job(rethink):
     assert compare_to(new_job,test_job)
 
 def test_update_job(rethink):
+    """Tests _update_job() by placing a job in the Jobs table and calling 
+    update_jobs() to change the status of the job
+    
+    Arguments:
+        rethink {Fixture} -- An instance of rethink interface
+    """
+
     new_status = "Pending"
     job_cursor = rethinkdb.db("Brain").table("Jobs").filter(
         (rethinkdb.row["JobTarget"]["PluginName"] == "jobtester") & (rethinkdb.row["Status"] == "Ready")
