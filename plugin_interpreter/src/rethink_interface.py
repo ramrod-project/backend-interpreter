@@ -85,6 +85,7 @@ class RethinkInterface:
             self.plugin_queue.put(new_job)
         except rethinkdb.ReqlCursorEmpty:
            self.plugin_queue.put(None)
+
     
     def _create_plugin_table(self, plugin_data):
         """
