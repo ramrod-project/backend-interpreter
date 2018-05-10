@@ -167,7 +167,7 @@ def test_update_job(rethink):
         rethink._update_job(job_tuple)
         job_cursor = rethinkdb.db("Brain").table("Jobs").filter(
             (rethinkdb.row["JobTarget"]["PluginName"] == "jobtester") & (rethinkdb.row["Status"] == new_status)
-            ).pluck("id").run(rethink.rethink_connection)
+            ).pluck("Status").run(rethink.rethink_connection)
         test_job = job_cursor.next().get("Status")
         assert(test_job == new_status)
     except rethinkdb.ReqlCursorEmpty:
