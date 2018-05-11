@@ -216,6 +216,14 @@ def test_update_job(rethink):
         print("Failed to get job in test_update_job")
 
 def test_send_output(rethink):
+    """Tests _send_output() by placing a job in the job queue, getting its
+    id, and then calling _send_output() with a string of output and checking
+    if the entry was added to the Outputs Table
+    
+    Arguments:
+        rethink {Fixture} -- An instance of rethink interface
+    """
+
     content = "This is some output"
     output_job = {
         "JobTarget":{
