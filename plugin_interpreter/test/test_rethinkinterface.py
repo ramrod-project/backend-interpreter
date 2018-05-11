@@ -249,7 +249,7 @@ def test_send_output(rethink):
         rethink._send_output(output_data)
         output_cursor = rethinkdb.db("Brain").table("Outputs").filter(
             rethinkdb.row["OutputJob"]["id"]
-        ).run(rethink.rethink_connection)
+            ).run(rethink.rethink_connection)
         #output_cursor.next()
         db_output = output_cursor.next().get("Content")
         assert(db_output == content)
