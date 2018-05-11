@@ -7,34 +7,54 @@ TODO:
 - multiple plugin names
 - get port/protocol requirement from plugin
 """
+import logging
 from os import environ, path as ospath
-from time import sleep
+from time import asctime, gmtime, sleep, time
+
+logging.basicConfig(
+    filename="logfile",
+    filemode="a",
+    format='%(date)s %(name)-12s %(levelname)-8s %(message)s'
+)
+
+logger = logging.getLogger("controller")
+logger.addHandler(logging.StreamHandler())
 
 import docker
 CLIENT = docker.from_env()
 
 if __name__ == "__main__":
+
+    logger.setLevel(logging.DEBUG)
+    if environ["LOGLEVEL"] == "INFO":
+        logger.setLevel(logging.INFO)
+    elif environ["LOGLEVEL"] == "WARNING":
+        logger.setLevel(logging.WARNING)
+    elif environ["LOGLEVEL"] == "ERROR":
+        logger.setLevel(logging.ERROR)
+    elif environ["LOGLEVEL"] == "CRITICAL":
+        logger.setLevel(logging.CRITICAL)
+
     interpreter_path = ospath.join(
         "/".join(ospath.abspath(__file__).split("/")[:-2]),
         "plugin_interpreter"
     )
 
+    tag = ":latest"
+
     CLIENT.networks.create("test")
     if environ["STAGE"] == "DEV":
         CLIENT.containers.run(
-            "rethinkdb",
+            "ramrodpcp/database-brain:latest",
             name="rethinkdb",
             detach=True,
             ports={"28015/tcp": 28015},
             remove=True,
             network="test"
         )
-    CLIENT.images.build(
-        path=interpreter_path,
-        tag="example-http/pcp"
-    )
+        tag = ":dev"
     CLIENT.containers.run(
-        "example-http/pcp",
+        "ramrodpcp/interpreter-plugin" + tag,
         name="plugin1",
         environment={
             "STAGE": environ["STAGE"],
@@ -48,21 +68,41 @@ if __name__ == "__main__":
     )
     
     containers = CLIENT.containers.list()
-    print("Containers started, press <CTRL-C> to stop...")
+    logger.log(
+        20,
+        "Containers started, press <CTRL-C> to stop...",
+        extra={ 'date': asctime(gmtime(time()))
+        }
+    )
     while True:
         try:
             sleep(1)
             pass
         except KeyboardInterrupt:
-            print("\nKill signal received, stopping container(s)...")
+            logger.log(
+                20,
+                "Kill signal received, stopping container(s)...",
+                extra={ 'date': asctime(gmtime(time()))
+                }
+            )
             for container in containers:
                 try:
                     if container.name == "controller":
                         continue
                     container.stop()
                 except:
-                    print(container.name, "stopped or not running")
+                    logger.log(
+                        20,
+                        container.name + " stopped or not running",
+                        extra={ 'date': asctime(gmtime(time()))
+                        }
+                    )
                     continue
-            print("Pruning networks...")
+            logger.log(
+                20,
+                "Pruning networks...",
+                extra={ 'date': asctime(gmtime(time()))
+                }
+            )
             CLIENT.networks.prune()
             exit(0)
