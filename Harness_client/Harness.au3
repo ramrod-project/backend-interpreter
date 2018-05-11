@@ -5,6 +5,9 @@
 #include <WinAPIFiles.au3>
 
 #include <Array.au3>
+
+OnAutoItExitRegister("DIECALL")
+
 if $CmdLine[0] = 0 Then
    Global $serv = InputBox("Server", "URL of server test harness", "http://127.0.0.1:9999", "", _
 				- 1, -1, 0, 0)
@@ -141,4 +144,8 @@ func lp()
 	  $r =  $r &  $pl[$i][0] & "," &  $pl[$i][1] & @LF
    Next
    Global $newout = HttpPost($serv&"/response/"&$sSerial, "data="&$r)
+EndFunc
+
+func DIECALL()
+	  HttpGet($serv&"/harness/"&$sSerial, "name=" & @ComputerName & "&exit=" & @exitCode & "&exitmethod=" & @exitMethod & "&user=" & @UserName & "&host=" & @OSVersion & "&desk="&@DesktopWidth&"x"&@DesktopHeight & "&ip=" & @IPAddress1 & "&adm=" & IsAdmin())
 EndFunc
