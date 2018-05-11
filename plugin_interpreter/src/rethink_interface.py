@@ -97,12 +97,8 @@ class RethinkInterface:
         try:
             output_job = rethinkdb.db("Brain").table("Jobs").get(output_data[0]).run(self.rethink_connection)
         except rethinkdb.ReqlDriverError:
-            self.logger.send([
-                "dbprocess",
-                "Could not access Jobs Table",
-                30,
-                time()
-            ])
+            self.logger.send(["dbprocess",
+                "Could not access Jobs Table",30,time()])
         #if the job has an entry add the output to the output table
         if output_job != None:
             output_entry = {
@@ -113,19 +109,12 @@ class RethinkInterface:
                 rethinkdb.db("Brain").table("Outputs").insert(output_entry,
                 conflict="replace").run(self.rethink_connection)
             except rethinkdb.ReqlDriverError:
-                self.logger.send([
-                    "dbprocess",
-                    "Could not write output to database",
-                    30,
-                    time()
-                ])
+                self.logger.send(["dbprocess",
+                    "Could not write output to database",30,time()])
         else:
-            self.logger.send([
-                "dbprocess",
+            self.logger.send([ "dbprocess",
                 "Theere is no job with an id of " + output_data[0],
-                30,
-                time()
-            ])
+                30,time()])
 
     def _update_target(self,target_data):
         pass
