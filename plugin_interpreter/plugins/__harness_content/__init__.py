@@ -424,7 +424,7 @@ command_templates = [
 {
 "CommandName":"terminate",
 "Tooltip":terminate_tt,
-"Output":True,
+"Output":False,
 "Inputs":[],
 "OptionalInputs":[]
 },
