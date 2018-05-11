@@ -119,7 +119,7 @@ def the_pretend_app():
         print(p.map(the_pretend_getter, ["127.0.0.1:5000"]))
 
 def test_the_Harness_app():
-    environ['STAGE'] == "TESTING"
+    environ['STAGE'] = "TESTING"
     sup_gen = startup_brain()
     s = sup_gen.__next__()
     supervisor_setup(s)
