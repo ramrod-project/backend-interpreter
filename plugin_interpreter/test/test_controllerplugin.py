@@ -159,26 +159,26 @@ def test_respond_to_job(plugin_base):
         instance needed for testing.
     """
     with raises(TypeError):
-        plugin_base._job_response(SAMPLE_JOB, None)
+        plugin_base._respond_output(SAMPLE_JOB, None)
     with raises(TypeError):
-        plugin_base._job_response(SAMPLE_JOB, dummy_interface)
+        plugin_base._respond_output(SAMPLE_JOB, dummy_interface)
 
-    plugin_base._job_response(SAMPLE_JOB, "Sample Job Response")
+    plugin_base._respond_output(SAMPLE_JOB, "Sample Job Response")
     result = dummy_interface()
     assert result["job"] == SAMPLE_JOB
     assert result["output"] == "Sample Job Response"
 
-    plugin_base._job_response(SAMPLE_JOB, bytes("Sample Job Response", "utf-8"))
+    plugin_base._respond_output(SAMPLE_JOB, bytes("Sample Job Response", "utf-8"))
     result = dummy_interface()
     assert result["job"] == SAMPLE_JOB
     assert result["output"] == bytes("Sample Job Response", "utf-8")
 
-    plugin_base._job_response(SAMPLE_JOB, 666)
+    plugin_base._respond_output(SAMPLE_JOB, 666)
     result = dummy_interface()
     assert result["job"] == SAMPLE_JOB
     assert result["output"] == 666
 
-    plugin_base._job_response(SAMPLE_JOB, 42.42)
+    plugin_base._respond_output(SAMPLE_JOB, 42.42)
     result = dummy_interface()
     assert result["job"] == SAMPLE_JOB
     assert result["output"] == 42.42

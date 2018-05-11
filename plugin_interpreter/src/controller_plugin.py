@@ -173,7 +173,7 @@ class ControllerPlugin(ABC):
                 job = None
         return job
 
-    def _job_response(self, job, output):
+    def _respond_output(self, job, output):
         """Provide job response output
 
         This method is a helper method for the plugin
