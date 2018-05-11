@@ -28,9 +28,12 @@ class mock_logger():
 @fixture(scope='module')
 def rethink():
     plugin = ExampleHTTP()
-    tag = environ["TRAVIS_BRANCH"]
+    try:
+        tag = environ["TRAVIS_BRANCH"]
+    except KeyError:
+        tag = "latest"
     CLIENT.containers.run(
-        "ramrodpcp/database-brain:" + tag,
+        "".join(("ramrodpcp/database-brain:", tag)),
         name="rethinkdb_rethink",
         detach=True,
         ports={"28015/tcp": 28015},
