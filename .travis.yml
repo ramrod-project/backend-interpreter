@@ -39,14 +39,12 @@ script:
   - for c in "${containers[@]}"; do docker stop $c; done
 
 after_success:
-  - if [ "$TRAVIS_BRANCH" = "qa"  ] || [ "$TRAVIS_BRANCH" = "master"  ]; 
-    then echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin; fi
-  - if [ "$TRAVIS_BRANCH" = "qa"  ]; 
-    then docker push ramrodpcp/backend-interpreter:$TRAVIS_BRANCH &&
-    docker push ramrodpcp/interpreter-plugin:$TRAVIS_BRANCH; fi
-  - if [ "$TRAVIS_BRANCH" = "master"  ]; 
+  - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
+  - if [ "$TRAVIS_BRANCH" == "master"  ]; 
     then docker push ramrodpcp/backend-interpreter:latest &&
-    docker push ramrodpcp/interpreter-plugin:latest; fi
+    docker push ramrodpcp/interpreter-plugin:latest;
+    else docker push ramrodpcp/backend-interpreter:$TRAVIS_BRANCH &&
+    docker push ramrodpcp/interpreter-plugin:$TRAVIS_BRANCH; fi
 
 notifications:
   slack: ramrod-project:GDF82rRYDg3KSekrT3GA24qO
