@@ -240,12 +240,12 @@ def test_send_output(rethink):
             job_id = job_cursor.next().get("id")
             output_data = (job_id,content)
             rethink._send_output(output_data)
-            output_cursor = rethinkdb.db("Brain").table("Outputs").run(rethink.rethink_connection)
+            output_cursor = rethinkdb.db("Brain").table("Outputs").filter(
+                rethinkdb.row["OutputJob"]["id"]
+            ).run(rethink.rethink_connection)
             #output_cursor.next()
-            db_output = output_cursor.next().get("Content")
-            db_job = output_cursor.get("OutputJob")
+            db_output = output_cursor.next().pluck("Content").get("Content")
             assert(db_output == content)
-            assert(db_job == output_job)
         except rethinkdb.ReqlCursorEmpty:
             print("id could not be found after placing job into database")
     except rethinkdb.ReqlDriverError:
