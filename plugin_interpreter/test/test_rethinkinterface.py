@@ -244,17 +244,16 @@ def test_send_output(rethink):
         job_cursor = rethinkdb.db("Brain").table("Jobs").filter(
             rethinkdb.row["JobTarget"]["PluginName"] == "texter"
             ).pluck("id").run(rethink.rethink_connection)
-        try:
-            job_id = job_cursor.next().get("id")
-            output_data = (job_id,content)
-            rethink._send_output(output_data)
-            output_cursor = rethinkdb.db("Brain").table("Outputs").filter(
-                rethinkdb.row["OutputJob"]["id"]
-            ).run(rethink.rethink_connection)
-            #output_cursor.next()
-            db_output = output_cursor.next().get("Content")
-            assert(db_output == content)
-        except rethinkdb.ReqlCursorEmpty:
-            print("id could not be found after placing job into database")
+        job_id = job_cursor.next().get("id")
+        output_data = (job_id,content)
+        rethink._send_output(output_data)
+        output_cursor = rethinkdb.db("Brain").table("Outputs").filter(
+            rethinkdb.row["OutputJob"]["id"]
+        ).run(rethink.rethink_connection)
+        #output_cursor.next()
+        db_output = output_cursor.next().get("Content")
+        assert(db_output == content)
+    except rethinkdb.ReqlCursorEmpty:
+        print("id could not be found after placing job into database")
     except rethinkdb.ReqlDriverError:
         print("Could not insert test job into table")
