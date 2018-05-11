@@ -199,10 +199,10 @@ def test_update_job(rethink):
     """
 
     new_status = "Pending"
-    job_cursor = rethinkdb.db("Brain").table("Jobs").filter(
-        (rethinkdb.row["JobTarget"]["PluginName"] == "jobtester") & (rethinkdb.row["Status"] == "Ready")
-        ).pluck("id").run(rethink.rethink_connection)
     try:
+        job_cursor = rethinkdb.db("Brain").table("Jobs").filter(
+            (rethinkdb.row["JobTarget"]["PluginName"] == "jobtester") & (rethinkdb.row["Status"] == "Ready")
+            ).pluck("id").run(rethink.rethink_connection)
         test_job = job_cursor.next().get("id")
         print(test_job)
         job_tuple = (test_job,new_status)
