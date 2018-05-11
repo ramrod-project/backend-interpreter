@@ -1,0 +1,52 @@
+sudo: required
+
+language: python
+
+python:
+  - "3.6"
+
+services:
+  - docker
+
+before_install:
+  - git clone https://github.com/ramrod-project/backend-interpreter.git
+
+install:
+  - pip install -r plugin_interpreter/requirements.txt
+
+before_script:
+  - pytest plugin_interpreter/test
+
+script:
+  - if [ "$TRAVIS_BRANCH" != "master"  ]; 
+    then docker build -t ramrodpcp/backend-interpreter:$TRAVIS_BRANCH ./plugin_controller/ &&
+    docker build -t ramrodpcp/interpreter-plugin:$TRAVIS_BRANCH ./plugin_interpreter/; 
+    else docker build -t ramrodpcp/backend-interpreter:latest ./plugin_controller/ &&
+    docker build -t ramrodpcp/interpreter-plugin:latest ./plugin_interpreter/; fi
+  - if [ "$TRAVIS_BRANCH" != "master"  ]; 
+    then docker run -d --name controller -e "STAGE=DEV" -e "LOGLEVEL=DEBUG" 
+    -v /var/run/docker.sock:/var/run/docker.sock ramrodpcp/backend-interpreter:$TRAVIS_BRANCH;
+    else docker run -d --name controller -e "STAGE=DEV" -e "LOGLEVEL=DEBUG" 
+    -v /var/run/docker.sock:/var/run/docker.sock ramrodpcp/backend-interpreter:latest; fi
+  # This will eventually be for more integration testing
+  - sleep 30
+  - docker ps -a
+  - containers=$(docker ps -a | grep -v CONTAINER | awk '{print $1}')
+  # print the logs for each plugin
+  - docker logs controller
+  - docker logs plugin1
+  - docker logs rethinkdb
+  - for c in "${containers[@]}"; do docker stop $c; done
+
+after_success:
+  - if [ "$TRAVIS_BRANCH" = "qa"  ] || [ "$TRAVIS_BRANCH" = "master"  ]; 
+    then echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin; fi
+  - if [ "$TRAVIS_BRANCH" = "qa"  ]; 
+    then docker push ramrodpcp/backend-interpreter:$TRAVIS_BRANCH &&
+    docker push ramrodpcp/interpreter-plugin:$TRAVIS_BRANCH; fi
+  - if [ "$TRAVIS_BRANCH" = "master"  ]; 
+    then docker push ramrodpcp/backend-interpreter:latest &&
+    docker push ramrodpcp/interpreter-plugin:latest; fi
+
+notifications:
+  slack: ramrod-project:GDF82rRYDg3KSekrT3GA24qO

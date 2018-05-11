@@ -16,24 +16,19 @@ class LinkedProcess:
     an optional Pipe() conection object.
     """
     def __init__(self, **kwargs):
-        # Name for the process
         self.name = kwargs["name"]
-        # Pipe fo logging
+        self.logger_pipe = None
         if self.name is not "loggerprocess":
             self.logger_pipe = kwargs["logger_pipe"]
-            if type(self.logger_pipe) is not connection.Connection:
-                raise TypeError
-        else:
-            self.logger_pipe = None
-        # Process()
+        if self.logger_pipe and \
+        not isinstance(self.logger_pipe, connection._ConnectionBase):
+            raise TypeError
         self.proc = None
-        # Target function
         self.target = kwargs["target"]
         if not callable(self.target):
             raise TypeError
-        # Kill signal
         self.signal = kwargs["signal"]
-        if type(self.signal) is not sharedctypes.Synchronized:
+        if not isinstance(self.signal, sharedctypes.Synchronized):
             raise TypeError
 
     def start(self):
@@ -51,27 +46,7 @@ class LinkedProcess:
             exit(99)
 
         """Validate that the process started successfully"""
-        begin = time()
-        while time() - begin < 5:
-            if self.is_alive() and time() - begin > 3:
-                if self.logger_pipe:
-                    self.logger_pipe.send([
-                        self.name,
-                        ''.join((self.name, " started!")),
-                        20,
-                        time()
-                    ])
-                return True
-            sleep(0.5)
-        else:
-            if self.logger_pipe:
-                self.logger_pipe.send([
-                    self.name,
-                    ''.join((self.name, " failed to start!")),
-                    50,
-                    time()
-                ])
-        return False
+        return self._did_start()
 
     def restart(self):
         """Restart (create and start a new instance)
@@ -82,50 +57,29 @@ class LinkedProcess:
         """
 
         if not self.proc:
-            if self.logger_pipe:
-                self.logger_pipe.send([
+            self._log([
+                self.name,
+                "".join((
                     self.name,
-                    ''.join((
-                        self.name,
-                        " never started, cannot restart."
-                    )),
-                    20,
-                    time()
-                ])
+                    " never started, cannot restart."
+                )),
+                20,
+                time()
+            ])
             return False
         if not self.is_alive():
-            if self.logger_pipe:
-                self.logger_pipe.send([
-                    self.name,
-                    ''.join((self.name, " restarting...")),
-                    20,
-                    time()
-                ])
-            self.start()
-            begin = time()
-            while time() - begin < 5:
-                if self.is_alive() and time() - begin > 3:
-                    if self.logger_pipe:
-                        self.logger_pipe.send([
-                            self.name,
-                            ''.join((self.name, " restarted!")),
-                            20,
-                            time()
-                        ])
-                    return True
-                sleep(0.5)
-            else:
-                if self.logger_pipe:
-                    self.logger_pipe.send([
-                        self.name,
-                        ''.join((self.name, " failed to restart!")),
-                        50,
-                        time()
-                    ])
-        elif self.logger_pipe:
-            self.logger_pipe.send([
+            self._log([
                 self.name,
-                ''.join((self.name, " already running.")),
+                "".join((self.name, " restarting...")),
+                20,
+                time()
+            ])
+            self.start()
+            return self._did_start()
+        else:
+            self._log([
+                self.name,
+                "".join((self.name, " already running.")),
                 20,
                 time()
             ])
@@ -139,13 +93,12 @@ class LinkedProcess:
             is dead, othewise True.
         """
         if not self.proc:
-            if self.logger_pipe:
-                self.logger_pipe.send([
-                    self.name,
-                    ''.join((self.name, " not started!")),
-                    20,
-                    time()
-                ])
+            self._log([
+                self.name,
+                "".join((self.name, " not started!")),
+                20,
+                time()
+            ])
             return False
         if self.proc.is_alive():
             return True
@@ -177,14 +130,37 @@ class LinkedProcess:
                 if not self.is_alive():
                     break
                 sleep(0.5)
-            if self.logger_pipe:
-                self.logger_pipe.send([
+            self._log([
+                self.name,
+                "".join([
                     self.name,
-                    ''.join([
-                        self.name,
-                        " terminated with exit code ",
-                        str(self.get_exitcode())
-                    ]),
+                    " terminated with exit code ",
+                    str(self.get_exitcode())
+                ]),
+                20,
+                time()
+            ])
+        
+    def _did_start(self):
+        begin = time()
+        while time() - begin < 5:
+            if self.is_alive() and time() - begin > 3:
+                self._log([
+                    self.name,
+                    "".join((self.name, " started!")),
                     20,
                     time()
                 ])
+                return True
+            sleep(0.5)
+        self._log([
+            self.name,
+            "".join((self.name, " failed to start!")),
+            50,
+            time()
+        ])
+        return False
+
+    def _log(self, message):
+        if self.logger_pipe:
+            self.logger_pipe.send(message)
