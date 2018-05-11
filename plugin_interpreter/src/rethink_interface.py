@@ -123,7 +123,7 @@ class RethinkInterface:
                 ])
         else:
             self.logger.send(["dbprocess",
-                "There is no job with an id of " + output_data[0],
+                "".join(("There is no job with an id of ", output_data[0])),
                 30,
                 time()
             ])
