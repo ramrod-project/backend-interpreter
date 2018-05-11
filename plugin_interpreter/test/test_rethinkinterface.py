@@ -244,7 +244,7 @@ def test_send_output(rethink):
                 rethinkdb.row["OutputJob"]["id"]
             ).run(rethink.rethink_connection)
             #output_cursor.next()
-            db_output = output_cursor.next().pluck("Content").get("Content")
+            db_output = output_cursor.next().get("Content")
             assert(db_output == content)
         except rethinkdb.ReqlCursorEmpty:
             print("id could not be found after placing job into database")
