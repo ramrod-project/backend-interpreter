@@ -95,10 +95,15 @@ class RethinkInterface:
         """
         #get the job corresponding to this output
         try:
-            output_job = rethinkdb.db("Brain").table("Jobs").get(output_data[0]).run(self.rethink_connection)
-        except rethinkdb.ReqlDriverError:
+            output_job = rethinkdb.db("Brain").table("Jobs").get(
+                output_data[0]
+            ).run(self.rethink_connection)
+        except rethinkdb.ReqlDriverError as ex:
             self.logger.send(["dbprocess",
-                "Could not access Jobs Table",30,time()])
+                "".join(("Could not access Jobs Table: ", str(ex))),
+                30,
+                time()
+            ])
         #if the job has an entry add the output to the output table
         if output_job != None:
             output_entry = {
@@ -106,15 +111,22 @@ class RethinkInterface:
                 "Content": output_data[1]
             }
             try:
-                rethinkdb.db("Brain").table("Outputs").insert(output_entry,
-                conflict="replace").run(self.rethink_connection)
-            except rethinkdb.ReqlDriverError:
+                rethinkdb.db("Brain").table("Outputs").insert(
+                    output_entry,
+                    conflict="replace"
+                ).run(self.rethink_connection)
+            except rethinkdb.ReqlDriverError as ex:
                 self.logger.send(["dbprocess",
-                    "Could not write output to database",30,time()])
+                    "".join(("Could not write output to database", str(ex))),
+                    30,
+                    time()
+                ])
         else:
-            self.logger.send([ "dbprocess",
-                "Theere is no job with an id of " + output_data[0],
-                30,time()])
+            self.logger.send(["dbprocess",
+                "There is no job with an id of " + output_data[0],
+                30,
+                time()
+            ])
 
     def _update_target(self,target_data):
         pass
@@ -180,7 +192,7 @@ class RethinkInterface:
                     self._get_next_job(response["data"])
                 if response["type"] == "job_update":
                     self._update_job(response["data"])
-                if response["type"] == "job_output":
+                if response["type"] == "job_response":
                     self._send_output(response["data"])
                 if response["type"] == "target_update":
                     self._update_target(response["data"])
