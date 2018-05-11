@@ -85,6 +85,51 @@ class RethinkInterface:
             self.plugin_queue.put(new_job)
         except rethinkdb.ReqlCursorEmpty:
            self.plugin_queue.put(None)
+    
+    def _send_output(self, output_data):
+        """sends the plugin's output message to the Outputs table
+        
+        Arguments:
+            output_data {Tuple (str,str)} -- tuple containing the id of the job
+            and the output to add to the table
+        """
+        #get the job corresponding to this output
+        try:
+            output_job = rethinkdb.db("Brain").table("Jobs").get(
+                output_data[0]
+            ).run(self.rethink_connection)
+        except rethinkdb.ReqlDriverError as ex:
+            self.logger.send(["dbprocess",
+                "".join(("Could not access Jobs Table: ", str(ex))),
+                30,
+                time()
+            ])
+        #if the job has an entry add the output to the output table
+        if output_job != None:
+            output_entry = {
+                "OutputJob": output_job,
+                "Content": output_data[1]
+            }
+            try:
+                rethinkdb.db("Brain").table("Outputs").insert(
+                    output_entry,
+                    conflict="replace"
+                ).run(self.rethink_connection)
+            except rethinkdb.ReqlDriverError as ex:
+                self.logger.send(["dbprocess",
+                    "".join(("Could not write output to database", str(ex))),
+                    30,
+                    time()
+                ])
+        else:
+            self.logger.send(["dbprocess",
+                "".join(("There is no job with an id of ", output_data[0])),
+                30,
+                time()
+            ])
+
+    def _update_target(self,target_data):
+        pass
 
     
     def _create_plugin_table(self, plugin_data):
@@ -147,6 +192,10 @@ class RethinkInterface:
                     self._get_next_job(response["data"])
                 if response["type"] == "job_update":
                     self._update_job(response["data"])
+                if response["type"] == "job_response":
+                    self._send_output(response["data"])
+                if response["type"] == "target_update":
+                    self._update_target(response["data"])
             except Empty:
                 continue
             except KeyboardInterrupt:
