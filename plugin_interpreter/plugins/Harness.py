@@ -11,6 +11,7 @@ except (ValueError, SystemError):  #allow this plugin to be run from commandline
     sys.path.append(_path)
     from src import controller_plugin as cp
     from plugins.__harness_content import content as _content, command_templates as _command_templates
+    from plugins.__harness_content.__harness_helper import update_status_received as _bananas
     #raise
 
 from threading import Thread, Lock
@@ -18,6 +19,7 @@ from time import sleep, time
 import json
 from collections import defaultdict
 from random import randint
+from os import environ
 
 
 
@@ -43,6 +45,7 @@ class Harness(cp.ControllerPlugin):
         self._work = defaultdict(list)
         self._output = defaultdict(list)
         self._complete = defaultdict(list)
+        self._clients = defaultdict(list)
         super().__init__(self.name, self.proto, self.port, self.functionality)
 
     def _stop(self, logger, httpd):
@@ -60,8 +63,8 @@ class Harness(cp.ControllerPlugin):
         global _G_LOCK
         #self._advertise_functionality() #TODO: Put this in later
         _G_LOCK.acquire()
-        self._populate_work("172.22.64.1")
-        self._populate_work("127.0.0.1")
+        if __STANDALONE__:
+            self._populate_work("127.0.0.1")
 
         _G_LOCK.release()
         httpd_server = Thread(target=_app.run,
@@ -74,12 +77,12 @@ class Harness(cp.ControllerPlugin):
         try:
             while not ext_signal.value:
                 if _G_LOCK.acquire(timeout=_LOCK_WAIT):
-                    self._collect_new_jobs()
-                    self._push_complete_output()
-
+                    if self.db_send is not None: #check we're not testing
+                        self._collect_new_jobs()
+                        self._push_complete_output()
                     # add those jobs to the work
                     _G_LOCK.release()
-                sleep(15)
+                sleep(3)
         except KeyboardInterrupt:
             self._stop(logger, _app)
         finally:
@@ -91,9 +94,12 @@ class Harness(cp.ControllerPlugin):
         new_job = self._request_job()  # <dict> or None
         if new_job:
             location = new_job['JobTarget']['Location']
+            _bananas(new_job)
             self._work[location].append(new_job)
 
     def _push_complete_output(self):
+        return
+        raise NotImplementedError
         for location in self._complete:
             job = self._complete[location].pop(0)
             output = job['output']
@@ -102,13 +108,23 @@ class Harness(cp.ControllerPlugin):
             output_object = {"OutputJob":job,
                              "Content": output}
             #self._respond_output() #TODO: This function in base does not exist
-        raise NotImplementedError
+
 
     def _provide_status_update(self, job_id, status):
         raise NotImplementedError
 
     def _put_blob_in_content_table(self, file_id, blob):
         raise NotImplementedError
+
+    def _update_clients(self, client, telemetry):
+        """
+        caller MUST own _G_LOCK
+
+        :param client: <str> client's location
+        :param telemetry:  <dict> any telemetry (must be JSONable)
+        :return: None
+        """
+        self._clients[client] = telemetry
 
 
     def _populate_work(self, location):
@@ -137,6 +153,25 @@ class Harness(cp.ControllerPlugin):
         from json import dumps
         return dumps(self._work)
 
+    def _translate_next_job(self, client):
+        """
+        Caller Must own _G_LOCK
+        :return: job traslated from PCP format to client format
+        """
+        command_string = "sleep,15000" #sleep for 15 seconds if nothing else
+        if self._work[client]:
+            cmd = self._work[client].pop(0)
+            if cmd['JobCommand']['Output']:
+                self._output[client].append(cmd)
+            args = [x["Value"] for x in cmd['JobCommand']['Inputs']]
+            str_args = ",".join(args)
+            command_string = "{},{}".format(cmd['JobCommand']['CommandName'], str_args)
+            print (command_string)
+            if "terminate" in command_string:
+                print (json.dumps(self._output))
+                print (json.dumps(self._complete))
+                print (json.dumps(self._clients))
+        return command_string
 
 
 
@@ -250,6 +285,7 @@ def parse_serial(serial):
         validated["InternalLocation"] = potential[1]
         validated["Location"] = request.environ['REMOTE_ADDR']
         validated['Admin'] = potential[2]
+        validated['ContactTime'] = time()
     return validated
 
 
@@ -266,26 +302,21 @@ def _teardown_request(exception):
 @_app.route("/harness/<serial>", methods=['GET'])
 def _checkin(serial):
     validated = parse_serial(serial)
+    remote = json.loads(json.dumps(request.args)) #formatted copy op
+    validated['telemetry'] = remote
     print ( validated )
     global _G_HARNESS
     global _G_LOCK
-    remote = (json.dumps(request.args))
     command_string = "sleep,15000"
     if not __STANDALONE__ and _G_LOCK.acquire(timeout=_LOCK_WAIT):
-        if _G_HARNESS._work[validated['Location']]:
-            cmd = _G_HARNESS._work[validated['Location']].pop(0)
-            if cmd['output']:
-                _G_HARNESS._output[validated['Location']].append(cmd)
-            command_string = "%s,%s" %(cmd['name'],
-                                       ",".join(cmd['argv']))
-            print (command_string)
-            if "terminate" in command_string:
-                print (json.dumps(_G_HARNESS._output))
-                print (json.dumps(_G_HARNESS._complete))
+        _G_HARNESS._update_clients(validated['Location'], validated)
+        command_string = _G_HARNESS._translate_next_job(validated['Location'])
         _G_LOCK.release()
     elif __STANDALONE__:
+        #pick random sleep or echo
         cmd = _translated_commands[randint(0,1)]
-        command_string = "%s,%s" %(cmd['name'], ",".join(cmd['argv']))
+        command_string = "{},{}".format(cmd['name'],
+                                        ",".join(cmd['argv']))
     return command_string
 
 
@@ -296,8 +327,9 @@ def _respond_to_work(serial):
     if not __STANDALONE__ and _G_LOCK.acquire(timeout=_LOCK_WAIT):
         if _G_HARNESS._output[validated['Location']]:
             cmd = _G_HARNESS._output[validated['Location']].pop(0)
-            cmd['output'] = request.form['data']
-            _G_HARNESS._complete[validated['Location']].append(cmd)
+            final_output = {"OutputJob": cmd,
+                            "Content": request.form['data']}
+            _G_HARNESS._complete[validated['Location']].append(final_output)
         _G_LOCK.release()
     return "1"
 
