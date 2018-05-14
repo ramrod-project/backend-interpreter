@@ -32,6 +32,7 @@ def startup_brain():
                 container.stop()
                 break
         sup.teardown(0)
+        yield None
     except SystemExit:
         pass
 
