@@ -213,7 +213,7 @@ def test_update_job(rethink):
         print(test_job)
         job_dict = {
             "job": test_job,
-            "output": new_status
+            "status": new_status
         }
         rethink._update_job(job_dict)
         job_cursor = rethinkdb.db("Brain").table("Jobs").filter(
