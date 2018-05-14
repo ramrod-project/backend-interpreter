@@ -121,7 +121,7 @@ def the_pretend_getter(client):
         sleep(5)  #make sure all the updates are made
         for doc in r.db("Brain").table("Jobs").run(conn):
             assert (doc['Status'] == "Done")
-    except:
+    except AssertionError:
         return False
     return True
 
@@ -129,8 +129,8 @@ def the_pretend_getter(client):
 def the_pretend_app():
     sleep(6)
     with Pool(2) as p:
-        results = p.map(the_pretend_getter, ["127.0.0.1:5000"])
-        assert False not in results
+        test_results = p.map(the_pretend_getter, ["127.0.0.1:5000"])
+        assert False not in test_results
 
 def test_the_Harness_app():
     environ['STAGE'] = "TESTING"
@@ -145,7 +145,7 @@ def test_the_Harness_app():
     try:
         import rethinkdb as r
         conn = r.connect("127.0.0.1")
-        #sleep(5)
+        sleep(5)
         for command in TEST_COMMANDS:
             job_target = {"PluginName": "Harness",
                           "Location": "127.0.0.1",
