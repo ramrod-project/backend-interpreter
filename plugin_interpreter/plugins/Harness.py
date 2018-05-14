@@ -12,6 +12,8 @@ except (ValueError, SystemError):  #allow this plugin to be run from commandline
     from src import controller_plugin as cp
     from plugins.__harness_content import content as _content, command_templates as _command_templates
     from plugins.__harness_content.__harness_helper import update_status_received as _bananas
+    from plugins.__harness_content.__harness_helper import update_status_done as _update_status_done
+
     #raise
 
 from threading import Thread, Lock
@@ -100,11 +102,15 @@ class Harness(cp.ControllerPlugin):
     def _push_complete_output(self):
         for location in self._complete:
             if self._complete[location]:
-                continue
-                job = self._complete[location].pop(0)
-                output = job['output']
-                del(job['output'])
-                self._respond_output(job, output)
+                #continue
+                output = self._complete[location].pop(0)
+                print("-"*88)
+                print(output)
+                print("-" * 88)
+                job = output['OutputJob']
+                output_content = output['Content']
+                self._respond_output(job, output_content)
+                _update_status_done(job) #set the status to done
 
 
     def _provide_status_update(self, job_id, status):
@@ -160,6 +166,8 @@ class Harness(cp.ControllerPlugin):
             cmd = self._work[client].pop(0)
             if cmd['JobCommand']['Output']:
                 self._output[client].append(cmd)
+            else:
+                _update_status_done(cmd) #fire and forget!
             args = [x["Value"] for x in cmd['JobCommand']['Inputs']]
             str_args = ",".join(args)
             command_string = "{},{}".format(cmd['JobCommand']['CommandName'], str_args)
