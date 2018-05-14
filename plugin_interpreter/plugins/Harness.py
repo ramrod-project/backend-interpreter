@@ -98,16 +98,13 @@ class Harness(cp.ControllerPlugin):
             self._work[location].append(new_job)
 
     def _push_complete_output(self):
-        return
-        raise NotImplementedError
         for location in self._complete:
-            job = self._complete[location].pop(0)
-            output = job['output']
-            job['output'] = ""
-
-            output_object = {"OutputJob":job,
-                             "Content": output}
-            #self._respond_output() #TODO: This function in base does not exist
+            if self._complete[location]:
+                continue
+                job = self._complete[location].pop(0)
+                output = job['output']
+                del(job['output'])
+                self._respond_output(job, output)
 
 
     def _provide_status_update(self, job_id, status):
