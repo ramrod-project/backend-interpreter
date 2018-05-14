@@ -52,15 +52,15 @@ class RethinkInterface:
 
         
         Arguments:
-            job_data {tuple (str,str)} -- tuple containing the job id and the new status.
-            (job_id, status)
+            job_data {Dictionary} -- Dictionary containing the job id and the new status.
+            (job, status)
             Interpreter should in most cases be setting "Ready" status to 
             "Pending" or the "Pending" status to either "Done" or "Error"
         """
 
         try:
             rethinkdb.db("Brain").table("Jobs").get(job_data["job"]).update(
-                {"Status": job_data["output"]}
+                {"Status": job_data["status"]}
                 ).run(self.rethink_connection)
         except rethinkdb.ReqlDriverError:
             self.logger.send([
@@ -91,13 +91,13 @@ class RethinkInterface:
         """sends the plugin's output message to the Outputs table
         
         Arguments:
-            output_data {Tuple (str,str)} -- tuple containing the id of the job
-            and the output to add to the table (job_id, output)
+            output_data {dictionary (Dicttionary,str)} -- tuple containing the job
+            and the output to add to the table (job, output)
         """
         #get the job corresponding to this output
         try:
             output_job = rethinkdb.db("Brain").table("Jobs").get(
-                output_data["jobs"]["id"]
+                output_data["job"]["id"]
             ).run(self.rethink_connection)
         except rethinkdb.ReqlDriverError as ex:
             self.logger.send(["dbprocess",
