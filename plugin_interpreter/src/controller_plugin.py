@@ -5,10 +5,8 @@ TODO:
 """
 
 from abc import ABC, abstractmethod
-from multiprocessing import Lock, Queue
+from multiprocessing import Queue
 from queue import Empty
-from threading import Thread
-from time import sleep, time
 
 
 class ControllerPlugin(ABC):
@@ -27,12 +25,17 @@ class ControllerPlugin(ABC):
     inheriting class, as the Supervisor will attempt to initialize
     the command queues in the exact way prescribed below. The abstract
     methods 'start' and '_stop' *MUST BE* overridden by the inheriting
-    class. 
+    class.
     #
     'start' and must take two arguments, a multiprocesing Pipe()
     connecting the process to a central application logger, and a Value
     of boolean type, which serves as a kill signal for the process (when
-    set to True). 
+    set to True).
+    #
+    The remainder of the module can contain whatever classes
+    and methods are needed for the functionality of the plugin,
+    the template onl requires a specified format for the above
+    exported plugin controller class.
     """
 
     def __init__(self, name, proto, port, functionality):
@@ -88,7 +91,7 @@ class ControllerPlugin(ABC):
         action which is being requested (in the case of the recv_queue),
         or the data which is being sent back (send_queue). These message
         formats are defined below above their respective methods.
-        
+
         Arguments:
             send_queue {Queue} -- The queue used to send responses back to the
             database interface.
@@ -108,7 +111,7 @@ class ControllerPlugin(ABC):
         Supervisor will also hand it a 'logger' Pipe() object which
         the plugin can optionally use for logging to the central
         logger. Usage:
-        
+
         logger.send([
             self.name,
             <string: message_body>,
@@ -122,7 +125,7 @@ class ControllerPlugin(ABC):
         plugin container. When set to 'True', the mprocess is expected
         to gracefullly tear itself down, or else the Supervisor will
         terminate it after a timeout period.
-        
+
         """
         pass
 
@@ -146,7 +149,7 @@ class ControllerPlugin(ABC):
         a job waiting, then if the queue is empty, it sends a
         request to the database handler to reply with the next
         new job whose start time is in the past.
-        
+
         Returns:
             {dict} -- a dictionary describing the job containing
             {
@@ -170,6 +173,34 @@ class ControllerPlugin(ABC):
                 job = None
         return job
 
+    def _respond_output(self, job, output):
+        """Provide job response output
+
+        This method is a helper method for the plugin
+        which is inheriting this base class. The plugin
+        must pass this function the job object it
+        received from the _request_job helper function
+        and the corresponding output from the
+        command.
+
+        This method also performs some basic type
+        checking on the output.
+
+        Arguments:
+            job {dict} -- the dictionary object for
+            the job received from the database/frontend.
+            output {} -- [description]
+        """
+        if not isinstance(output, (bytes, str, int, float)):
+            raise TypeError
+        self.db_send.put({
+            "type": "job_response",
+            "data": {
+                "job": job,
+                "output": output
+            }
+        })
+
     @abstractmethod
     def _stop(self, **kwargs):
         """Stop the plugin
@@ -179,8 +210,3 @@ class ControllerPlugin(ABC):
         needed and execute any cleanup required.
         """
         exit(0)
-
-    """The remainder of the module can contain whatever classes
-    and methods are needed for the functionality of the plugin,
-    the template onl requires a specified format for the above
-    exported plugin controller class."""

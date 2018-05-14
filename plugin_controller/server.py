@@ -40,21 +40,25 @@ if __name__ == "__main__":
         "plugin_interpreter"
     )
 
-    tag = ":latest"
+    try:
+        tag = environ["TRAVIS_BRANCH"]
+    except KeyError:
+        tag = "latest"
+    network_name = "pcp"
 
-    CLIENT.networks.create("test")
     if environ["STAGE"] == "DEV":
+        network_name = "test"
+        CLIENT.networks.create(network_name)
         CLIENT.containers.run(
-            "ramrodpcp/database-brain:latest",
+            "".join(("ramrodpcp/database-brain:", tag)),
             name="rethinkdb",
             detach=True,
             ports={"28015/tcp": 28015},
             remove=True,
-            network="test"
+            network=network_name
         )
-        tag = ":dev"
     CLIENT.containers.run(
-        "ramrodpcp/interpreter-plugin" + tag,
+        "".join(("ramrodpcp/interpreter-plugin:", tag)),
         name="plugin1",
         environment={
             "STAGE": environ["STAGE"],
@@ -62,8 +66,8 @@ if __name__ == "__main__":
             "PLUGIN": "ExampleHTTP"
         },
         detach=True,
-        network="test",
-        ports={"8080/tcp": 8080},
+        network=network_name,
+        ports={"8080/tcp": 8090},
         remove=True
     )
     
@@ -71,7 +75,8 @@ if __name__ == "__main__":
     logger.log(
         20,
         "Containers started, press <CTRL-C> to stop...",
-        extra={ 'date': asctime(gmtime(time()))
+        extra={
+            'date': asctime(gmtime(time()))
         }
     )
     while True:
@@ -82,7 +87,8 @@ if __name__ == "__main__":
             logger.log(
                 20,
                 "Kill signal received, stopping container(s)...",
-                extra={ 'date': asctime(gmtime(time()))
+                extra={
+                    'date': asctime(gmtime(time()))
                 }
             )
             for container in containers:
@@ -94,15 +100,18 @@ if __name__ == "__main__":
                     logger.log(
                         20,
                         container.name + " stopped or not running",
-                        extra={ 'date': asctime(gmtime(time()))
+                        extra={
+                            'date': asctime(gmtime(time()))
                         }
                     )
                     continue
-            logger.log(
-                20,
-                "Pruning networks...",
-                extra={ 'date': asctime(gmtime(time()))
-                }
-            )
-            CLIENT.networks.prune()
+            if environ["STAGE"] == "DEV":
+                logger.log(
+                    20,
+                    "Pruning networks...",
+                    extra={ 
+                        'date': asctime(gmtime(time()))
+                    }
+                )
+                CLIENT.networks.prune()
             exit(0)

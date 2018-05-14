@@ -28,8 +28,12 @@ class mock_logger():
 @fixture(scope='module')
 def rethink():
     plugin = ExampleHTTP()
+    try:
+        tag = environ["TRAVIS_BRANCH"]
+    except KeyError:
+        tag = "latest"
     CLIENT.containers.run(
-        "ramrodpcp/database-brain:latest",
+        "".join(("ramrodpcp/database-brain:", tag)),
         name="rethinkdb_rethink",
         detach=True,
         ports={"28015/tcp": 28015},
@@ -199,10 +203,12 @@ def test_update_job(rethink):
     """
 
     new_status = "Pending"
-    job_cursor = rethinkdb.db("Brain").table("Jobs").filter(
-        (rethinkdb.row["JobTarget"]["PluginName"] == "jobtester") & (rethinkdb.row["Status"] == "Ready")
-        ).pluck("id").run(rethink.rethink_connection)
     try:
+        job_cursor = rethinkdb.db("Brain").table("Jobs").filter(
+            (rethinkdb.row["JobTarget"]["PluginName"] == "jobtester") & \
+            (rethinkdb.row["Status"] == "Ready")
+        ).pluck("id").run(rethink.rethink_connection)
+        
         test_job = job_cursor.next().get("id")
         print(test_job)
         job_tuple = (test_job,new_status)
@@ -214,3 +220,46 @@ def test_update_job(rethink):
         assert(test_job == new_status)
     except rethinkdb.ReqlCursorEmpty:
         print("Failed to get job in test_update_job")
+
+def test_send_output(rethink):
+    """Tests _send_output() by placing a job in the job queue, getting its
+    id, and then calling _send_output() with a string of output and checking
+    if the entry was added to the Outputs Table
+    
+    Arguments:
+        rethink {Fixture} -- An instance of rethink interface
+    """
+
+    content = "This is some output"
+    output_job = {
+        "JobTarget":{
+            "PluginName": "texter",
+            "Location": "8.8.8.8",
+            "Port": "80"
+        },
+        "JobCommand":{
+            "CommandName": "GetText",
+            "Tooltip": "for getting text",
+            "Inputs":[]
+        },
+        "Status": "Ready",
+        "StartTime" : 0
+    }
+    try:
+        rethinkdb.db("Brain").table("Jobs").insert(output_job).run(rethink.rethink_connection)
+        job_cursor = rethinkdb.db("Brain").table("Jobs").filter(
+            rethinkdb.row["JobTarget"]["PluginName"] == "texter"
+            ).pluck("id").run(rethink.rethink_connection)
+        job_id = job_cursor.next().get("id")
+        output_data = (job_id,content)
+        rethink._send_output(output_data)
+        output_cursor = rethinkdb.db("Brain").table("Outputs").filter(
+            rethinkdb.row["OutputJob"]["id"]
+            ).run(rethink.rethink_connection)
+        #output_cursor.next()
+        db_output = output_cursor.next().get("Content")
+        assert(db_output == content)
+    except rethinkdb.ReqlCursorEmpty:
+        print("id could not be found after placing job into database")
+    except rethinkdb.ReqlDriverError:
+        print("Could not insert test job into table")
