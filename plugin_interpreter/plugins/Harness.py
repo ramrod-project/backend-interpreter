@@ -75,7 +75,7 @@ class Harness(cp.ControllerPlugin):
 
         self._start_webserver()
         try:
-            self._processing_loop()
+            self._processing_loop(logger, ext_signal) #blocks until ext_signal.value == True
         except KeyboardInterrupt:
             self._stop(logger, _app)
         finally:
@@ -93,9 +93,9 @@ class Harness(cp.ControllerPlugin):
     def _start_webserver(self):
         httpd_server = Thread(target=_app.run,
                               daemon=True,
-                              kwargs={"port": self.port}
-                              )
+                              kwargs={"port": self.port})
         httpd_server.start()
+        return httpd_server
 
     def _collect_new_jobs(self):
         new_job = self._request_job()  # <dict> or None
@@ -373,6 +373,7 @@ if __name__ == "__main__":
         __STANDALONE__ = True
         _app.run(debug=True, port=5005) #5005 is the non-default Debug port
     else:
+        __STANDALONE__ = True
         ext_signal = Value(c_bool, False)
         test_harness = Harness()
         test_harness.start(None, ext_signal)
