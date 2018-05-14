@@ -253,7 +253,7 @@ def test_send_output(rethink):
         job_cursor = rethinkdb.db("Brain").table("Jobs").filter(
             rethinkdb.row["JobTarget"]["PluginName"] == "texter"
             ).pluck("id").run(rethink.rethink_connection)
-        job_id = job_cursor.next().get("id")
+        job_id = job_cursor.next()
         output_data = {
             "job": job_id,
             "output": content
