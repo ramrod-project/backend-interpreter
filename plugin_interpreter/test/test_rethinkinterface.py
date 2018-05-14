@@ -211,8 +211,11 @@ def test_update_job(rethink):
         
         test_job = job_cursor.next().get("id")
         print(test_job)
-        job_tuple = (test_job,new_status)
-        rethink._update_job(job_tuple)
+        job_dict = {
+            "job": test_job,
+            "status": new_status
+        }
+        rethink._update_job(job_dict)
         job_cursor = rethinkdb.db("Brain").table("Jobs").filter(
             (rethinkdb.row["JobTarget"]["PluginName"] == "jobtester") & (rethinkdb.row["Status"] == new_status)
             ).pluck("Status").run(rethink.rethink_connection)
@@ -250,8 +253,11 @@ def test_send_output(rethink):
         job_cursor = rethinkdb.db("Brain").table("Jobs").filter(
             rethinkdb.row["JobTarget"]["PluginName"] == "texter"
             ).pluck("id").run(rethink.rethink_connection)
-        job_id = job_cursor.next().get("id")
-        output_data = (job_id,content)
+        job_id = job_cursor.next()
+        output_data = {
+            "job": job_id,
+            "output": content
+        }
         rethink._send_output(output_data)
         output_cursor = rethinkdb.db("Brain").table("Outputs").filter(
             rethinkdb.row["OutputJob"]["id"]
