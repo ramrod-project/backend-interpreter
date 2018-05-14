@@ -63,34 +63,39 @@ class Harness(cp.ControllerPlugin):
 
     def start(self, logger, ext_signal):
         global _G_LOCK
-        #self._advertise_functionality() #TODO: Put this in later
+        global _G_HARNESS
         _G_LOCK.acquire()
+        _G_HARNESS = self
+
         if __STANDALONE__:
             self._populate_work("127.0.0.1")
-
+        else:
+            self._advertise_functionality()
         _G_LOCK.release()
-        httpd_server = Thread(target=_app.run,
-                              daemon=True,
-                              kwargs={"port": self.port}
-                              )
-        httpd_server.start()
-        global _G_HARNESS
-        _G_HARNESS = self
+
+        self._start_webserver()
         try:
-            while not ext_signal.value:
-                if _G_LOCK.acquire(timeout=_LOCK_WAIT):
-                    if self.db_send is not None: #check we're not testing
-                        self._collect_new_jobs()
-                        self._push_complete_output()
-                    # add those jobs to the work
-                    _G_LOCK.release()
-                sleep(3)
+            self._processing_loop()
         except KeyboardInterrupt:
             self._stop(logger, _app)
         finally:
             exit(0)
 
+    def _processing_loop(self, logger, ext_signal):
+        while not ext_signal.value:
+            if _G_LOCK.acquire(timeout=_LOCK_WAIT):
+                if self.db_send is not None:  # check we're not testing
+                    self._collect_new_jobs()
+                    self._push_complete_output()
+                _G_LOCK.release()
+            sleep(3)
 
+    def _start_webserver(self):
+        httpd_server = Thread(target=_app.run,
+                              daemon=True,
+                              kwargs={"port": self.port}
+                              )
+        httpd_server.start()
 
     def _collect_new_jobs(self):
         new_job = self._request_job()  # <dict> or None
@@ -102,15 +107,11 @@ class Harness(cp.ControllerPlugin):
     def _push_complete_output(self):
         for location in self._complete:
             if self._complete[location]:
-                #continue
                 output = self._complete[location].pop(0)
-                print("-"*88)
-                print(output)
-                print("-" * 88)
                 job = output['OutputJob']
                 output_content = output['Content']
                 self._respond_output(job, output_content)
-                _update_status_done(job) #set the status to done
+                _update_status_done(job)
 
 
     def _provide_status_update(self, job_id, status):
