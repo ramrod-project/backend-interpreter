@@ -98,25 +98,38 @@ TEST_COMMANDS = [
 
 def the_pretend_getter(client):
     import requests
-    resp = requests.get("http://{}/harness/testing_testing_testing?args=Stuff".format(client), timeout=5)
-    #better be a Echo Hello World!
-    print(resp.text)
-    assert("echo" in resp.text)
-    requests.post("http://{}/response/testing_testing_testing".format(client), data={"data": resp.text[5:]}, timeout=5)
-    sleep(2)
-    resp = requests.get("http://{}/harness/testing_testing_testing?args=Stuff".format(client), timeout=5)
-    print(resp.text)
-    assert("sleep" in resp.text)
-    sleep(2)
-    resp = requests.get("http://{}/harness/testing_testing_testing?args=Stuff".format(client), timeout=5)
-    print(resp.text)
-    assert("terminate" in resp.text)
+    import rethinkdb as r
+    try:
+        resp = requests.get("http://{}/harness/testing_testing_testing?args=Stuff".format(client), timeout=5)
+        #better be a Echo Hello World!
+        print(resp.text)
+        assert("echo" in resp.text)
+        requests.post("http://{}/response/testing_testing_testing".format(client), data={"data": resp.text[5:]}, timeout=5)
+        sleep(5) #make sure all the updates get made
+        conn = r.connect()
+        for doc in r.db("Brain").table("Outputs").run(conn):
+            assert (doc['Content'] == "Hello World!")
+        #confirm hello makes it to the database
+        resp = requests.get("http://{}/harness/testing_testing_testing?args=Stuff".format(client), timeout=5)
+        print(resp.text)
+        assert("sleep" in resp.text)
+        sleep(3) #make sure all the updates get made
+        resp = requests.get("http://{}/harness/testing_testing_testing?args=Stuff".format(client), timeout=5)
+        print(resp.text)
+        assert("terminate" in resp.text)
+        sleep(5)  #make sure all the updates are made
+        for doc in r.db("Brain").table("Jobs").run(conn):
+            assert (doc['Status'] == "Done")
+    except:
+        return False
+    return True
 
 
 def the_pretend_app():
     sleep(6)
     with Pool(2) as p:
-        print(p.map(the_pretend_getter, ["127.0.0.1:5000"]))
+        results = p.map(the_pretend_getter, ["127.0.0.1:5000"])
+        assert False not in results
 
 def test_the_Harness_app():
     environ['STAGE'] = "TESTING"
@@ -134,9 +147,9 @@ def test_the_Harness_app():
         #sleep(5)
         for command in TEST_COMMANDS:
             job_target = {"PluginName": "Harness",
-                          "Location":"127.0.0.1",
-                          "Port":"000"}
-            job = {"JobTarget":job_target,
+                          "Location": "127.0.0.1",
+                          "Port": "000"}
+            job = {"JobTarget": job_target,
                    "Status": "Ready",
                    "StartTime": 0,
                    "JobCommand": command}
