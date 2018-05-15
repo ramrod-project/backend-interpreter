@@ -12,7 +12,18 @@ to this host
 Arguments:
 1: Remote filename (string format)
 
-Returns: Status code
+Returns: The File itself
+
+"""
+delete_file_tt = """
+Delete File:
+
+This command Deletes a file from the endpoint
+
+Arguments:
+1: Remote filename (string format)
+
+Returns: None
 
 """
 write_file_tt = """
@@ -66,6 +77,16 @@ if the key does not exist, returns NULL
 Arguments:
 1: Registry Key Location
 2: Reg Key Name
+
+Returns: Value Data
+"""
+delete_regkey_tt = """
+Delete Registry Key:
+
+Deletes the Registry Key
+
+Arguments:
+1: Registry Key Location
 
 Returns: Value Data
 """
@@ -190,10 +211,21 @@ Returns:
 String
 """
 
+terminate_tt = """
+Terminate
 
-commands = [
+Client closes itself with exit code 0
+
+Arguments:
+None
+
+Returns:
+None
+"""
+
+command_templates = [
 {
-"CommandName":"read_file",
+"CommandName":"get_file",
 "Tooltip":read_file_tt,
 "Output":True,
 "Inputs":[
@@ -206,13 +238,26 @@ commands = [
 "OptionalInputs":[]
 },
 {
-"CommandName":"send_file",
+"CommandName":"delete_file",
+"Tooltip":delete_file_tt,
+"Output":True,
+"Inputs":[
+        {"Name":"FilePath",
+         "Type":"textbox",
+         "Tooltip":"Must be the fully qualified path",
+         "Value":"remote filename"
+         },
+    ],
+"OptionalInputs":[]
+},
+{
+"CommandName":"put_file",
 "Tooltip":write_file_tt,
 "Output":True,
 "Inputs":[
         {"Name":"SourceFilePath",
          "Type":"textbox",
-         "Tooltip":"Must be uploaded here dirst",
+         "Tooltip":"Must be uploaded here first",
          "Value":"File"
          },
         {"Name":"DestinationFilePath",
@@ -224,7 +269,7 @@ commands = [
 "OptionalInputs":[]
 },
 {
-"CommandName":"write_regkey",
+"CommandName":"write_registry",
 "Tooltip":write_regkey_tt,
 "Output":True,
 "Inputs":[
@@ -247,7 +292,7 @@ commands = [
 "OptionalInputs":[]
 },
 {
-"CommandName":"read_regkey",
+"CommandName":"read_registry",
 "Tooltip":read_regkey_tt,
 "Output":True,
 "Inputs":[
@@ -259,6 +304,19 @@ commands = [
         {"Name":"KeyName",
          "Type":"textbox",
          "Tooltip":"",
+         "Value":""
+         },
+    ],
+"OptionalInputs":[]
+},
+{
+"CommandName":"delete_registry",
+"Tooltip":delete_regkey_tt,
+"Output":True,
+"Inputs":[
+        {"Name":"KeyLocation",
+         "Type":"textbox",
+         "Tooltip":"HKLM is ok",
          "Value":""
          },
     ],
@@ -299,6 +357,19 @@ commands = [
 "OptionalInputs":[]
 },
 {
+"CommandName":"terminate_process",
+"Tooltip":terminate_process_tt,
+"Output":True,
+"Inputs":[
+        {"Name":"ProcessName",
+         "Type":"textbox",
+         "Tooltip":"Must be the process name or the PID",
+         "Value":""
+         },
+        ],
+"OptionalInputs":[]
+},
+{
 "CommandName":"start_keylogger",
 "Tooltip":start_keylogger_tt,
 "Output":True,
@@ -325,19 +396,6 @@ commands = [
         ]
 },
 {
-"CommandName":"terminate_process",
-"Tooltip":terminate_process_tt,
-"Output":True,
-"Inputs":[
-        {"Name":"ProcessName",
-         "Type":"textbox",
-         "Tooltip":"Must be the process name or the PID",
-         "Value":""
-         },
-        ],
-"OptionalInputs":[]
-},
-{
 "CommandName":"sleep",
 "Tooltip":sleep_tt,
 "Output":False,
@@ -355,12 +413,19 @@ commands = [
 "Tooltip":echo_tt,
 "Output":True,
 "Inputs":[
-        {"Name":"SleepTime",
+        {"Name":"EchoString",
          "Type":"textbox",
-         "Tooltip":"Integer number of miliseconds",
+         "Tooltip":"This string will be echoed back",
          "Value":""
          },
         ],
+"OptionalInputs":[]
+},
+{
+"CommandName":"terminate",
+"Tooltip":terminate_tt,
+"Output":False,
+"Inputs":[],
 "OptionalInputs":[]
 },
 ]
