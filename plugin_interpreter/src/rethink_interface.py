@@ -61,7 +61,20 @@ class RethinkInterface:
         try:
             rethinkdb.db("Brain").table("Jobs").get(job_data["job"]).update(
                 {"Status": job_data["status"]}
-                ).run(self.rethink_connection)
+            ).run(self.rethink_connection)
+            #update the related output
+            outputref = rethinkdb.db("Brain").table("Outputs").filter(
+                rethinkdb.row["OutputJob"]["id"] == job_data["job"]
+            ).run(self.rethink_connection)
+            
+            if outputref != None:
+                rethinkdb.db("Brain").table("Outputs").filter(
+                rethinkdb.row["OutputJob"]["id"] == job_data["job"]
+                ).update({
+                    "OutputJob": {
+                        "Status": job_data ["status"]
+                    }
+                }).run(self.rethink_connection)
         except rethinkdb.ReqlDriverError:
             self.logger.send([
                 "dbprocess",
@@ -91,7 +104,7 @@ class RethinkInterface:
         """sends the plugin's output message to the Outputs table
         
         Arguments:
-            output_data {dictionary (Dicttionary,str)} -- tuple containing the job
+            output_data {dictionary (Dictionary,str)} -- tuple containing the job
             and the output to add to the table (job, output)
         """
         #get the job corresponding to this output
