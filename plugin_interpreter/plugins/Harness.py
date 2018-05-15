@@ -36,6 +36,11 @@ class Harness(cp.ControllerPlugin):
     functionality = _command_templates
 
     def __init__(self):
+        """
+        The plugin class is the last class to init,
+        but Database and logger have not started yet
+        Should not be using the database handles or the logger in this fn
+        """
         self.name = "Harness"
         if _environ['STAGE'] == "DEV":
             self.port = 5005
@@ -62,6 +67,15 @@ class Harness(cp.ControllerPlugin):
 
 
     def start(self, logger, ext_signal):
+        """
+        Start function is called by the supervisor only
+        This function may assume the logger and the db is already start()ed
+        This function should include all calls required to run until ext_signal says to stop.
+
+        :param logger: <central logger> object for all log handling
+        :param ext_signal: <ctypes.bool> the kill signal
+        :return: This function calls exit! when complete
+        """
         global _G_LOCK
         global _G_HARNESS
         _G_LOCK.acquire()
@@ -82,6 +96,15 @@ class Harness(cp.ControllerPlugin):
             exit(0)
 
     def _processing_loop(self, logger, ext_signal):
+        """
+        The main processing loop of this class.
+        This loop will run forever until signaled by the
+        <ctypes.bool> ext signal object is not set to true
+
+        :param logger: <central_logger> class from this project
+        :param ext_signal: <ctypes.bool> signal to externally stop this function
+        :return: None
+        """
         while not ext_signal.value:
             if _G_LOCK.acquire(timeout=_LOCK_WAIT):
                 if self.db_send is not None:  # check we're not testing
@@ -91,6 +114,13 @@ class Harness(cp.ControllerPlugin):
             sleep(3)
 
     def _start_webserver(self):
+        """
+        Wraps the global webserver in a Thread object and starts it in the background.
+        Flask happens to have a background start option
+        Using <Thread> for consistency with this project.
+
+        :return: <Thread> object holding the started web server
+        """
         httpd_server = Thread(target=_app.run,
                               daemon=True,
                               kwargs={"port": self.port})
@@ -98,31 +128,60 @@ class Harness(cp.ControllerPlugin):
         return httpd_server
 
     def _collect_new_jobs(self):
+        """
+        Pulls at most one job from upstream and adds it to local tracking.
+        :return: <bool> whether a not a job was added
+        """
         new_job = self._request_job()  # <dict> or None
         if new_job:
             location = new_job['JobTarget']['Location']
             _bananas(new_job)
             self._work[location].append(new_job)
+        return bool(new_job)
 
     def _push_complete_output(self):
+        """
+        Sends locally tracked complete output up the stack
+
+        :return: None
+        """
         for location in self._complete:
             if self._complete[location]:
-                output = self._complete[location].pop(0)
-                job = output['OutputJob']
-                output_content = output['Content']
-                self._respond_output(job, output_content)
-                _update_status_done(job)
+                while self._complete[location]:
+                    output = self._complete[location].pop(0)
+                    job = output['OutputJob']
+                    output_content = output['Content']
+                    self._respond_output(job, output_content)
+                    _update_status_done(job)
 
 
     def _provide_status_update(self, job_id, status):
+        """
+        There are limited status updates the plugin can update.
+        This code should probably be in the base class
+
+        :param job_id:
+        :param status:
+        :return:
+        """
         raise NotImplementedError
 
     def _put_blob_in_content_table(self, file_id, blob):
+        """
+        Caller must own _G_LOCK
+        Internal function only
+
+        Job template may include a file buffer.
+        Put/Get file must be translated to the _content table
+        :param file_id:
+        :param blob:
+        :return:
+        """
         raise NotImplementedError
 
     def _update_clients(self, client, telemetry):
         """
-        caller MUST own _G_LOCK
+        caller MUST own _G_LOCK.  Caller may provide a <dict> object.
 
         :param client: <str> client's location
         :param telemetry:  <dict> any telemetry (must be JSONable)
@@ -141,6 +200,11 @@ class Harness(cp.ControllerPlugin):
         [self._work[location].append(x) for x in _translated_commands]
 
     def _convert_job(self, job):
+        '''
+        Deprecated: Jobs should be in the new template format
+        :param job:
+        :return:
+        '''
         loc = job['JobTarget']['Location']
         cmd = job['JobCommand']['CommandName']
         out = job['JobCommand']['Output']
@@ -148,12 +212,20 @@ class Harness(cp.ControllerPlugin):
         return (loc, out, cmd, args)
 
     def _add_job_to_worklist(self, job):
+        """
+        Deprecated: Jobs should be in the new template format if added to the work list
+        :param job:
+        :return:
+        """
         (loc, out, cmd, args) = self._convert_job(job)
         self._work[loc].append({"output":out,
                                 "name":cmd,
                                 "argv":args})
 
     def _dump_internal_worklist(self):
+        """
+        :return: string serialized copy of the current worklist
+        """
         from json import dumps
         return dumps(self._work)
 
