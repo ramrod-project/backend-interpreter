@@ -261,11 +261,6 @@ class Harness(cp.ControllerPlugin):
             args = [x["Value"] for x in cmd['JobCommand']['Inputs']]
             str_args = ",".join(args)
             command_string = "{},{}".format(cmd['JobCommand']['CommandName'], str_args)
-            print (command_string)
-            if "terminate" in command_string:
-                print (json.dumps(self._output))
-                print (json.dumps(self._complete))
-                print (json.dumps(self._clients))
         return command_string
 
 
