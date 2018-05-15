@@ -93,7 +93,8 @@ def dummy_interface():
     elif next_item["type"] == "functionality":
         return next_item["data"]
     elif next_item["type"] == "job_response":
-        return next_item["data"]
+        status_update = FROM_PLUGIN.get()
+        return (next_item["data"], status_update["data"]["status"])
     return None
 
 @fixture(scope="module")
@@ -147,6 +148,8 @@ def test_request_job(plugin_base):
     responder.start()
     result = plugin_base._request_job()
     assert result == SAMPLE_JOB
+    status = FROM_PLUGIN.get(timeout=3)
+    assert status["data"]["status"] == "Pending"
 
 def test_respond_to_job(plugin_base):
     """Test sending job response
@@ -164,21 +167,25 @@ def test_respond_to_job(plugin_base):
         plugin_base._respond_output(SAMPLE_JOB, dummy_interface)
 
     plugin_base._respond_output(SAMPLE_JOB, "Sample Job Response")
-    result = dummy_interface()
+    result, status = dummy_interface()
     assert result["job"] == SAMPLE_JOB
     assert result["output"] == "Sample Job Response"
+    assert status == "Done"
 
     plugin_base._respond_output(SAMPLE_JOB, bytes("Sample Job Response", "utf-8"))
-    result = dummy_interface()
+    result, status = dummy_interface()
     assert result["job"] == SAMPLE_JOB
     assert result["output"] == bytes("Sample Job Response", "utf-8")
+    assert status == "Done"
 
     plugin_base._respond_output(SAMPLE_JOB, 666)
-    result = dummy_interface()
+    result, status = dummy_interface()
     assert result["job"] == SAMPLE_JOB
     assert result["output"] == 666
+    assert status == "Done"
 
     plugin_base._respond_output(SAMPLE_JOB, 42.42)
-    result = dummy_interface()
+    result, status = dummy_interface()
     assert result["job"] == SAMPLE_JOB
     assert result["output"] == 42.42
+    assert status == "Done"
