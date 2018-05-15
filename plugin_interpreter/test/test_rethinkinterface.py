@@ -306,6 +306,6 @@ def test_update_output(rethink):
     rethink._update_job(updater)
     output_cursor = rethinkdb.db("Brain").table("Outputs").filter(
         rethinkdb.row["OutputJob"]["id"]
-    ).pluck({"OutputJob" : ["Status"]}).run(rethink.rethink_connection)
-    output_status = output_cursor.next().get("Status")
+    ).run(rethink.rethink_connection)
+    output_status = output_cursor.next().get("OutputJob",{}).get("Status")
     assert output_status == "Done"
