@@ -290,7 +290,7 @@ def test_update_output(rethink):
     job_cursor = rethinkdb.db("Brain").table("Jobs").filter(
             rethinkdb.row["JobTarget"]["PluginName"] == "updater"
             ).pluck("id").run(rethink.rethink_connection)
-    job_id = job_cursor.next()
+    job_id = job_cursor.next().get("id")
     updater = {
         "job" : job_id,
         "status": "Pending"
@@ -309,5 +309,5 @@ def test_update_output(rethink):
     rethink._update_job(updater)
     output_cursor = rethinkdb.db("Brain").table("Outputs").filter(
         rethinkdb.row["OutputJob"]["id"]
-    ).pluck({"OutputJob" : ["Status"]}).run(rethink.rethink_connection)
+    ).pluck({"OutputJob" : ["Status"]}).run(rethink.rethink_connection).get("Status")
     assert(output_cursor == "Done")
