@@ -135,7 +135,7 @@ class Harness(cp.ControllerPlugin):
         new_job = self._request_job()  # <dict> or None
         if new_job:
             location = new_job['JobTarget']['Location']
-            _bananas(new_job) #base class updates state now
+            #_bananas(new_job) #base class updates state now
             self._work[location].append(new_job)
         return bool(new_job)
 
@@ -171,7 +171,7 @@ class Harness(cp.ControllerPlugin):
                     job = output['OutputJob']
                     output_content = output['Content']
                     self._respond_output(job, output_content)
-                    _update_status_done(job)
+                    #_update_status_done(job)
 
 
     def _provide_status_update(self, job_id, status):
