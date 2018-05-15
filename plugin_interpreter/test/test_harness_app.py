@@ -16,7 +16,7 @@ def startup_brain():
     environ["LOGLEVEL"] = "DEBUG"
     CLIENT.containers.run(
         "ramrodpcp/database-brain",
-        name="rethinkdb",
+        name="rethinkdbtestapp",
         detach=True,
         ports={"28015/tcp": 28015},
         remove=True,
@@ -28,7 +28,7 @@ def startup_brain():
         environ["LOGLEVEL"] = ""
         containers = CLIENT.containers.list()
         for container in containers:
-            if container.name == "rethinkdb":
+            if container.name == "rethinkdbtestapp":
                 container.stop()
                 break
         sup.teardown(0)
