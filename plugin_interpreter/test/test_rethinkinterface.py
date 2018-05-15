@@ -269,3 +269,44 @@ def test_send_output(rethink):
         print("id could not be found after placing job into database")
     except rethinkdb.ReqlDriverError:
         print("Could not insert test job into table")
+
+def test_update_output(rethink):
+    content = "This is some different output"
+    new_job = {
+        "JobTarget":{
+            "PluginName": "updater",
+            "Location": "8.8.8.8",
+            "Port": "80"
+        },
+        "JobCommand":{
+            "CommandName": "TestJob",
+            "Tooltip": "for testing updates",
+            "Inputs":[]
+        },
+        "Status": "Ready",
+        "StartTime" : 0
+    }
+    rethinkdb.db("Brain").table("Jobs").insert(new_job).run(rethink.rethink_connection)
+    job_cursor = rethinkdb.db("Brain").table("Jobs").filter(
+            rethinkdb.row["JobTarget"]["PluginName"] == "updater"
+            ).pluck("id").run(rethink.rethink_connection)
+    job_obj = job_cursor.next()
+    updater = {
+        "job" : job_obj.get("id"),
+        "status": "Pending"
+    }
+    #test updating without any associated output
+    rethink._update_job(updater)
+    output_data = {
+        "job": job_obj,
+        "output": content
+    }
+    rethink._send_output(output_data)
+    updater["status"] = "Done"
+    rethink._update_job(updater)
+    output_cursor = rethinkdb.db("Brain").table("Outputs").filter(
+        rethinkdb.row["OutputJob"]["id"] == job_obj.get("id")
+    ).run(rethink.rethink_connection)
+    print(output_cursor)
+    output_status = output_cursor.next().get("OutputJob",{}).get("Status")
+    assert output_status == "Done"
