@@ -283,7 +283,7 @@ def test_update_output(rethink):
             "Tooltip": "for testing updates",
             "Inputs":[]
         },
-        "Status": "Pending",
+        "Status": "Ready",
         "StartTime" : 0
     }
     rethinkdb.db("Brain").table("Jobs").insert(new_job).run(rethink.rethink_connection)
@@ -291,6 +291,12 @@ def test_update_output(rethink):
             rethinkdb.row["JobTarget"]["PluginName"] == "updater"
             ).pluck("id").run(rethink.rethink_connection)
     job_id = job_cursor.next()
+    updater = {
+        "job" : job_id,
+        "status": "Pending"
+    }
+    #test updating without any associated output
+    rethink.update_job(updater)
     output_data = {
         "job": job_id,
         "output": content
