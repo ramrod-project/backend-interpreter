@@ -169,6 +169,8 @@ class ControllerPlugin(ABC):
                 "JobCommand": {dict} -- command to run
             }
         """
+        job = None
+    
         try:
             job = self.db_recv.get_nowait()
         except Empty:
@@ -178,9 +180,10 @@ class ControllerPlugin(ABC):
             })
             try:
                 job = self.db_recv.get(timeout=3)
-                self._update_job_status(job["id"], "Pending")
+                if job:
+                    self._update_job_status(job["id"], "Pending")
             except Empty:
-                job = None
+                pass
         return job
 
     def _respond_output(self, job, output):
