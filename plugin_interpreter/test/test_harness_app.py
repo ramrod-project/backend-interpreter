@@ -120,6 +120,10 @@ def the_pretend_getter(client):
         resp = requests.get("http://{}/harness/testing_testing_testing?args=Third".format(client), timeout=MAX_REQUEST_TIMEOUT)
         print(resp.text)
         assert("terminate" in resp.text), "Expected third command to be terminate"
+        resp = requests.get("http://{}/harness/testing_testing_testing?args=NoCommandsForMe".format(client), timeout=MAX_REQUEST_TIMEOUT)
+        print(resp.text)
+        assert("sleep" in resp.text), "Server should respond with sleep if no other command provided"
+        sleep(3) #make sure all the updates get made
         sleep(5)  #make sure all the updates are made
         for doc in r.db("Brain").table("Jobs").run(conn):
             assert (doc['Status'] == "Done")
