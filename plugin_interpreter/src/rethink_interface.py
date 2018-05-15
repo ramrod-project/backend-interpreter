@@ -67,6 +67,7 @@ class RethinkInterface:
                 rethinkdb.row["OutputJob"]["id"] == job_data["job"]
             ).run(self.rethink_connection)
 
+            sleep(1)
             if outputref != None:
                 rethinkdb.db("Brain").table("Outputs").filter(
                 rethinkdb.row["OutputJob"]["id"] == job_data["job"]
