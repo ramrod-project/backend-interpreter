@@ -99,29 +99,37 @@ TEST_COMMANDS = [
 
 def the_pretend_getter(client):
     import requests
+    from requests.exceptions import ReadTimeout
     import rethinkdb as r
+    MAX_REQUEST_TIMEOUT = 120
     try:
-        resp = requests.get("http://{}/harness/testing_testing_testing?args=Stuff".format(client), timeout=5)
+        resp = requests.get("http://{}/harness/testing_testing_testing?args=First".format(client), timeout=MAX_REQUEST_TIMEOUT)
         #better be a Echo Hello World!
         print(resp.text)
-        assert("echo" in resp.text)
-        requests.post("http://{}/response/testing_testing_testing".format(client), data={"data": resp.text[5:]}, timeout=5)
+        assert("echo" in resp.text), "Expected First command to be echo"
+        requests.post("http://{}/response/testing_testing_testing".format(client), data={"data": resp.text[5:]}, timeout=MAX_REQUEST_TIMEOUT)
         sleep(5) #make sure all the updates get made
         conn = r.connect()
         for doc in r.db("Brain").table("Outputs").run(conn):
             assert (doc['Content'] == "Hello World!")
         #confirm hello makes it to the database
-        resp = requests.get("http://{}/harness/testing_testing_testing?args=Stuff".format(client), timeout=5)
+        resp = requests.get("http://{}/harness/testing_testing_testing?args=Second".format(client), timeout=MAX_REQUEST_TIMEOUT)
         print(resp.text)
-        assert("sleep" in resp.text)
+        assert("sleep" in resp.text), "Expected second command to be sleep"
         sleep(3) #make sure all the updates get made
-        resp = requests.get("http://{}/harness/testing_testing_testing?args=Stuff".format(client), timeout=5)
+        resp = requests.get("http://{}/harness/testing_testing_testing?args=Third".format(client), timeout=MAX_REQUEST_TIMEOUT)
         print(resp.text)
-        assert("terminate" in resp.text)
+        assert("terminate" in resp.text), "Expected third command to be terminate"
         sleep(5)  #make sure all the updates are made
         for doc in r.db("Brain").table("Jobs").run(conn):
             assert (doc['Status'] == "Done")
-    except AssertionError:
+    except AssertionError as e:
+        from sys import stderr
+        stderr.write("{}\n".format(e))
+        return False
+    except ReadTimeout:
+        #this is for manual debugging
+        sleep(300)
         return False
     return True
 

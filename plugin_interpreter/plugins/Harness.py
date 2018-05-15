@@ -135,9 +135,28 @@ class Harness(cp.ControllerPlugin):
         new_job = self._request_job()  # <dict> or None
         if new_job:
             location = new_job['JobTarget']['Location']
-            _bananas(new_job)
+            _bananas(new_job) #base class updates state now
             self._work[location].append(new_job)
         return bool(new_job)
+
+    def _job_is_complete(self, client, output):
+        """
+        Plugin-internal function to set the job to complete status
+
+        Caller MUST own G_LOCK
+
+        Assumes at most 1 job per client at a time
+
+        :param client: identifier for the external client
+        :param output: arbitrary data <str><bytes><int>
+        :return: None
+
+        """
+        if self._output[client]:
+            cmd = self._output[client].pop(0)
+            final_output = {"OutputJob": cmd,
+                            "Content": output}
+            _G_HARNESS._complete[client].append(final_output)
 
     def _push_complete_output(self):
         """
@@ -232,15 +251,18 @@ class Harness(cp.ControllerPlugin):
     def _translate_next_job(self, client):
         """
         Caller Must own _G_LOCK
+
+        This plugin needs to job in a comma separated string
+        <cmd>[,<arg1>,<arg2>...]
+
         :return: job traslated from PCP format to client format
         """
         command_string = "sleep,15000" #sleep for 15 seconds if nothing else
-        if self._work[client]:
+        if not self._output[client] and self._work[client]:
             cmd = self._work[client].pop(0)
-            if cmd['JobCommand']['Output']:
-                self._output[client].append(cmd)
-            else:
-                _update_status_done(cmd) #fire and forget!
+            self._output[client].append(cmd)
+            if not cmd['JobCommand']['Output']: #FireandForget goes straight to complete
+                self._job_is_complete(client, "")
             args = [x["Value"] for x in cmd['JobCommand']['Inputs']]
             str_args = ",".join(args)
             command_string = "{},{}".format(cmd['JobCommand']['CommandName'], str_args)
@@ -403,11 +425,7 @@ def _respond_to_work(serial):
     validated = parse_serial(serial)
     print(request.form['data'])
     if not __STANDALONE__ and _G_LOCK.acquire(timeout=_LOCK_WAIT):
-        if _G_HARNESS._output[validated['Location']]:
-            cmd = _G_HARNESS._output[validated['Location']].pop(0)
-            final_output = {"OutputJob": cmd,
-                            "Content": request.form['data']}
-            _G_HARNESS._complete[validated['Location']].append(final_output)
+        _G_HARNESS._job_is_complete(validated['Location'], request.form['data'])
         _G_LOCK.release()
     return "1"
 
@@ -427,12 +445,10 @@ def _get_blob(serial, file_id):
 @_app.route("/givemethat/<serial>/<file_id>", methods=['POST'])
 def _put_blob(serial, file_id):
     validated = parse_serial(serial)
-    _content[file_id] = request.form['data']
+    _content[file_id] = request.form['data'] #TODO: Decide if files should be reused like this
     if not __STANDALONE__ and _G_LOCK.acquire(timeout=_LOCK_WAIT):
-        if _G_HARNESS._output[validated['Location']]:
-            cmd = _G_HARNESS._output[validated['Location']].pop(0)
-            cmd['output'] = request.form['data']
-            _G_HARNESS._complete[validated['Location']].append(cmd)
+        _G_HARNESS._job_is_complete(validated['Location'],
+                                    request.form['data'])
         _G_LOCK.release()
     return "1"
 
