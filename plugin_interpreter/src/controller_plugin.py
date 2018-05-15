@@ -128,6 +128,15 @@ class ControllerPlugin(ABC):
 
         """
         pass
+    
+    def _update_job_status(self, id, status):
+        self.db_send.put({
+            "type": "job_update",
+            "data": {
+                "job": id,
+                "status": status
+            }
+        })
 
     def _advertise_functionality(self):
         """Advertises functionality to database
@@ -169,6 +178,7 @@ class ControllerPlugin(ABC):
             })
             try:
                 job = self.db_recv.get(timeout=3)
+                self._update_job_status(job["id"], "Pending")
             except Empty:
                 job = None
         return job
@@ -200,6 +210,7 @@ class ControllerPlugin(ABC):
                 "output": output
             }
         })
+        self._update_job_status(job["id"], "Done")
 
     @abstractmethod
     def _stop(self, **kwargs):
