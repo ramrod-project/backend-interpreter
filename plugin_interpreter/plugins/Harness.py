@@ -11,9 +11,6 @@ except (ValueError, SystemError):  #allow this plugin to be run from commandline
     sys.path.append(_path)
     from src import controller_plugin as cp
     from plugins.__harness_content import content as _content, command_templates as _command_templates
-    from plugins.__harness_content.__harness_helper import update_status_received as _bananas
-    from plugins.__harness_content.__harness_helper import update_status_done as _update_status_done
-
     #raise
 
 from threading import Thread, Lock
@@ -135,7 +132,6 @@ class Harness(cp.ControllerPlugin):
         new_job = self._request_job()  # <dict> or None
         if new_job:
             location = new_job['JobTarget']['Location']
-            #_bananas(new_job) #base class updates state now
             self._work[location].append(new_job)
         return bool(new_job)
 
@@ -171,7 +167,6 @@ class Harness(cp.ControllerPlugin):
                     job = output['OutputJob']
                     output_content = output['Content']
                     self._respond_output(job, output_content)
-                    #_update_status_done(job)
 
 
     def _provide_status_update(self, job_id, status):
