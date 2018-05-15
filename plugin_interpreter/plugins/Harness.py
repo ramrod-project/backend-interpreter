@@ -414,9 +414,7 @@ def _checkin(serial):
 def _respond_to_work(serial):
     validated = parse_serial(serial)
     print(request.form['data'])
-    if not __STANDALONE__ and _G_LOCK.acquire(timeout=_LOCK_WAIT):
-        _G_HARNESS._job_is_complete(validated['Location'], request.form['data'])
-        _G_LOCK.release()
+    _handle_client_response(validated['Location'], request.form['data'])
     return "1"
 
 
@@ -436,12 +434,13 @@ def _get_blob(serial, file_id):
 def _put_blob(serial, file_id):
     validated = parse_serial(serial)
     _content[file_id] = request.form['data'] #TODO: Decide if files should be reused like this
-    if not __STANDALONE__ and _G_LOCK.acquire(timeout=_LOCK_WAIT):
-        _G_HARNESS._job_is_complete(validated['Location'],
-                                    request.form['data'])
-        _G_LOCK.release()
+    _handle_client_response(validated['Location'], request.form['data'])
     return "1"
 
+def _handle_client_response(client, data):
+    if not __STANDALONE__ and _G_LOCK.acquire(timeout=_LOCK_WAIT):
+        _G_HARNESS._job_is_complete(client, data)
+        _G_LOCK.release()
 
 if __name__ == "__main__":
     from sys import argv
