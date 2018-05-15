@@ -71,12 +71,25 @@ def test_to_log(log, file_handler):
         20,
         now
     ]])
-    output = re.split(" +", file_handler.read())
-    assert re.split(" +", asctime(gmtime(now))) == output[:5]
-    assert output[5] == "central"
-    assert output[6] == LOGLEVEL
-    assert output[7].split(":")[0] == "test"
-    assert output[8].split("\n")[0] == "testvalue"
+    found_my_log = False
+
+    output = re.split(" +", file_handler.readline())
+    while output:
+        print(output) #confirms there are 6 other logs in the logger before the above.
+        try:
+            assert re.split(" +", asctime(gmtime(now))) == output[:5]
+            assert output[5] == "central"
+            assert output[6] == LOGLEVEL
+            assert output[7].split(":")[0] == "test"
+            assert output[8].split("\n")[0] == "testvalue"
+            found_my_log = True
+            output = None
+        except AssertionError:
+            output = re.split(" +", file_handler.readline())
+            if output[0] == "":
+                raise
+    if not found_my_log:
+        raise AssertionError("Cound not find test log file in logger")
 
 def test_to_log_no_output(log, file_handler):
     now = time()
