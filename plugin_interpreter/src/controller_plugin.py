@@ -178,9 +178,11 @@ class ControllerPlugin(ABC):
             })
             try:
                 job = self.db_recv.get(timeout=3)
-                self._update_job_status(job["id"], "Pending")
             except Empty:
                 job = None
+
+        if job:
+            self._update_job_status(job["id"], "Pending")
         return job
 
     def _respond_output(self, job, output):
