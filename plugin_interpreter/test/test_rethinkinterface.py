@@ -296,7 +296,7 @@ def test_update_output(rethink):
         "status": "Pending"
     }
     #test updating without any associated output
-    rethink.update_job(updater)
+    rethink._update_job(updater)
     output_data = {
         "job": job_id,
         "output": content
