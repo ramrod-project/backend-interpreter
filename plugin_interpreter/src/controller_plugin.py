@@ -100,6 +100,7 @@ class ControllerPlugin(ABC):
         """
         self.db_send = send_queue
         self.db_recv = recv_queue
+        self._advertise_functionality()
 
     @abstractmethod
     def start(self, logger, signal):
