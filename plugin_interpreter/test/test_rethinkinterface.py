@@ -27,7 +27,7 @@ class mock_logger():
 
 @fixture(scope='module')
 def rethink():
-    plugin = ExampleHTTP()
+    plugin = Harness()
     try:
         tag = environ["TRAVIS_BRANCH"]
     except KeyError:

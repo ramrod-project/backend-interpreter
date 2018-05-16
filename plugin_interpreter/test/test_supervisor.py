@@ -28,7 +28,7 @@ def sup():
         remove=True,
     )
     sleep(3)
-    sup = supervisor.SupervisorController("ExampleHTTP")
+    sup = supervisor.SupervisorController("Harness")
     yield sup
     try:
         environ["LOGLEVEL"] = ""

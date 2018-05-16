@@ -106,6 +106,8 @@ def plugin_base():
     """
     plugin = SamplePlugin()
     plugin.initialize_queues(FROM_PLUGIN, TO_PLUGIN)
+    # Empty the plugin of the _advertise_functionality() data
+    _ = FROM_PLUGIN.get()
     yield plugin
 
 def test_instantiate():
@@ -119,6 +121,8 @@ def test_instantiate():
     plugin = SamplePlugin()
     assert isinstance(plugin, controller_plugin.ControllerPlugin)
     plugin.initialize_queues(FROM_PLUGIN, TO_PLUGIN)
+    # Empty the plugin of the _advertise_functionality() data
+    _ = FROM_PLUGIN.get()
     assert isinstance(plugin.db_send, multiprocessing.queues.Queue)
     assert isinstance(plugin.db_recv, multiprocessing.queues.Queue)
 
