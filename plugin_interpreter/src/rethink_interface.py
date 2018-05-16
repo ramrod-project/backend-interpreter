@@ -59,15 +59,18 @@ class RethinkInterface:
         """
 
         try:
+            #update the job with the given status
             rethinkdb.db("Brain").table("Jobs").get(job_data["job"]).update(
                 {"Status": job_data["status"]}
             ).run(self.rethink_connection)
-            #update the related output
+            #update the related output if it exists
+            #attempt to get a cursor with the output
             outputref = rethinkdb.db("Brain").table("Outputs").filter(
                 rethinkdb.row["OutputJob"]["id"] == job_data["job"]
             ).run(self.rethink_connection)
-            
+            #check if there was an output found
             if outputref != None:
+                #update the status field in the outputs that match the job's id
                 rethinkdb.db("Brain").table("Outputs").filter(
                 rethinkdb.row["OutputJob"]["id"] == job_data["job"]
                 ).update({
@@ -91,13 +94,16 @@ class RethinkInterface:
             plugin_name {string} -- The name of the plugin to filter jobs with
         """
 
+        #find jobs with the name of the plugin and are Ready to execute
         self.job_cursor = rethinkdb.db("Brain").table("Jobs").filter(
             (rethinkdb.row["JobTarget"]["PluginName"] == plugin_name) & (rethinkdb.row["Status"] == "Ready")
         ).run(self.rethink_connection)
         try:
+            #add the first Ready job to the queue
             new_job = self.job_cursor.next()
             self.plugin_queue.put(new_job)
         except rethinkdb.ReqlCursorEmpty:
+            #if there was no new jobs, send None
            self.plugin_queue.put(None)
     
     def _send_output(self, output_data):
@@ -120,11 +126,13 @@ class RethinkInterface:
             ])
         #if the job has an entry add the output to the output table
         if output_job != None:
+            #build the entry using the job as data for the output
             output_entry = {
                 "OutputJob": output_job,
                 "Content": output_data["output"]
             }
             try:
+                #insert the entry into Outputs
                 rethinkdb.db("Brain").table("Outputs").insert(
                     output_entry,
                     conflict="replace"
@@ -156,6 +164,7 @@ class RethinkInterface:
         """
 
         try:
+            #create the table of the plugin
             self._create_table("Plugins",plugin_data[0])
         except rethinkdb.ReqlOpFailedError:
             self.logger.send([
@@ -183,8 +192,8 @@ class RethinkInterface:
         communication with the database.
 
         Arguments:
-            logger - logger object
-            singal - 
+            logger {Pipe} - Pipe to the logger
+            signal {c type boolean} - used for cleanup
         """
         self.logger = logger
         self._database_init()
@@ -203,6 +212,7 @@ class RethinkInterface:
                     self._stop()
                 sleep(0.1)
 
+                #check the plugin queue for new requests to the databse interface
                 response = self.response_queue.get_nowait()
                 if response["type"] == "functionality":
                     self._create_plugin_table(response["data"])
