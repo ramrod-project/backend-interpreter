@@ -13,9 +13,12 @@ before_install:
 
 install:
   - pip install -r plugin_interpreter/requirements.txt
+  - travis_wait 10 if [ "$TRAVIS_BRANCH" == "master"  ]; 
+    then docker pull ramrodpcp/database-brain:latest;
+    else docker pull ramrodpcp/database-brain:$TRAVIS_BRANCH; fi
 
 before_script:
-  - travis_wait 15 pytest plugin_interpreter/test
+  - pytest plugin_interpreter/test
 
 script:
   - if [ "$TRAVIS_BRANCH" != "master"  ]; 
