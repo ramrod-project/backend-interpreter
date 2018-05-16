@@ -56,6 +56,8 @@ if __name__ == "__main__":
             ports={"28015/tcp": 28015},
             network=network_name
         )
+    sleep(5)
+        
     CLIENT.containers.run(
         "".join(("ramrodpcp/interpreter-plugin:", tag)),
         name="plugin1",
