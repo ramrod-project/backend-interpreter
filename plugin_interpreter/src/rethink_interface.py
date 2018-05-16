@@ -192,8 +192,8 @@ class RethinkInterface:
         communication with the database.
 
         Arguments:
-            logger - Pipe to the logger
-            signal - c type boolean. used for cleanup
+            logger {Pipe} - Pipe to the logger
+            signal {c type boolean} - used for cleanup
         """
         self.logger = logger
         self._database_init()
