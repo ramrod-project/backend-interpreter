@@ -14,11 +14,6 @@ before_install:
 install:
   - pip install -r plugin_interpreter/requirements.txt
   - if [ "$TRAVIS_BRANCH" == "master"  ]; 
-    then docker push ramrodpcp/backend-interpreter:latest &&
-    docker push ramrodpcp/interpreter-plugin:latest; 
-    else docker push ramrodpcp/backend-interpreter:$TRAVIS_BRANCH &&
-    docker push ramrodpcp/interpreter-plugin:$TRAVIS_BRANCH; fi
-  - if [ "$TRAVIS_BRANCH" == "master"  ]; 
     then travis_wait 10 docker pull ramrodpcp/database-brain:latest; 
     else travis_wait 10 docker pull ramrodpcp/database-brain:$TRAVIS_BRANCH; fi
 
