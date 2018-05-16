@@ -54,7 +54,6 @@ if __name__ == "__main__":
             name="rethinkdb",
             detach=True,
             ports={"28015/tcp": 28015},
-            remove=True,
             network=network_name
         )
     CLIENT.containers.run(
@@ -63,12 +62,11 @@ if __name__ == "__main__":
         environment={
             "STAGE": environ["STAGE"],
             "LOGLEVEL": environ["LOGLEVEL"],
-            "PLUGIN": "ExampleHTTP"
+            "PLUGIN": "Harness"
         },
         detach=True,
         network=network_name,
-        ports={"8080/tcp": 8090},
-        remove=True
+        ports={"8080/tcp": 8090}
     )
     
     containers = CLIENT.containers.list()
