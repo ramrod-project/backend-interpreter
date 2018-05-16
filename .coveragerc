@@ -1,0 +1,9 @@
+[run]
+include = 
+    # src package
+    *src*
+    # plugins
+    *plugins*
+
+omit =
+    *venv*

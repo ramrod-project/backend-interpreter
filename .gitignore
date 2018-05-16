@@ -6,3 +6,4 @@
 *.pytest*
 *key*
 *logfile*
+.coverage
