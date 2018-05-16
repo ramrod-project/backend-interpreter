@@ -132,7 +132,7 @@ class RethinkInterface:
                 "Content": output_data["output"]
             }
             try:
-                #insert the entry
+                #insert the entry into Outputs
                 rethinkdb.db("Brain").table("Outputs").insert(
                     output_entry,
                     conflict="replace"
