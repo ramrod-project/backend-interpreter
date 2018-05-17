@@ -7,3 +7,4 @@ include =
 
 omit =
     *venv*
+    *test*

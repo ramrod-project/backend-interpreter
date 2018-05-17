@@ -26,8 +26,8 @@ install:
   - ./cc-test-reporter before-build
 
 before_script:
-  - pytest --cov plugin_interpreter --cov-config .coveragerc plugin_interpreter/test
-  - ./cc-test-reporter after-build --exit-code $TRAVIS_TEST_RESULT
+  - pytest --cov plugin_interpreter --cov-config .coveragerc --cov-report xml plugin_interpreter/test
+  - ./cc-test-reporter after-build -t coverage.py --exit-code $?
 
 script:
   - if [ "$TRAVIS_BRANCH" != "master"  ]; 
