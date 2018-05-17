@@ -6,3 +6,6 @@
 *.pytest*
 *key*
 *logfile*
+.coverage
+coverage.xml
+cc-test-reporter
