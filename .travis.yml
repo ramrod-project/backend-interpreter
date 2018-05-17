@@ -27,7 +27,7 @@ install:
 
 before_script:
   - pytest --cov plugin_interpreter --cov-config .coveragerc --cov-report xml plugin_interpreter/test
-  - ./cc-test-reporter after-build -t coverage.py --exit-code $?
+  - ./cc-test-reporter after-build -t coverage.py --exit-code 0
 
 script:
   - if [ "$TRAVIS_BRANCH" != "master"  ]; 
