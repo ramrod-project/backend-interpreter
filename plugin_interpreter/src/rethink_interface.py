@@ -267,13 +267,6 @@ class RethinkInterface:
                 40,
                 time()
             ])
-        elif isinstance(err, ConnectionResetError):
-            self.logger.send([
-                "dbprocess",
-                "Database connection timed out, retrying...",
-                30,
-                time()
-            ])
 
     def _database_init(self):
         if environ["STAGE"] == "DEV":
