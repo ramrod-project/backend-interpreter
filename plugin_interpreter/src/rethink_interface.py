@@ -9,7 +9,7 @@ TODO:
 from multiprocessing import Queue
 from os import environ
 from queue import Empty
-from sys import exit as sysexit
+from sys import exit as sysexit, stderr
 from time import sleep, time
 
 import rethinkdb
@@ -38,14 +38,21 @@ class RethinkInterface:
         self.port = server[1]
         # One Queue for responses from the plugin processes
         self.response_queue = Queue()
-        try:
-            self.rethink_connection = rethinkdb.connect(self.host, self.port)
-        except rethinkdb.ReqlDriverError as ex:
-            self.logger.send(["dbprocess", str(ex), 50, time()])
-            sysexit(111)
-        self.stream = None
+        self.rethink_connection = self._connect_to_db()
         plugin.initialize_queues(self.response_queue, self.plugin_queue)
-        
+
+    def _connect_to_db(self):
+        now = time()
+        while time() - now < 30:
+            try:
+                conn = rethinkdb.connect(self.host, self.port)
+                return conn
+            except ConnectionResetError:
+                sleep(3)
+            except rethinkdb.ReqlDriverError:
+                sleep(3)
+        stderr.write("DB connection timeout!")
+        sysexit(111)
 
     def _update_job(self, job_data):
         """Update's the specified job's status to the given status
@@ -257,10 +264,16 @@ class RethinkInterface:
             self.logger.send([
                 "dbprocess",
                 "Database driver error: " + str(err),
-                50,
+                40,
                 time()
             ])
-            self._stop()
+        elif isinstance(err, ConnectionResetError):
+            self.logger.send([
+                "dbprocess",
+                "Database connection timed out, retrying...",
+                30,
+                time()
+            ])
 
     def _database_init(self):
         if environ["STAGE"] == "DEV":
