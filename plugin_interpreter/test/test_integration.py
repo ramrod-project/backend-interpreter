@@ -151,6 +151,22 @@ def test_pull_job(sup, rethink):
     except SystemExit as ex:
         assert str(ex) == "0"
 
+def test_create_plugin(rethink):
+    """Test creating a plugin
+
+    This test tests to see if the previous test
+    created a table for the IntegrationTest plugin.
+
+    Arguments:
+        sup {class instance} -- a SupervisorController class
+        instance.
+        rethink {None} -- indicates that this test will need
+        the rethinkdb to be accessable.
+    """
+    connection = rethinkdb.connect("localhost", 28015)
+    tables = rethinkdb.db("Plugins").table_list().run(connection)
+    assert "IntegrationTest" in tables
+
 def test_send_output(sup, rethink):
     """Test sending output from the plugin
 
@@ -177,22 +193,6 @@ def test_send_output(sup, rethink):
     output = cursor.next()
     assert output["OutputJob"]["id"] == SAMPLE_JOB["id"]
     assert output["Content"] == "test output"
-
-def test_create_plugin(sup, rethink):
-    """Test creating a plugin
-
-    This test instantiates a supervisor and creates
-    the class instances and subprocesses within. This
-    should trigger the plugin to advertise its functionality
-    to the rethinkdb.
-
-    Arguments:
-        sup {class instance} -- a SupervisorController class
-        instance.
-        rethink {None} -- indicates that this test will need
-        the rethinkdb to be accessable.
-    """
-    environ["TEST_SELECTION"] = ""
 
 def test_job_status_update(sup, rethink):
     """Test sending a job status update
