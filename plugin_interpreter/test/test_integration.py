@@ -73,7 +73,8 @@ class IntegationTest(controller_plugin.ControllerPlugin):
                 exit(666)
         elif environ["TEST_SELECTION"] == "TEST2":
             """Send output"""
-            pass
+            output = "test output"
+            self._respond_output(SAMPLE_JOB, output)
         elif environ["TEST_SELECTION"] == "TEST3":
             """Update job status"""
             pass
@@ -149,6 +150,12 @@ def test_pull_job(sup, rethink):
         sup.teardown(0)
     except SystemExit as ex:
         assert str(ex) == "0"
+    rethinkdb.rb("Plugins").table_drop(
+        SAMPLE_TARGET["PluginName"]
+    ).run(connection)
+    rethinkdb.db("Brain").table("Jobs").get(
+        SAMPLE_JOB["id"]
+    ).delete().run(connection)
 
 def test_create_plugin(sup, rethink):
     """Test creating a plugin
