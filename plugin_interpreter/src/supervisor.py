@@ -82,9 +82,7 @@ class SupervisorController:
         the servers, plugins, and database handler.
         """
         try:
-            if environ["STAGE"] == "DEV" \
-            or environ["STAGE"] == "PROD" \
-            or environ["STAGE"] == "TESTING":
+            if environ["STAGE"] == "DEV" or environ["STAGE"] == "PROD" or environ["STAGE"] == "TESTING":
                 pass
             else:
                 print("Environment variable STAGE must be set to DEV or PROD!")
@@ -156,7 +154,7 @@ class SupervisorController:
                 raise RuntimeError
         except RuntimeError as err:
             print(err)
-            exit(99)
+            self.teardown(99)
 
     def monitor(self):
         """Monitor loop
