@@ -6,7 +6,6 @@ import docker
 from pytest import fixture
 import rethinkdb
 
-from .test_logger import file_handler
 from src import controller_plugin, supervisor, rethink_interface
 
 CLIENT = docker.from_env()
@@ -99,6 +98,12 @@ class IntegrationTest(controller_plugin.ControllerPlugin):
         """placeholder"""
         exit(0)
 
+
+@fixture(scope="module")
+def file_handler():
+    file_handler = open("logfile", "r")
+    yield file_handler
+    file_handler.close()
 
 @fixture(scope="module")
 def rethink():
