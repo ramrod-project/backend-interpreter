@@ -12,8 +12,13 @@ python:
 services:
   - docker
 
+branches:
+  only:
+  - master
+  - dev
+  - qa
+
 before_install:
-  - if ! [[ "$TRAVIS_BRANCH" =~ ^(master|dev|qa)$ ]]; then exit 1; fi
   - git clone https://github.com/ramrod-project/backend-interpreter.git
 
 install:
