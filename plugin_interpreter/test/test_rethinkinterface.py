@@ -27,7 +27,7 @@ class mock_logger():
 
 @fixture(scope='module')
 def rethink():
-    plugin = Harness()
+    # Setup for module tests
     try:
         tag = environ["TRAVIS_BRANCH"]
     except KeyError:
@@ -37,12 +37,16 @@ def rethink():
         name="rethinkdb_rethink",
         detach=True,
         ports={"28015/tcp": 28015},
-        remove=True,
+        remove=True
     )
     server = ('127.0.0.1', 28015)
     environ["STAGE"] = "DEV"
-    sleep(4)
-    yield rethink_interface.RethinkInterface(plugin, server)
+    plugin = Harness()
+    rdb = rethink_interface.RethinkInterface(plugin, server)
+    rdb.logger = mock_logger()
+    rdb._database_init()
+    yield rdb
+    # Teardown for module tests
     containers = CLIENT.containers.list()
     for container in containers:
         if container.name == "rethinkdb_rethink":
@@ -70,26 +74,8 @@ def compare_to(tablecheck, compare_list):
             return False
     return True
 
-# def test_rethink_setup(rethink):
-#     assert isinstance(rethink, rethink_interface.RethinkInterface)
-
-def test_init(rethink):
-    """sets up the testing database
-    
-    Arguments:
-        rethink {Fixture} -- An instance of rethink interface    """
-
-    rethink.logger = mock_logger()
-    rethink._database_init()
-
-# def test_rethink_start(rethink):
-#     val = Value(c_bool, False)
-#     rethink_thread = Thread(target=rethink.start, args=(logger, val))
-#     rethink_thread.start()
-#     assert rethink_thread.is_alive()
-#     val.value = False
-#     sleep(1)
-#     assert not rethink_thread.is_alive()
+def test_rethink_setup(rethink):
+    assert isinstance(rethink, rethink_interface.RethinkInterface)
 
 def test_rethink_plugin_create(rethink):
     """Tests if the _plugin_create() function can successfully add a table to
@@ -310,3 +296,15 @@ def test_update_output(rethink):
     print(output_cursor)
     output_status = output_cursor.next().get("OutputJob",{}).get("Status")
     assert output_status == "Done"
+
+def test_rethink_start(rethink):
+    # Test running as thread (**THIS KILLS THE CONNECTION**)
+    # Don't run tests after this one that require the connection...
+    val = Value(c_bool, False)
+    logger = mock_logger()
+    rethink_thread = Thread(target=rethink.start, args=(logger, val))
+    rethink_thread.start()
+    assert rethink_thread.is_alive()
+    val.value = True
+    sleep(1)
+    assert not rethink_thread.is_alive()
