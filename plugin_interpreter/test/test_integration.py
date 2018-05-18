@@ -5,7 +5,7 @@ import docker
 from pytest import fixture
 import rethinkdb
 
-from src import controller_plugin, supervisor
+from src import controller_plugin, supervisor, rethink_interface
 
 CLIENT = docker.from_env()
 SAMPLE_TARGET = {
@@ -220,14 +220,26 @@ def test_process_dependencies(rethink):
     """
     environ["TEST_SELECTION"] = ""
 
-def test_database_connection(sup):
+def test_database_connection(rethink):
     """Test that the interpreter check the connection
 
     This tests if the interpreter will check for the
     database to be available for connection.
     
     Arguments:
-        sup {class instance} -- a SupervisorController class
-        instance.
+        rethink {none} -- allows access to the rethinkdb
     """
-    environ["TEST_SELECTION"] = ""
+    environ["TEST_SELECTION"] = "TEST4"
+    environ["STAGE"] = "TESTING"
+    #this SHOULD be a bad port to connect to. if this test fails
+    #something is very wrong
+    location = ("localhost",28888)
+    try:
+        rethink_interface.RethinkInterface(IntegationTest(), location)
+    except SystemExit as ex:
+        assert str(ex) == "111"
+
+def test_database_connection_succeed(rethink):
+    location = ("localhost", 28015)
+    rti = rethink_interface.RethinkInterface(IntegationTest(), location)
+    assert isinstance(rti.rethink_connection,rethinkdb.Connection)
