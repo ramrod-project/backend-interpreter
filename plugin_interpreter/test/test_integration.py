@@ -5,7 +5,7 @@ import docker
 from pytest import fixture
 import rethinkdb
 
-from src import controller_plugin, supervisor
+from src import controller_plugin, supervisor, rethink_interface
 
 CLIENT = docker.from_env()
 SAMPLE_TARGET = {
@@ -230,4 +230,12 @@ def test_database_connection(sup):
         sup {class instance} -- a SupervisorController class
         instance.
     """
-    environ["TEST_SELECTION"] = ""
+    environ["TEST_SELECTION"] = "TEST4"
+    environ["STAGE"] = "TESTING"
+    #this SHOULD be a bad port to connect to. if this test fails
+    #something is very wrong
+    location = ("localhost",28888)
+    try:
+        rethink_interface.RethinkInterface(IntegationTest(), location)
+    except SystemExit as ex:
+        assert str(ex) == "111"
