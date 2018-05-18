@@ -220,15 +220,14 @@ def test_process_dependencies(rethink):
     """
     environ["TEST_SELECTION"] = ""
 
-def test_database_connection(sup):
+def test_database_connection(rethink):
     """Test that the interpreter check the connection
 
     This tests if the interpreter will check for the
     database to be available for connection.
     
     Arguments:
-        sup {class instance} -- a SupervisorController class
-        instance.
+        rethink {none} -- allows access to the rethinkdb
     """
     environ["TEST_SELECTION"] = "TEST4"
     environ["STAGE"] = "TESTING"
@@ -239,3 +238,8 @@ def test_database_connection(sup):
         rethink_interface.RethinkInterface(IntegationTest(), location)
     except SystemExit as ex:
         assert str(ex) == "111"
+
+def test_database_connection_succeed(rethink):
+    location = ("localhost", 28015)
+    rti = rethink_interface.RethinkInterface(IntegationTest(), location)
+    assert isinstance(rti.rethink_connection,rethinkdb.Connection)
