@@ -105,7 +105,7 @@ def rethink():
         ports={"28015/tcp": 28015},
         remove=True
     )
-    sleep(5)
+    sleep(8)
     yield
     try:
         environ["LOGLEVEL"] = ""
@@ -143,19 +143,40 @@ def test_pull_job(sup, rethink):
     rethinkdb.db("Brain").table("Jobs").insert(
         SAMPLE_JOB
     ).run(connection)
-    sup.create_servers()
-    sup.spawn_servers()
-    sleep(5)
     try:
+        sup.create_servers()
+        sup.spawn_servers()
+        sleep(5)
         sup.teardown(0)
     except SystemExit as ex:
         assert str(ex) == "0"
-    rethinkdb.rb("Plugins").table_drop(
-        SAMPLE_TARGET["PluginName"]
-    ).run(connection)
-    rethinkdb.db("Brain").table("Jobs").get(
-        SAMPLE_JOB["id"]
-    ).delete().run(connection)
+
+def test_send_output(sup, rethink):
+    """Test sending output from the plugin
+
+    This test should send a mock output to the database
+    from the plugin running in the supervisor.
+
+    Arguments:
+        sup {class instance} -- a SupervisorController class
+        instance.
+        rethink {None} -- indicates that this test will need
+        the rethinkdb to be accessable.
+    """
+    environ["TEST_SELECTION"] = "TEST2"
+    environ["STAGE"] = "TESTING"
+    connection = rethinkdb.connect("localhost", 28015)
+    try:
+        sup.create_servers()
+        sup.spawn_servers()
+        sleep(5)
+        sup.teardown(0)
+    except SystemExit as ex:
+        assert str(ex) == "0"
+    cursor = rethinkdb.db("Brain").table("Outputs").run(connection)
+    output = cursor.next()
+    assert output["OutputJob"]["id"] == SAMPLE_JOB["id"]
+    assert output["Content"] == "test output"
 
 def test_create_plugin(sup, rethink):
     """Test creating a plugin
@@ -172,20 +193,6 @@ def test_create_plugin(sup, rethink):
         the rethinkdb to be accessable.
     """
     environ["TEST_SELECTION"] = ""
-
-def test_send_output(sup, rethink):
-    """Test sending output from the plugin
-
-    This test should send a mock output to the database
-    from the plugin running in the supervisor.
-
-    Arguments:
-        sup {class instance} -- a SupervisorController class
-        instance.
-        rethink {None} -- indicates that this test will need
-        the rethinkdb to be accessable.
-    """
-    environ["TEST_SELECTION"] = "TEST2"
 
 def test_job_status_update(sup, rethink):
     """Test sending a job status update
