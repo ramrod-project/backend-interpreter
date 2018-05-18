@@ -221,19 +221,6 @@ def test_log_to_logger(sup, rethink):
     """
     environ["TEST_SELECTION"] = "TEST4"
 
-def test_process_dependencies(rethink):
-    """Test process dependencies
-
-    This test asserts that the various dependencies
-    that certain processes manage for other processes
-    are available after they have successfully 'started'.
-    
-    Arguments:
-        rethink {None} -- indicates that this test will need
-        the rethinkdb to be accessable.
-    """
-    environ["TEST_SELECTION"] = ""
-
 def test_database_connection(rethink):
     """Test that the interpreter check the connection
 
