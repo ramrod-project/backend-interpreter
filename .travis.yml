@@ -12,6 +12,12 @@ python:
 services:
   - docker
 
+branches:
+  only:
+  - master
+  - dev
+  - qa
+
 before_install:
   - git clone https://github.com/ramrod-project/backend-interpreter.git
 
