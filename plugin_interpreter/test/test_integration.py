@@ -1,13 +1,16 @@
-from os import environ
-from time import sleep, time
+from os import environ, remove
+import re
+from time import asctime, gmtime, sleep, time
 
 import docker
 from pytest import fixture
 import rethinkdb
 
+from .test_logger import file_handler
 from src import controller_plugin, supervisor, rethink_interface
 
 CLIENT = docker.from_env()
+NOW = time()
 SAMPLE_TARGET = {
     "id": "w93hyh-vc83j5i-v82h54u-b6eu4n",
     "PluginName": "IntegrationTest",
@@ -22,11 +25,11 @@ SAMPLE_JOB = {
     "id": "138thg-eg98198-sf98gy3-feh8h8",
     "JobTarget": SAMPLE_TARGET,
     "Status": "Ready",
-    "StartTime": int(time()),
+    "StartTime": NOW,
     "JobCommand": "Do stuff"
 }
 
-class IntegationTest(controller_plugin.ControllerPlugin):
+class IntegrationTest(controller_plugin.ControllerPlugin):
     """A class to be used for integration testing.
     
     Arguments:
@@ -80,7 +83,12 @@ class IntegationTest(controller_plugin.ControllerPlugin):
             pass
         elif environ["TEST_SELECTION"] == "TEST4":
             """Log to logger"""
-            pass
+            logger.send([
+                "plugin",
+                "Testing out the logger.",
+                50,
+                NOW
+            ])
 
         while signal.value is not True:
             sleep(1)
@@ -122,7 +130,7 @@ def sup():
     environ["LOGLEVEL"] = "DEBUG"
     environ["STAGE"] = "TESTNG"
     sup = supervisor.SupervisorController("Harness")
-    sup.plugin = IntegationTest()
+    sup.plugin = IntegrationTest()
     return sup
 
 def test_pull_job(sup, rethink):
@@ -208,7 +216,7 @@ def test_job_status_update(sup, rethink):
     """
     environ["TEST_SELECTION"] = "TEST3"
 
-def test_log_to_logger(sup, rethink):
+def test_log_to_logger(sup, rethink, file_handler):
     """Test logging to the logger
 
     This test logs to the logger from the plugin.
@@ -220,6 +228,44 @@ def test_log_to_logger(sup, rethink):
         the rethinkdb to be accessable.
     """
     environ["TEST_SELECTION"] = "TEST4"
+    environ["STAGE"] = "TESTING"
+    try:
+        sup.create_servers()
+        sup.spawn_servers()
+        sleep(5)
+        sup.teardown(0)
+    except SystemExit as ex:
+        assert str(ex) == "0"
+
+    found_plugin_log = False
+    found_rethink_log = False
+
+    output = re.split(" +", file_handler.readline())
+    while output:
+        print(output) #confirms there are 6 other logs in the logger before the above.
+        try:
+            assert re.split(" +", asctime(gmtime(NOW))) == output[:5]
+            assert output[5] == "central"
+            assert output[6] == "CRITICAL"
+            assert output[7].split(":")[0] == "plugin"
+            assert " ".join(output[8:]).split("\n")[0] == "Testing out the logger."
+            found_plugin_log = True
+        except AssertionError:
+            pass
+        try:
+            assert output[5] == "central"
+            assert output[6] == "INFO"
+            assert output[7].split(":")[0] == "dbprocess"
+            assert " ".join(output[8:]).split("\n")[0] == "Succesfully opened connection to Rethinkdb"
+            found_rethink_log = True
+        except AssertionError:
+            pass
+        output = None
+        output = re.split(" +", file_handler.readline())
+        if output[0] == "":
+            break
+    assert found_plugin_log 
+    assert found_rethink_log
 
 def test_database_connection(rethink):
     """Test that the interpreter check the connection
@@ -236,11 +282,11 @@ def test_database_connection(rethink):
     #something is very wrong
     location = ("localhost",28888)
     try:
-        rethink_interface.RethinkInterface(IntegationTest(), location)
+        rethink_interface.RethinkInterface(IntegrationTest(), location)
     except SystemExit as ex:
         assert str(ex) == "111"
 
 def test_database_connection_succeed(rethink):
     location = ("localhost", 28015)
-    rti = rethink_interface.RethinkInterface(IntegationTest(), location)
+    rti = rethink_interface.RethinkInterface(IntegrationTest(), location)
     assert isinstance(rti.rethink_connection,rethinkdb.Connection)
