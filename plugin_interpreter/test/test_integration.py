@@ -1,12 +1,30 @@
 from os import environ
-from time import sleep
+from time import sleep, time
 
 import docker
 from pytest import fixture
+import rethinkdb
 
 from src import controller_plugin, supervisor
 
 CLIENT = docker.from_env()
+SAMPLE_TARGET = {
+    "id": "w93hyh-vc83j5i-v82h54u-b6eu4n",
+    "PluginName": "IntegrationTest",
+    "Location": "127.0.0.1",
+    "Port": "8080",
+    "Optional": {
+        "TestVal1": "Test value",
+        "TestVal2": "Test value 2"
+    }
+}
+SAMPLE_JOB = {
+    "id": "138thg-eg98198-sf98gy3-feh8h8",
+    "JobTarget": SAMPLE_TARGET,
+    "Status": "Ready",
+    "StartTime": int(time()),
+    "JobCommand": "Do stuff"
+}
 
 class IntegationTest(controller_plugin.ControllerPlugin):
     """A class to be used for integration testing.
@@ -17,7 +35,23 @@ class IntegationTest(controller_plugin.ControllerPlugin):
 
 
     def __init__(self):
-        pass
+        self.name = "IntegrationTest"
+        self.functionality = [
+            {
+                "CommandName": "read_file",
+                "input": ["string"],
+                "family": "filesystem",
+                "tooltip": "Provided a full directory path, this function reads a file.",
+                "reference": "no reference"
+            },
+            {
+                "CommandName": "send_file",
+                "input": ["string", "binary"],
+                "family": "filesystem",
+                "tooltip": "Provided a file and destination directory, this function sends a file.",
+                "reference": "no reference"
+            }
+        ]
 
     def start(self, logger, signal):
         """Run the integration tests
@@ -34,7 +68,9 @@ class IntegationTest(controller_plugin.ControllerPlugin):
         """
         if environ["TEST_SELECTION"] == "TEST1":
             """Pull a job"""
-            pass
+            new_job = self._request_job()
+            if not new_job == SAMPLE_JOB:
+                exit(666)
         elif environ["TEST_SELECTION"] == "TEST2":
             """Send output"""
             pass
@@ -45,13 +81,14 @@ class IntegationTest(controller_plugin.ControllerPlugin):
             """Log to logger"""
             pass
 
-        while not signal.value:
+        while signal.value is not True:
             sleep(1)
+        
         self._stop()
 
     def _stop(self, **kwargs):
         """placeholder"""
-        pass
+        exit(0)
 
 
 @fixture(scope="module")
@@ -67,6 +104,7 @@ def rethink():
         ports={"28015/tcp": 28015},
         remove=True
     )
+    sleep(5)
     yield
     try:
         environ["LOGLEVEL"] = ""
@@ -75,7 +113,6 @@ def rethink():
             if container.name == "rethinkdb":
                 container.stop()
                 break
-        sup.teardown(0)
     except SystemExit:
         pass
 
@@ -100,6 +137,18 @@ def test_pull_job(sup, rethink):
         the rethinkdb to be accessable.
     """
     environ["TEST_SELECTION"] = "TEST1"
+    environ["STAGE"] = "TESTING"
+    connection = rethinkdb.connect("localhost", 28015)
+    rethinkdb.db("Brain").table("Jobs").insert(
+        SAMPLE_JOB
+    ).run(connection)
+    sup.create_servers()
+    sup.spawn_servers()
+    sleep(5)
+    try:
+        sup.teardown(0)
+    except SystemExit as ex:
+        assert str(ex) == "0"
 
 def test_create_plugin(sup, rethink):
     """Test creating a plugin
