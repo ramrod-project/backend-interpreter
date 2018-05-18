@@ -77,7 +77,7 @@ class IntegationTest(controller_plugin.ControllerPlugin):
             self._respond_output(SAMPLE_JOB, output)
         elif environ["TEST_SELECTION"] == "TEST3":
             """Update job status"""
-            pass
+            self._update_job_status(SAMPLE_JOB["id"],"Pending")
         elif environ["TEST_SELECTION"] == "TEST4":
             """Log to logger"""
             pass
@@ -207,6 +207,20 @@ def test_job_status_update(sup, rethink):
         the rethinkdb to be accessable.
     """
     environ["TEST_SELECTION"] = "TEST3"
+    environ["STAGE"] = "TESTING"
+    connection = rethinkdb.connect("localhost", 28015)
+    try:
+        sup.create_servers()
+        sup.spawn_servers()
+        sleep(5)
+        sup.teardown(0)
+    except SystemExit as ex:
+        assert str(ex) == "0"
+
+    cursor = rethinkdb.db("Brain").table("Jobs").run(connection)
+    job = cursor.next()
+    assert job["id"] == SAMPLE_JOB["id"]
+    assert job["Status"] == "Pending"
 
 def test_log_to_logger(sup, rethink):
     """Test logging to the logger
