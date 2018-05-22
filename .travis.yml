@@ -57,11 +57,13 @@ script:
   - for c in "${containers[@]}"; do docker stop $c; done
 
 after_success:
-  - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
-  - if [ "$TRAVIS_BRANCH" == "master"  ]; 
+  - if [[ "$TRAVIS_PULL_REQUEST" == "false" ]]; 
+    then echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin; fi
+  - if [[ "$TRAVIS_BRANCH" == "master" && "$TRAVIS_PULL_REQUEST" == "false"  ]]; 
     then docker push ramrodpcp/backend-interpreter:latest &&
     docker push ramrodpcp/interpreter-plugin:latest;
-    else docker push ramrodpcp/backend-interpreter:$TRAVIS_BRANCH &&
+    elif [[ "$TRAVIS_PULL_REQUEST" == "false" ]]; 
+    then docker push ramrodpcp/backend-interpreter:$TRAVIS_BRANCH &&
     docker push ramrodpcp/interpreter-plugin:$TRAVIS_BRANCH; fi
 
 notifications:
