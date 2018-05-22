@@ -68,7 +68,8 @@ if __name__ == "__main__":
         },
         detach=True,
         network=network_name,
-        ports={"8080/tcp": 8090}
+        ports={"5000/tcp": 5000,
+               "5005/tcp": 5005}
     )
     
     containers = CLIENT.containers.list()
