@@ -120,7 +120,8 @@ class Harness(cp.ControllerPlugin):
         """
         httpd_server = Thread(target=_app.run,
                               daemon=True,
-                              kwargs={"port": self.port})
+                              kwargs={"host": "0.0.0.0",
+                                      "port": self.port})
         httpd_server.start()
         return httpd_server
 
