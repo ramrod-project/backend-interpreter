@@ -85,13 +85,8 @@ class RethinkInterface:
                         "Status": job_data ["status"]
                     }
                 }).run(self.rethink_connection)
-        except rethinkdb.ReqlDriverError:
-            self.logger.send([
-                "dbprocess",
-                "Unable to update job '" + job_data[0] +"' to " + job_data[1],
-                20,
-                time()
-            ])
+        except rethinkdb.ReqlDriverError as ex:
+            self._log_db_error(ex)
     
     def _get_next_job(self, plugin_name):
         """
@@ -126,13 +121,9 @@ class RethinkInterface:
                 output_data["job"]["id"]
             ).run(self.rethink_connection)
         except rethinkdb.ReqlDriverError as ex:
-            self.logger.send(["dbprocess",
-                "".join(("Could not access Jobs Table: ", str(ex))),
-                30,
-                time()
-            ])
+            self._log_db_error(ex)
         #if the job has an entry add the output to the output table
-        if output_job != None:
+        if output_job != None and output_data["output"] != "":
             #build the entry using the job as data for the output
             output_entry = {
                 "OutputJob": output_job,
@@ -145,11 +136,7 @@ class RethinkInterface:
                     conflict="replace"
                 ).run(self.rethink_connection)
             except rethinkdb.ReqlDriverError as ex:
-                self.logger.send(["dbprocess",
-                    "".join(("Could not write output to database", str(ex))),
-                    30,
-                    time()
-                ])
+                self._log_db_error(ex)
         else:
             self.logger.send(["dbprocess",
                 "".join(("There is no job with an id of ", output_data[0])),
@@ -176,22 +163,19 @@ class RethinkInterface:
         except rethinkdb.ReqlOpFailedError:
             self.logger.send([
                 "dbprocess",
-                "Table '" + plugin_data[0] + "' exists",
+                "'".join(["Table ",plugin_data[0]," exists"]),
                 20,
                 time()
             ])
+        except rethinkdb.ReqlDriverError as ex:
+            self._log_db_error(ex)
 
         try:
             #attempt to insert the list of commands, updating any conflicts
             rethinkdb.db("Plugins").table(plugin_data[0]).insert(plugin_data[1],
             conflict="update").run(self.rethink_connection)
-        except rethinkdb.ReqlDriverError:
-            self.logger.send([
-                "dbprocess",
-                "Unable to add command to table '" + plugin_data[0] + "'",
-                20,
-                time()
-            ])
+        except rethinkdb.ReqlDriverError as ex:
+            self._log_db_error(ex)
 
     def start(self, logger, signal):
         """
@@ -293,7 +277,7 @@ class RethinkInterface:
                 if not ex:
                     self.logger.send([
                         "dbprocess",
-                        "Table '" + table_name + "'created.",
+                        "'".join(["Table ",table_name," created."]),
                         10,
                         time()
                     ])
