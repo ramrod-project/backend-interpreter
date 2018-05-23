@@ -123,7 +123,7 @@ class RethinkInterface:
         except rethinkdb.ReqlDriverError as ex:
             self._log_db_error(ex)
         #if the job has an entry add the output to the output table
-        if output_job != None and output_data["output"] != "":
+        if output_job != None:
             #build the entry using the job as data for the output
             output_entry = {
                 "OutputJob": output_job,
