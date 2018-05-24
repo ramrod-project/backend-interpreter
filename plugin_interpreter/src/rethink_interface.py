@@ -286,7 +286,8 @@ class RethinkInterface:
         try:
             if database_name == "Plugins":
                 rethinkdb.db(database_name).table_create(
-                    table_name, primary_key='CommandName'
+                    table_name,
+                    primary_key="CommandName"
                 ).run(self.rethink_connection)
             else:
                 rethinkdb.db(database_name).table_create(
