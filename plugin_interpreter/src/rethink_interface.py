@@ -99,7 +99,8 @@ class RethinkInterface:
 
         #find jobs with the name of the plugin and are Ready to execute
         self.job_cursor = rethinkdb.db("Brain").table("Jobs").filter(
-            (rethinkdb.row["JobTarget"]["PluginName"] == plugin_name) & (rethinkdb.row["Status"] == "Ready")
+            (rethinkdb.row["JobTarget"]["PluginName"] == plugin_name) & \
+            (rethinkdb.row["Status"] == "Ready")
         ).run(self.rethink_connection)
         try:
             #add the first Ready job to the queue
@@ -107,11 +108,11 @@ class RethinkInterface:
             self.plugin_queue.put(new_job)
         except rethinkdb.ReqlCursorEmpty:
             #if there was no new jobs, send None
-           self.plugin_queue.put(None)
-    
+            self.plugin_queue.put(None)
+
     def _send_output(self, output_data):
         """sends the plugin's output message to the Outputs table
-        
+
         Arguments:
             output_data {dictionary (Dictionary,str)} -- tuple containing the job
             and the output to add to the table (job, output)
@@ -153,26 +154,32 @@ class RethinkInterface:
     def _update_target(self, target_data):
         pass
 
-    
+
     def _create_plugin_table(self, plugin_data):
         """
         Adds a new plugin to the Plugins Database
-        
+
         Arguments:
             plugin_data {Tuple (str,list)} -- Tuple containing the name of the plugin and the list
             of Commands (plguin_name, command_list)
         """
 
         #create the table of the plugin
-        self._create_table("Plugins",plugin_data[0])
+        self._create_table("Plugins", plugin_data[0])
 
         try:
             #attempt to insert the list of commands, updating any conflicts
-            rethinkdb.db("Plugins").table(plugin_data[0]).insert(plugin_data[1],
-            conflict="update").run(self.rethink_connection)
+            rethinkdb.db("Plugins").table(plugin_data[0]).insert(
+                plugin_data[1],
+                conflict="update"
+            ).run(self.rethink_connection)
         except rethinkdb.ReqlDriverError:
             self._log(
-                "".join(["Unable to add command to table '", plugin_data[0], "'"]),
+                "".join([
+                    "Unable to add command to table '",
+                    plugin_data[0],
+                    "'"
+                ]),
                 20
             )
 
@@ -270,7 +277,7 @@ class RethinkInterface:
 
     def _create_table(self, database_name, table_name):
         """Create a table in the database
-        
+
         Arguments:
             logger {Pipe} -- a multiprocessing Pipe to the central
             logger.
@@ -294,13 +301,24 @@ class RethinkInterface:
                 str(ex),
                 40
             )
-    
+
     def get_table_contents(self, table_name):
-        cursor = rethinkdb.table(table_name).run(self.rethink_connection)
-        command_list = []
-        for document in cursor:
-            command_list.extend(document)
-        return command_list
+        """Gets the contents of a table
+        
+        Arguments:
+            table_name {string} -- name of the table to be cursored.
+        
+        Returns:
+            {list} -- a list of all the documents in a given table.
+        """
+        try:
+            cursor = rethinkdb.table(table_name).run(self.rethink_connection)
+            table_contents = []
+            for document in cursor:
+                table_contents.extend(document)
+            return table_contents
+        except rethinkdb.ReqlError as err:
+            self._log_db_error(err)
 
     def _stop(self):
         self._log(
