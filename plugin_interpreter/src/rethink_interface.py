@@ -206,37 +206,30 @@ class RethinkInterface:
         self._database_init()
 
         # Control loop, reads from incoming queue and sends to RethinkDB
-        while True:
+        while not signal.value:
             try:
-                if signal.value:
-                    self.logger.send([
-                        "dbprocess",
-                        "Kill signal received - stopping DB process \
-                        and closing connection...",
-                        10,
-                        time()
-                    ])
-                    self._stop()
                 sleep(0.1)
-
                 #check the plugin queue for new requests to the databse interface
-                response = self.response_queue.get_nowait()
-                if response["type"] == "functionality":
-                    self._create_plugin_table(response["data"])
-                if response["type"] == "job_request":
-                    self._get_next_job(response["data"])
-                if response["type"] == "job_update":
-                    self._update_job(response["data"])
-                if response["type"] == "job_response":
-                    self._send_output(response["data"])
-                if response["type"] == "target_update":
-                    self._update_target(response["data"])
+                self._handle_response(self.response_queue.get_nowait())
             except Empty:
                 continue
             except KeyboardInterrupt:
                 continue
             except rethinkdb.ReqlError as err:
                 self._log_db_error(err)
+        self._stop()
+
+    def _handle_response(self, response):
+        if response["type"] == "functionality":
+            self._create_plugin_table(response["data"])
+        elif response["type"] == "job_request":
+            self._get_next_job(response["data"])
+        elif response["type"] == "job_update":
+            self._update_job(response["data"])
+        elif response["type"] == "job_response":
+            self._send_output(response["data"])
+        elif response["type"] == "target_update":
+            self._update_target(response["data"])
 
     def _log_db_error(self, err):
         if isinstance(err, rethinkdb.ReqlTimeoutError):
@@ -345,6 +338,13 @@ class RethinkInterface:
         return command_list
 
     def _stop(self):
+        self.logger.send([
+            "dbprocess",
+            "Kill signal received - stopping DB process \
+            and closing connection...",
+            10,
+            time()
+        ])
         try:
             self.rethink_connection.close()
         except rethinkdb.ReqlDriverError:
