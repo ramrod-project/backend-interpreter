@@ -87,10 +87,9 @@ class CentralLogger():
         """
         for log in logs:
             date = asctime(gmtime(log[3]))
-            log_string = log[1].replace("\n", " ")
             self.logger.log(
                 log[2],
-                "".join([log[0], ": ", log_string]),
+                "".join([log[0], ": ", log[1]]),
                 extra={ 'date': date }
             )
 
