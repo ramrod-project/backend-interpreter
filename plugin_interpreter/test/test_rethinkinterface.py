@@ -28,12 +28,16 @@ class mock_logger():
 @fixture(scope='module')
 def rethink():
     # Setup for module tests
+    tag = ":latest"
     try:
-        tag = environ["TRAVIS_BRANCH"]
+        if environ["TRAVIS_BRANCH"] == "dev":
+            tag = ":dev"
+        elif environ["TRAVIS_BRANCH"] == "qa":
+            tag = ":qa"
     except KeyError:
-        tag = "latest"
+        pass
     CLIENT.containers.run(
-        "".join(("ramrodpcp/database-brain:", tag)),
+        "".join(("ramrodpcp/database-brain", tag)),
         name="rethinkdb_rethink",
         detach=True,
         ports={"28015/tcp": 28015},
