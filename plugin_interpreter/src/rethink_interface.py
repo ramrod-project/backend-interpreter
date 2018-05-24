@@ -49,7 +49,13 @@ class RethinkInterface:
             signal {c type boolean} - used for cleanup
         """
         self.logger = logger
-
+        if self.rethink_connection:
+            self._log(
+                "Succesfully opened connection to Rethinkdb",
+                20
+            )
+        else:
+            self._stop()
         # Control loop, reads from incoming queue and sends to RethinkDB
         while not signal.value:
             try:
