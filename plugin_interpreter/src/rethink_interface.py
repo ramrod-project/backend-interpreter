@@ -193,7 +193,6 @@ class RethinkInterface:
             signal {c type boolean} - used for cleanup
         """
         self.logger = logger
-        self._database_init()
 
         # Control loop, reads from incoming queue and sends to RethinkDB
         while not signal.value:
@@ -250,30 +249,6 @@ class RethinkInterface:
                 "".join(("Database driver error: ", str(err))),
                 40
             )
-
-    def _database_init(self):
-        if environ["STAGE"] == "DEV":
-            try:
-                rethinkdb.db_create("Brain").run(self.rethink_connection)
-            except rethinkdb.ReqlRuntimeError:
-                self._log(
-                    "Database 'Brain' exists",
-                    20
-                )
-            try:
-                rethinkdb.db_create("Plugins").run(self.rethink_connection)
-            except rethinkdb.ReqlRuntimeError:
-                self._log(
-                    "Database 'Plugins' exists",
-                    20
-                )
-            for table_name in ["Targets", "Jobs", "Outputs"]:
-                self._create_table("Brain", table_name)
-
-        self._log(
-            "Succesfully opened connection to Rethinkdb",
-            20
-        )
 
     def _create_table(self, database_name, table_name):
         """Create a table in the database
