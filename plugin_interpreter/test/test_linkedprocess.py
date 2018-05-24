@@ -48,6 +48,6 @@ def test_linked_process_functionality():
     lp = linked_process.LinkedProcess(name="test", logger_pipe=s, target=test, signal=sig)
     lp.start()
     assert lp.is_alive() == True
-    assert lp.restart() == False
+    assert lp.restart() == True
     lp.terminate()
     assert lp.is_alive() == False
