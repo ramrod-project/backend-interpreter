@@ -161,18 +161,13 @@ class SupervisorController:
         
         This method runs for the duration of the application lifecycle...
         """
+        processes = [self.plugin_process, self.db_process, self.logger_process]
         while True:
             try:
                 sleep(3)
-                if not self.plugin_process.is_alive():
-                    if not self.plugin_process.restart():
-                        self.teardown(self.plugin_process.get_exitcode())
-                if not self.db_process.is_alive():
-                    if not self.db_process.restart():
-                        self.teardown(self.db_process.get_exitcode())
-                if not self.logger_process.is_alive():
-                    if not self.logger_process.restart():
-                        self.teardown(self.logger_process.get_exitcode())
+                for proc in processes:
+                    if not proc.restart():
+                        self.teardown(proc.get_exitcode())
             except KeyboardInterrupt:
                 self.teardown(0)
 
@@ -186,7 +181,6 @@ class SupervisorController:
             monitoring loop (0 is normal, other codes can be
             passed by child processes)
         """
-
         self.signal.value = True
         sleep(5)
 

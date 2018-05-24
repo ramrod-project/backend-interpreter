@@ -55,7 +55,8 @@ class LinkedProcess:
         Returns:
             bool -- Successful restart (or not)
         """
-
+        if self.is_alive():
+            return True
         if not self.proc:
             self._log([
                 self.name,
