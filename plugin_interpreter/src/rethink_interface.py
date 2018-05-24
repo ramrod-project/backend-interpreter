@@ -39,6 +39,31 @@ class RethinkInterface:
         self.rethink_connection = self._connect_to_db()
         plugin.initialize_queues(self.response_queue, self.plugin_queue)
 
+    def start(self, logger, signal):
+        """
+        Start the Rethinkdb interface process. Control loop that handles
+        communication with the database.
+
+        Arguments:
+            logger {Pipe} - Pipe to the logger
+            signal {c type boolean} - used for cleanup
+        """
+        self.logger = logger
+
+        # Control loop, reads from incoming queue and sends to RethinkDB
+        while not signal.value:
+            try:
+                sleep(0.1)
+                #check the plugin queue for new requests to the databse interface
+                self._handle_response(self.response_queue.get_nowait())
+            except Empty:
+                continue
+            except KeyboardInterrupt:
+                continue
+            except rethinkdb.ReqlError as err:
+                self._log_db_error(err)
+        self._stop()
+
     def _connect_to_db(self):
         now = time()
         while time() - now < 30:
@@ -85,7 +110,12 @@ class RethinkInterface:
                 }).run(self.rethink_connection)
         except rethinkdb.ReqlDriverError:
             self._log(
-                "".join(["Unable to update job '", job_data[0], "' to ", job_data[1]]),
+                "".join([
+                    "Unable to update job '",
+                    job_data[0],
+                    "' to ",
+                    job_data[1]
+                ]),
                 20
             )
 
@@ -99,7 +129,7 @@ class RethinkInterface:
 
         #find jobs with the name of the plugin and are Ready to execute
         self.job_cursor = rethinkdb.db("Brain").table("Jobs").filter(
-            (rethinkdb.row["JobTarget"]["PluginName"] == plugin_name) & \
+            (rethinkdb.row["JobTarget"]["PluginName"] == plugin_name) &
             (rethinkdb.row["Status"] == "Ready")
         ).run(self.rethink_connection)
         try:
@@ -154,7 +184,6 @@ class RethinkInterface:
     def _update_target(self, target_data):
         pass
 
-
     def _create_plugin_table(self, plugin_data):
         """
         Adds a new plugin to the Plugins Database
@@ -183,42 +212,21 @@ class RethinkInterface:
                 20
             )
 
-    def start(self, logger, signal):
-        """
-        Start the Rethinkdb interface process. Control loop that handles
-        communication with the database.
-
-        Arguments:
-            logger {Pipe} - Pipe to the logger
-            signal {c type boolean} - used for cleanup
-        """
-        self.logger = logger
-
-        # Control loop, reads from incoming queue and sends to RethinkDB
-        while not signal.value:
-            try:
-                sleep(0.1)
-                #check the plugin queue for new requests to the databse interface
-                self._handle_response(self.response_queue.get_nowait())
-            except Empty:
-                continue
-            except KeyboardInterrupt:
-                continue
-            except rethinkdb.ReqlError as err:
-                self._log_db_error(err)
-        self._stop()
-
     def _handle_response(self, response):
-        if response["type"] == "functionality":
-            self._create_plugin_table(response["data"])
-        elif response["type"] == "job_request":
-            self._get_next_job(response["data"])
-        elif response["type"] == "job_update":
-            self._update_job(response["data"])
-        elif response["type"] == "job_response":
-            self._send_output(response["data"])
-        elif response["type"] == "target_update":
-            self._update_target(response["data"])
+        request_types = {
+            "functionality": self._create_plugin_table,
+            "job_request": self._get_next_job,
+            "job_update": self._update_job,
+            "job_response": self._send_output,
+            "target_update": self._update_target
+        }
+        try:
+            request_types[response["type"]](response["data"])
+        except KeyError as err:
+            self._log(
+                " ".join(("Unknown response format!", str(err))),
+                40
+            )
 
     def _log(self, log, level):
         self.logger.send([
