@@ -44,7 +44,6 @@ def rethink():
     plugin = Harness()
     rdb = rethink_interface.RethinkInterface(plugin, server)
     rdb.logger = mock_logger()
-    rdb._database_init()
     yield rdb
     # Teardown for module tests
     containers = CLIENT.containers.list()
