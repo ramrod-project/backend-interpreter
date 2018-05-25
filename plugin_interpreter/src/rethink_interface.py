@@ -306,7 +306,7 @@ class RethinkInterface:
             cursor = rethinkdb.db(db_name).table(table_name).run(self.rethink_connection)
             table_contents = []
             for document in cursor:
-                table_contents.extend(document)
+                table_contents.append(document)
             return table_contents
         except rethinkdb.ReqlError as err:
             self._log_db_error(err)
