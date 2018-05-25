@@ -7,7 +7,6 @@ TODO:
 """
 
 from multiprocessing import Queue
-from os import environ
 from queue import Empty
 from sys import exit as sysexit, stderr
 from time import sleep, time
@@ -56,11 +55,9 @@ class RethinkInterface:
             )
         else:
             self._stop()
-        # Control loop, reads from incoming queue and sends to RethinkDB
         while not signal.value:
             try:
                 sleep(0.1)
-                #check the plugin queue for new requests to the databse interface
                 self._handle_response(self.response_queue.get_nowait())
             except Empty:
                 continue
@@ -88,25 +85,22 @@ class RethinkInterface:
 
 
         Arguments:
-            job_data {Dictionary} -- Dictionary containing the job id and the new status.
-            (job, status)
+            job_data {Dictionary} -- Dictionary containing the job
+            id and the new status. (job, status)
             Interpreter should in most cases be setting "Ready" status to
             "Pending" or the "Pending" status to either "Done" or "Error"
         """
 
         try:
-            #update the job with the given status
             rethinkdb.db("Brain").table("Jobs").get(job_data["job"]).update(
                 {"Status": job_data["status"]}
             ).run(self.rethink_connection)
-            #update the related output if it exists
-            #attempt to get a cursor with the output
+
             outputref = rethinkdb.db("Brain").table("Outputs").filter(
                 rethinkdb.row["OutputJob"]["id"] == job_data["job"]
             ).run(self.rethink_connection)
-            #check if there was an output found
+
             if outputref != None:
-                #update the status field in the outputs that match the job's id
                 rethinkdb.db("Brain").table("Outputs").filter(
                     rethinkdb.row["OutputJob"]["id"] == job_data["job"]
                 ).update({
@@ -133,27 +127,25 @@ class RethinkInterface:
             plugin_name {string} -- The name of the plugin to filter jobs with
         """
 
-        #find jobs with the name of the plugin and are Ready to execute
+        # find jobs with the name of the plugin and are Ready to execute
         self.job_cursor = rethinkdb.db("Brain").table("Jobs").filter(
             (rethinkdb.row["JobTarget"]["PluginName"] == plugin_name) &
             (rethinkdb.row["Status"] == "Ready")
         ).run(self.rethink_connection)
         try:
-            #add the first Ready job to the queue
             new_job = self.job_cursor.next()
             self.plugin_queue.put(new_job)
         except rethinkdb.ReqlCursorEmpty:
-            #if there was no new jobs, send None
             self.plugin_queue.put(None)
 
     def _send_output(self, output_data):
         """sends the plugin's output message to the Outputs table
 
         Arguments:
-            output_data {dictionary (Dictionary,str)} -- tuple containing the job
-            and the output to add to the table (job, output)
+            output_data {dictionary (Dictionary,str)} -- tuple containing
+            the job and the output to add to the table (job, output)
         """
-        #get the job corresponding to this output
+        # get the job corresponding to this output
         try:
             output_job = rethinkdb.db("Brain").table("Jobs").get(
                 output_data["job"]["id"]
@@ -163,15 +155,13 @@ class RethinkInterface:
                 "".join(("Could not access Jobs Table: ", str(ex))),
                 30
             )
-        #if the job has an entry add the output to the output table
         if output_job != None:
-            #build the entry using the job as data for the output
             output_entry = {
                 "OutputJob": output_job,
                 "Content": output_data["output"]
             }
             try:
-                #insert the entry into Outputs
+                # insert the entry into Outputs
                 rethinkdb.db("Brain").table("Outputs").insert(
                     output_entry,
                     conflict="replace"
@@ -195,15 +185,13 @@ class RethinkInterface:
         Adds a new plugin to the Plugins Database
 
         Arguments:
-            plugin_data {Tuple (str,list)} -- Tuple containing the name of the plugin and the list
-            of Commands (plguin_name, command_list)
+            plugin_data {Tuple (str,list)} -- Tuple containing the name of
+            the plugin and the list of Commands (plguin_name, command_list)
         """
 
-        #create the table of the plugin
         self._create_table("Plugins", plugin_data[0])
 
         try:
-            #attempt to insert the list of commands, updating any conflicts
             rethinkdb.db("Plugins").table(plugin_data[0]).insert(
                 plugin_data[1],
                 conflict="update"
@@ -294,16 +282,19 @@ class RethinkInterface:
 
     def get_table_contents(self, db_name, table_name):
         """Gets the contents of a table
-        
+
         Arguments:
-            db_name {string} -- name of the database with the table to be cursored.
+            db_name {string} -- name of the database with the table
+            to be cursored.
             table_name {string} -- name of the table to be cursored.
-        
+
         Returns:
             {list} -- a list of all the documents in a given table.
         """
         try:
-            cursor = rethinkdb.db(db_name).table(table_name).run(self.rethink_connection)
+            cursor = rethinkdb.db(db_name).table(
+                table_name
+            ).run(self.rethink_connection)
             table_contents = []
             for document in cursor:
                 table_contents.append(document)
