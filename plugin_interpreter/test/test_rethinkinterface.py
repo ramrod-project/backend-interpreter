@@ -64,10 +64,6 @@ def compare_to(tablecheck, compare_list):
         boolean -- whether or not items in table check are in compare_list
         if any items in tablecheck are not in compare_list return false
     """
-
-    print("Table check")
-    for i in tablecheck:
-        print(i)
     for i in tablecheck:
         if i not in compare_list:
             return False
@@ -195,7 +191,6 @@ def test_update_job(rethink):
         ).pluck("id").run(rethink.rethink_connection)
         
         test_job = job_cursor.next().get("id")
-        print(test_job)
         job_dict = {
             "job": test_job,
             "status": new_status
@@ -255,6 +250,46 @@ def test_send_output(rethink):
     except rethinkdb.ReqlDriverError:
         print("Could not insert test job into table")
 
+def test_get_table_contents(rethink):
+    """Tests getting an entire table
+    
+    Arguments:
+        rethink {RethinkInterface} -- an instance of RethinkInterface
+        for connecting to the test database.
+    """
+    results = rethink.get_table_contents("Brain", "Jobs")
+    results[0].pop("id", None)
+    results[1].pop("id", None)
+    assert len(results) == 2
+    assert {
+        "JobTarget":{
+            "PluginName": "texter",
+            "Location": "8.8.8.8",
+            "Port": "80"
+        },
+        "JobCommand":{
+            "CommandName": "GetText",
+            "Tooltip": "for getting text",
+            "Inputs":[]
+        },
+        "Status": "Ready",
+        "StartTime" : 0
+    } in results
+    assert {
+        "JobTarget":{
+            "PluginName": "jobtester",
+            "Location": "8.8.8.8",
+            "Port": "80"
+        },
+        "JobCommand":{
+            "CommandName": "TestJob",
+            "Tooltip": "for testing jobs",
+            "Inputs":[]
+        },
+        "Status": "Pending",
+        "StartTime" : 0
+    } in results
+
 def test_update_output(rethink):
     content = "This is some different output"
     new_job = {
@@ -273,8 +308,8 @@ def test_update_output(rethink):
     }
     rethinkdb.db("Brain").table("Jobs").insert(new_job).run(rethink.rethink_connection)
     job_cursor = rethinkdb.db("Brain").table("Jobs").filter(
-            rethinkdb.row["JobTarget"]["PluginName"] == "updater"
-            ).pluck("id").run(rethink.rethink_connection)
+        rethinkdb.row["JobTarget"]["PluginName"] == "updater"
+    ).pluck("id").run(rethink.rethink_connection)
     job_obj = job_cursor.next()
     updater = {
         "job" : job_obj.get("id"),
@@ -292,7 +327,6 @@ def test_update_output(rethink):
     output_cursor = rethinkdb.db("Brain").table("Outputs").filter(
         rethinkdb.row["OutputJob"]["id"] == job_obj.get("id")
     ).run(rethink.rethink_connection)
-    print(output_cursor)
     output_status = output_cursor.next().get("OutputJob",{}).get("Status")
     assert output_status == "Done"
 
