@@ -15,18 +15,22 @@ from select import select
 from sys import stdout, exit as sysexit
 from time import asctime, gmtime, sleep, time
 
+logging.basicConfig(
+    filename="logfile",
+    filemode="a",
+    format='%(date)s %(name)-12s %(levelname)-8s %(message)s'
+)
 
 class CentralLogger():
 
     def __init__(self, pipes, level):
         # pipes must be a list to be used with select
-        if type(pipes) == list:
+        if isinstance(pipes, list):
             self.pipes = pipes
         else:
             raise TypeError
-        logging.basicConfig(format='%(date)s %(name)-12s %(levelname)-8s %(message)s')
-        self.lock = Lock()
         self.logger = logging.getLogger('central')
+        self.logger.addHandler(logging.StreamHandler())
         self.logger.setLevel(logging.DEBUG)
         if level == "INFO":
             self.logger.setLevel(logging.INFO)
@@ -37,18 +41,26 @@ class CentralLogger():
         elif level == "CRITICAL":
             self.logger.setLevel(logging.CRITICAL)
 
-    def start(self, logger, signal):
-        """The start() function runs as a Process()
-        and checks pipes for logs.
-        """
-        # handler = logging.StreamHandler(stdout)
-        # handler.setLevel(logging.DEBUG)
-        # self.logger.addHandler(handler)
 
+    def start(self, logger, signal):
+        """Start the logger
+
+        The 'start' method is used as a target for the
+        LinkedProcess that is run by the Supervisor.
+        
+        Arguments:
+            logger {Pipe} -- the central logger start function
+            uses the same calling convention as other processes,
+            but it does not use a logger Pipe, so None is passed in.
+            signal {Value} -- this is the multiprocessing Value
+            that has a c_bool type value which serves as the process
+            kill signal.
+        """
         last_pass = False
         while True:
             try:
                 if signal.value:
+                    # Do one last pass to catch any logs
                     last_pass = True
                     sleep(1)
                 readable, _, _ = select(self.pipes, [], [], 1)
@@ -57,13 +69,15 @@ class CentralLogger():
                     logs.append(p.recv())
                 self._to_log(logs)
                 if last_pass:
-                    self.logger.log(20, "loggerprocess: Kill signal received, stopping...", extra={ 'date': asctime(gmtime(time())) })
                     self._stop()
             except KeyboardInterrupt:
                 continue
+            except TypeError:
+                self._stop_exception("improperly formatted log")
+            except IndexError:
+                self._stop_exception("improper log list length")
             except Exception as ex:
-                self.logger.log(50, "loggerprocess: " + str(ex) + ", stopping...", extra={ 'date': asctime(gmtime(time())) })
-                self._stop()
+                self._stop_exception(ex)
 
     def _to_log(self, logs):
         """The _to_log function is called by the
@@ -71,16 +85,43 @@ class CentralLogger():
         logs to the main logger. Iterate over list
         of [<component>, <log>, <severity>, <timestamp>]
         """
-        self.lock.acquire()
         for log in logs:
             date = asctime(gmtime(log[3]))
-            self.logger.log(log[2], log[0] + ": " + log[1], extra={ 'date': date })
-        self.lock.release()
+            self.logger.log(
+                log[2],
+                log[0] + ": " + log[1],
+                extra={ 'date': date }
+            )
 
     def _stop(self):
         """_stop() is called by the instance when
         the application signal is given to stop.
         """
+        self.logger.log(
+            20,
+            "loggerprocess: Kill signal received, \
+            stopping...",
+            extra={
+                'date': asctime(gmtime(time()))
+            }
+        )
         for pipe in self.pipes:
             pipe.close()
         sysexit(0)
+
+    def _stop_exception(self, ex):
+        """_stop_exception() is called by the instance
+        when an unhandled exception occurs and the process
+        tmust exit.
+        """
+        self.logger.log(
+            50,
+            "loggerprocess: " 
+            + str(ex) 
+            + ", stopping...",
+            extra={ 'date': asctime(gmtime(time()))
+            }
+        )
+        for pipe in self.pipes:
+            pipe.close()
+        sysexit(99)

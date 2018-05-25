@@ -3,7 +3,7 @@
 The Supervisor module...
 
 TODO:
-- Add log-level environment variable support
+- Add handler class for SIGTERM event (docker stop is received)
 """
 
 __version__ = "0.2"
@@ -12,7 +12,7 @@ __author__ = "Christopher Manzi"
 
 from ctypes import c_bool
 from multiprocessing import Pipe, Value
-from os import environ, getcwd, path as ospath
+from os import environ, getcwd, path as ospath, name as osname
 from pkgutil import iter_modules
 from sys import modules as sysmods, exit as sysexit
 from time import sleep
@@ -27,12 +27,15 @@ def get_class_instance(plugin_name):
     Returns:
         list -- List containing class instances of all plugins.
     """
-    path = ospath.join(
-        "/" + ''.join([
-            d + "/" for d in ospath.dirname(__file__).split("/")[:-1] if d
-            ]),
-        "plugins"
-    )
+    if (osname == "nt"):
+        path = ospath.abspath(ospath.join(ospath.dirname(__file__), "../")+"/plugins")
+    else: #leaving functional linux path generation in place, windows might work on linux too.
+        path = ospath.join(
+            "/" + ''.join([
+                d + "/" for d in ospath.dirname(__file__).split("/")[:-1] if d
+                ]),
+            "plugins"
+        )
     modules = iter_modules(path=[path])
 
     for _, mod_name, _ in modules:
@@ -79,7 +82,7 @@ class SupervisorController:
         the servers, plugins, and database handler.
         """
         try:
-            if environ["STAGE"] == "DEV" or environ["STAGE"] == "PROD":
+            if environ["STAGE"] == "DEV" or environ["STAGE"] == "PROD" or environ["STAGE"] == "TESTING":
                 pass
             else:
                 print("Environment variable STAGE must be set to DEV or PROD!")
@@ -105,12 +108,12 @@ class SupervisorController:
         Checks if environment variable STAGE is DEV or PROD. This env
         variable is automatically set to PROD in the application 
         Dockerfile, but can be overridden."""
-        if environ["STAGE"] == "DEV":
+        if environ["STAGE"] == "TESTING":
             self.db_interface = rethink_interface.RethinkInterface(
                 self.plugin,
-                ("rethinkdb", 28015)
+                ("127.0.0.1", 28015)
             )
-        elif environ["STAGE"] == "PROD":
+        else:
             self.db_interface = rethink_interface.RethinkInterface(
                 self.plugin,
                 ("rethinkdb", 28015)
@@ -151,7 +154,7 @@ class SupervisorController:
                 raise RuntimeError
         except RuntimeError as err:
             print(err)
-            exit(99)
+            self.teardown(99)
 
     def monitor(self):
         """Monitor loop

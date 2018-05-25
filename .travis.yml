@@ -1,0 +1,70 @@
+sudo: required
+
+env:
+  global:
+    - CC_TEST_REPORTER_ID=910515cd7273349a55fdee48d849f5d53a2cabe16c23c74747d1213157512bbc
+
+language: python
+
+python:
+  - "3.6"
+
+services:
+  - docker
+
+branches:
+  only:
+  - master
+  - dev
+  - qa
+
+before_install:
+  - git clone https://github.com/ramrod-project/backend-interpreter.git
+
+install:
+  - pip install -r plugin_interpreter/requirements.txt
+  - pip install pytest-cov
+  - if [ "$TRAVIS_BRANCH" == "master"  ]; 
+    then travis_wait 10 docker pull ramrodpcp/database-brain:latest; 
+    else travis_wait 10 docker pull ramrodpcp/database-brain:$TRAVIS_BRANCH; fi
+  - curl -L https://codeclimate.com/downloads/test-reporter/test-reporter-latest-linux-amd64 > ./cc-test-reporter
+  - chmod +x ./cc-test-reporter
+  - ./cc-test-reporter before-build
+
+before_script:
+  - pytest --cov plugin_interpreter --cov-config .coveragerc --cov-report xml plugin_interpreter/test
+  - ./cc-test-reporter after-build -t coverage.py --exit-code 0
+
+script:
+  - if [ "$TRAVIS_BRANCH" != "master"  ]; 
+    then docker build -t ramrodpcp/backend-interpreter:$TRAVIS_BRANCH ./plugin_controller/ &&
+    docker build -t ramrodpcp/interpreter-plugin:$TRAVIS_BRANCH ./plugin_interpreter/; 
+    else docker build -t ramrodpcp/backend-interpreter:latest ./plugin_controller/ &&
+    docker build -t ramrodpcp/interpreter-plugin:latest ./plugin_interpreter/; fi
+  - if [ "$TRAVIS_BRANCH" != "master"  ]; 
+    then docker run -d --name controller -e "STAGE=DEV" -e "LOGLEVEL=DEBUG" -e "TRAVIS_BRANCH=$TRAVIS_BRANCH"
+    -v /var/run/docker.sock:/var/run/docker.sock ramrodpcp/backend-interpreter:$TRAVIS_BRANCH;
+    else docker run -d --name controller -e "STAGE=DEV" -e "LOGLEVEL=DEBUG" 
+    -v /var/run/docker.sock:/var/run/docker.sock ramrodpcp/backend-interpreter:latest; fi
+  # This will eventually be for more integration testing
+  - sleep 30
+  - docker ps -a
+  - containers=$(docker ps -a | grep -v CONTAINER | awk '{print $1}')
+  # print the logs for each plugin
+  - docker logs controller
+  - docker logs plugin1
+  - docker logs rethinkdb
+  - for c in "${containers[@]}"; do docker stop $c; done
+
+after_success:
+  - if [[ "$TRAVIS_PULL_REQUEST" == "false" ]]; 
+    then echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin; fi
+  - if [[ "$TRAVIS_BRANCH" == "master" && "$TRAVIS_PULL_REQUEST" == "false"  ]]; 
+    then docker push ramrodpcp/backend-interpreter:latest &&
+    docker push ramrodpcp/interpreter-plugin:latest;
+    elif [[ "$TRAVIS_PULL_REQUEST" == "false" ]]; 
+    then docker push ramrodpcp/backend-interpreter:$TRAVIS_BRANCH &&
+    docker push ramrodpcp/interpreter-plugin:$TRAVIS_BRANCH; fi
+
+notifications:
+  slack: ramrod-project:GDF82rRYDg3KSekrT3GA24qO

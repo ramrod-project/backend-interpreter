@@ -8,15 +8,12 @@ RUN apk add --no-cach python3 && \
     if [[ ! -e /usr/bin/python ]]; then ln -sf /usr/bin/python3 /usr/bin/python; fi && \
     rm -r /root/.cache
 
-WORKDIR /tmp
-COPY ./plugin_controller/requirements.txt .
-RUN pip install -r requirements.txt
+COPY ./requirements.txt /tmp
 
-WORKDIR /opt/app-root/src/plugin_interpreter
-COPY ./plugin_interpreter .
+RUN pip install -r /tmp/requirements.txt
 
-WORKDIR /opt/app-root/src/plugin_controller
-COPY ./plugin_controller .
+WORKDIR /opt/app-root/src
+COPY . .
 
 USER root
 
