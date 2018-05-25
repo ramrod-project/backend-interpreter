@@ -292,17 +292,18 @@ class RethinkInterface:
                 40
             )
 
-    def get_table_contents(self, table_name):
+    def get_table_contents(self, db_name, table_name):
         """Gets the contents of a table
         
         Arguments:
+            db_name {string} -- name of the database with the table to be cursored.
             table_name {string} -- name of the table to be cursored.
         
         Returns:
             {list} -- a list of all the documents in a given table.
         """
         try:
-            cursor = rethinkdb.table(table_name).run(self.rethink_connection)
+            cursor = rethinkdb.db(db_name).table(table_name).run(self.rethink_connection)
             table_contents = []
             for document in cursor:
                 table_contents.extend(document)
