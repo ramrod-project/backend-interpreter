@@ -9,11 +9,18 @@
 OnAutoItExitRegister("DIECALL")
 
 if $CmdLine[0] = 0 Then
-   Global $serv = InputBox("Server", "URL of server test harness", "http://127.0.0.1:9999", "", _
-				- 1, -1, 0, 0)
+   Global $asGUI = True
+   Global $serv = InputBox("Server", "URL of server test harness", "http://127.0.0.1:9999", "")
+   Global $verbose = MsgBox($MB_YESNO, "Verbose Mode", "Enable Verbose mode?"& @CRLF & @CRLF & "Verbose will display a popup for each command")
+   if $verbose == $IDYES Then
+	  Global $verbosemode = True
+   Else
+	  Global $verbosemode = False
+   EndIf
 else
 	Global $serv = $CmdLine[1]
-	MsgBox(64, "DEBUG", "Connecting to " & @CRLF&$CmdLine[1], 5)
+	Global $verbosemode = False
+	Global $asGUI = False
 endif
 
 global $sSerial = DriveGetSerial(@HomeDrive & "\") & "_" & @IPAddress1 & "_" & IsAdmin ( )
@@ -23,13 +30,18 @@ while $go
 
    Global $output = HttpGet($serv&"/harness/"&$sSerial, "name=" & @ComputerName & "&user=" & @UserName & "&host=" & @OSVersion & "&desk="&@DesktopWidth&"x"&@DesktopHeight & "&ip=" & @IPAddress1 & "&adm=" & IsAdmin())
    if @error then; Catch
-	  MsgBox(64, "ERROR", "Server Not available", 5)
+	  if $verbosemode Then
+		 MsgBox(64, "ERROR", "Server Not available, "& @CRLF & $serv & @CRLF & "trying again in 60s", 5)
+	  EndIf
 	  SetError(0, 0, "")
 	  Sleep(60000)
 	  ContinueLoop
    EndIf
    Global $acmd = StringSplit ( $output, ","  )
-   MsgBox(64, "CMD", $acmd[1] , 3)
+
+   if $verbosemode Then
+	  MsgBox(64, "CMD", $acmd[1] , 3)
+   EndIf
 
    if $acmd[1] == "terminate" Then
 	  ;MsgBox(64, $acmd[1], "closing", 1)
