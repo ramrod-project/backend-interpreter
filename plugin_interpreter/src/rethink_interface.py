@@ -68,17 +68,55 @@ class RethinkInterface:
         self._stop()
 
     def _connect_to_db(self):
+        """Attempt to establish a connection to db
+
+        This method is called at the end of this object's
+        instantiation, and will attempt to connect to the
+        database for 30 seconds, and timeout if unable
+        to do so, calling a system exit.
+        #
+        Once a connection has been established, it hands
+        off to the _validate_db function, which checks to
+        see if the necessary databases and tables
+        are available.
+        """
         now = time()
         while time() - now < 30:
             try:
                 conn = rethinkdb.connect(self.host, self.port)
-                return conn
+                return self._validate_db(conn)
             except ConnectionResetError:
                 sleep(3)
             except rethinkdb.ReqlDriverError:
                 sleep(3)
         stderr.write("DB connection timeout!")
         sysexit(111)
+
+    def _validate_db(self, connection):
+        """Validate database connection
+
+        This method validates that the databases
+        and tables needed for operation are available
+        in the database (which the connection argument
+        connects to).
+        
+        Arguments:
+            connection {rethinkdb.connection} -- connection object
+            to the rethink database.
+        
+        Returns:
+            {rethinkdb.connection} -- connection object, returned
+            if the validation passes.
+        """
+        now = time()
+        while time() - now < 30:
+            try:
+                rethinkdb.db("Plugins").run()
+                pass
+            except rethinkdb.ReqlOpFailedError:
+                sleep(0.5)
+                continue
+        return connection
 
     def _update_job(self, job_data):
         """Update's the specified job's status to the given status
