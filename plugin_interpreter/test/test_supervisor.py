@@ -16,6 +16,7 @@ from src import central_logger, controller_plugin, linked_process, rethink_inter
 @fixture(scope="module")
 def sup():
     environ["LOGLEVEL"] = "DEBUG"
+    environ["STAGE"] = "TESTING"
     try:
         tag = environ["TRAVIS_BRANCH"]
     except KeyError:
