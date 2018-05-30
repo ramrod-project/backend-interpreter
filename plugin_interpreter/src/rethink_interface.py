@@ -110,8 +110,8 @@ class RethinkInterface:
             self._update_job_status({"job": job_id, "status": "Done"})
         else:
             self._log(
-                "".join(["Job: ",job_id," attempted to advance from the \
-                invalid state: ",job_status]),30) 
+                "".join(["Job: ",job_id,
+                " attempted to advance from the invalid state: ",job_status]),30) 
 
     def _update_job_error(self, job_id):
         """sets a job's status to Error
