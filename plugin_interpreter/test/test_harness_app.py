@@ -108,7 +108,7 @@ TEST_COMMANDS = [
 def the_pretend_getter(client):
     import requests
     from requests.exceptions import ReadTimeout
-    import rethinkdb as r
+    from brain import rethinkdb as r
     MAX_REQUEST_TIMEOUT = 120
     try:
         resp = requests.get("http://{}/harness/testing_testing_testing?args=First".format(client), timeout=MAX_REQUEST_TIMEOUT)
@@ -163,8 +163,8 @@ def test_the_Harness_app():
     supervisor_server_spawn(s)
     sleep(5)
     try:
-        import rethinkdb as r
-        conn = r.connect("127.0.0.1")
+        from brain import connect, r
+        conn = connect()
         sleep(5)
         for command in TEST_COMMANDS:
             job_target = {"PluginName": "Harness",
