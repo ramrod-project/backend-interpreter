@@ -114,8 +114,9 @@ class RethinkInterface:
                 "".join(["unable to find job: ", job_id]), 20)
         if not self._is_valid_state(job_status):
             self._log(
-                "".join([job_id, " has an invalid state, setting to error"])
-                , 30)
+                "".join([job_id, " has an invalid state, setting to error"]),
+                30
+            )
 
         if job_status == "Ready":
             self._update_job_status({"job": job_id, "status": "Pending"})
