@@ -96,7 +96,7 @@ def clear_dbs(conn):
     rethinkdb.db("Brain").table("Jobs").delete().run(conn)
     rethinkdb.db("Audit").table("Jobs").delete().run(conn)
     for table in rethinkdb.db("Plugins").table_list().run(conn):
-        rethinkdb.db("Plugins").table_drop(table).run(conn)
+        rethinkdb.db("Plugins").table(table).delete().run(conn)
 
 def compare_to(tablecheck, compare_list):
     """[summary]
@@ -126,14 +126,14 @@ def test_validate_db(brain, rethink, rethink_empty):
     Arguments:
         rethink {Fixture} -- An instance of rethink interface
     """
-    result = rethink._validate_db(rethink.rethink_connection)
+    result = rethink_interface.RethinkInterface.validate_db(rethink.rethink_connection)
     assert isinstance(result, rethinkdb.net.DefaultConnection)
     assert rethinkdb.db_list().run(result)
     with raises(SystemExit):
-        _ = rethink._validate_db(rethink_empty)
+        _ = rethink_interface.RethinkInterface.validate_db(rethink_empty)
     rethink.rethink_connection.close()
     with raises(SystemExit):
-        _ = rethink._validate_db(rethink.rethink_connection)
+        _ = rethink_interface.RethinkInterface.validate_db(rethink.rethink_connection)
 
 def test_rethink_plugin_create(brain, rethink):
     """Tests if the _plugin_create() function can successfully add a table to
