@@ -9,7 +9,7 @@ from time import sleep, time
 
 from pytest import fixture, raises
 import docker
-import rethinkdb
+from brain import r as rethinkdb
 
 from plugins import *
 from src import rethink_interface
