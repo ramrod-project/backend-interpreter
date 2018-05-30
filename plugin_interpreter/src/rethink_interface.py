@@ -101,11 +101,11 @@ class RethinkInterface:
         and tables needed for operation are available
         in the database (which the connection argument
         connects to).
-        
+
         Arguments:
             connection {rethinkdb.connection} -- connection object
             to the rethink database.
-        
+
         Returns:
             {rethinkdb.connection} -- connection object, returned
             if the validation passes.
@@ -121,20 +121,19 @@ class RethinkInterface:
             rethinkdb.db("Audit").table("Jobs")
         ]
 
-        q = 0
+        i = 0
         now = time()
-        while time() - now < 15 and q < len(queries):
+        while time() - now < 15:
             try:
-                queries[q].run(connection)
-                q += 1
+                queries[i].run(connection)
+                i += 1
             except rethinkdb.ReqlOpFailedError:
                 sleep(0.2)
-                continue
             except rethinkdb.ReqlDriverError as err:
                 stderr.write("".join((str(err), "\n")))
                 break
-        if q >= len(queries):
-            return connection
+            if i >= len(queries):
+                return connection
 
         stderr.write("DB not available!\n")
         sysexit(112)
