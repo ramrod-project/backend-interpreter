@@ -10,10 +10,12 @@ from time import sleep
 from pytest import fixture, raises
 import docker
 import rethinkdb
-CLIENT = docker.from_env()
 
 from plugins import *
 from src import rethink_interface
+
+
+CLIENT = docker.from_env()
 
 
 class mock_logger():
@@ -24,7 +26,7 @@ class mock_logger():
     def send(self, msg):
         pass
 
-
+# Provide database-brain container for module tests
 @fixture(scope='module')
 def rethink():
     # Setup for module tests
@@ -39,7 +41,7 @@ def rethink():
         ports={"28015/tcp": 28015},
         remove=True
     )
-    server = ('127.0.0.1', 28015)
+    server = ("127.0.0.1", 28015)
     environ["STAGE"] = "DEV"
     plugin = Harness()
     rdb = rethink_interface.RethinkInterface(plugin, server)
@@ -49,6 +51,26 @@ def rethink():
     containers = CLIENT.containers.list()
     for container in containers:
         if container.name == "rethinkdb_rethink":
+            container.stop()
+            break
+
+# Provide empty rethinkdb container for tests that need it
+@fixture(scope='function')
+def rethink_empty():
+    # Setup
+    CLIENT.containers.run(
+        "rethinkdb:2.3.6",
+        name="rethinkdb_rethink_empty",
+        detach=True,
+        ports={"28015/tcp": 28016},
+        remove=True
+    )
+    conn = rethinkdb.connect("127.0.0.1", 28016)
+    yield conn
+    # Teardown
+    containers = CLIENT.containers.list()
+    for container in containers:
+        if container.name == "rethinkdb_rethink_empty":
             container.stop()
             break
 
@@ -72,7 +94,7 @@ def compare_to(tablecheck, compare_list):
 def test_rethink_setup(rethink):
     assert isinstance(rethink, rethink_interface.RethinkInterface)
 
-def test_validate_db(rethink):
+def test_validate_db(rethink, rethink_empty):
     """Tests that the rethink interface can validate that the database
     has all of the requisite databases and tables pre populated, and
     can return a connection to the database.
@@ -83,6 +105,11 @@ def test_validate_db(rethink):
     result = rethink._validate_db(rethink.rethink_connection)
     assert isinstance(result, rethinkdb.net.DefaultConnection)
     assert rethinkdb.db_list().run(result)
+    with raises(SystemExit):
+        _ = rethink._validate_db(rethink_empty)
+    rethink.rethink_connection.close()
+    with raises(SystemExit):
+        _ = rethink._validate_db(rethink.rethink_connection)
 
 def test_rethink_plugin_create(rethink):
     """Tests if the _plugin_create() function can successfully add a table to
