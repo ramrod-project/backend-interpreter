@@ -239,21 +239,21 @@ def test_update_job(rethink):
 
         job_cursor = rethinkdb.db("Brain").table("Jobs").get(test_job
         ).pluck("Status").run(rethink.rethink_connection)
-        test_job = job_cursor.get("Status")
-        assert(test_job == "Pending")
+        test_res = job_cursor.get("Status")
+        assert(test_res == "Pending")
 
         rethink._update_job(test_job)
 
         job_cursor = rethinkdb.db("Brain").table("Jobs").get(test_job
         ).pluck("Status").run(rethink.rethink_connection)
-        test_job = job_cursor.get("Status")
-        assert(test_job == "Done")
+        test_res = job_cursor.get("Status")
+        assert(test_res == "Done")
 
         rethink._update_job_error(test_job)
         job_cursor = rethinkdb.db("Brain").table("Jobs").get(test_job
         ).pluck("Status").run(rethink.rethink_connection)
-        test_job = job_cursor.get("Status")
-        assert(test_job == "Error")
+        test_res = job_cursor.get("Status")
+        assert(test_res == "Error")
     except rethinkdb.ReqlCursorEmpty:
         print("Failed to get job in test_update_job")
 
