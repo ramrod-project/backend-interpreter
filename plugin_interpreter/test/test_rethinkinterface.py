@@ -377,7 +377,7 @@ def test_update_output(rethink):
     }
     rethink._send_output(output_data)
     updater["status"] = "Done"
-    rethink._update_job_Status(updater)
+    rethink._update_job_status(updater)
     output_cursor = rethinkdb.db("Brain").table("Outputs").filter(
         rethinkdb.row["OutputJob"]["id"] == job_obj.get("id")
     ).run(rethink.rethink_connection)
