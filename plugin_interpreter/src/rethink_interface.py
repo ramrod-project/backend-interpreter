@@ -35,7 +35,7 @@ class RethinkInterface:
         self.port = server[1]
         # One Queue for responses from the plugin processes
         self.response_queue = Queue()
-        self.rethink_connection = self._connect_to_db()
+        self.rethink_connection = self.connect_to_db(self.host, self.port)
         plugin.initialize_queues(self.response_queue, self.plugin_queue)
 
     def start(self, logger, signal):
@@ -67,7 +67,7 @@ class RethinkInterface:
                 self._log_db_error(err)
         self._stop()
 
-    def _connect_to_db(self):
+    def connect_to_db(self, host, port):
         """Attempt to establish a connection to db
 
         This method is called at the end of this object's
@@ -81,14 +81,14 @@ class RethinkInterface:
         are available.
         """
         now = time()
-        while time() - now < 30:
+        while time() - now < 15:
             try:
-                conn = rethinkdb.connect(self.host, self.port)
+                conn = rethinkdb.connect(host, port)
                 return self._validate_db(conn)
             except ConnectionResetError:
-                sleep(3)
+                sleep(0.5)
             except rethinkdb.ReqlDriverError:
-                sleep(3)
+                sleep(0.5)
         stderr.write("DB connection timeout!")
         sysexit(111)
 
