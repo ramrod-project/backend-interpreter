@@ -93,30 +93,29 @@ class RethinkInterface:
         stderr.write("DB connection timeout!")
         sysexit(111)
 
-    def _is_valid_state(self,state):
+    def _is_valid_state(self, state):
         states = ["Ready", "Pending", "Done", "Error", "Stopped", "Waiting"]
         if state in states:
             return True
-        else:
-            return False
+        return False
 
     def _update_job(self, job_id):
         """advances the job's status to the next state
-        
+
         Arguments:
             job_id {int} -- The job's id from the ID table
         """
         try:
-            job = rethinkdb.db("Brain").table("Jobs").get(job_id
-            ).pluck("Status").run(self.rethink_connection)
+            job = rethinkdb.db("Brain").table("Jobs").get(
+                job_id).pluck("Status").run(self.rethink_connection)
             job_status = job["Status"]
         except rethinkdb.ReqlDriverError:
             self._log(
-                "".join(["unable to find job: ", job_id]),20)
-        if self._is_valid_state(job_status) == False:
+                "".join(["unable to find job: ", job_id]), 20)
+        if not self._is_valid_state(job_status):
             self._log(
                 "".join([job_id, " has an invalid state, setting to error"])
-                ,30)
+                , 30)
 
         if job_status == "Ready":
             self._update_job_status({"job": job_id, "status": "Pending"})
@@ -124,12 +123,18 @@ class RethinkInterface:
             self._update_job_status({"job": job_id, "status": "Done"})
         else:
             self._log(
-                "".join(["Job: ",job_id,
-                " attempted to advance from the invalid state: ",job_status]),30) 
+                "".join([
+                    "Job: ",
+                    job_id,
+                    " attempted to advance from the invalid state: ",
+                    job_status
+                ]),
+                30
+            )
 
     def _update_job_error(self, job_id):
         """sets a job's status to Error
-        
+
         Arguments:
             job_id {int} -- The job's id from the ID table
         """
@@ -191,11 +196,13 @@ class RethinkInterface:
             "Pending" or the "Pending" status to either "Done" or "Error"
         """
 
-        if self._is_valid_state(job_data["status"]) == True:
+        if self._is_valid_state(job_data["status"]):
             try:
-                rethinkdb.db("Brain").table("Jobs").get(job_data["job"]).update(
-                    {"Status": job_data["status"]}
-                ).run(self.rethink_connection)
+                rethinkdb.db("Brain").table("Jobs").get(
+                    job_data["job"]
+                    ).update({"Status": job_data["status"]}).run(
+                        self.rethink_connection
+                        )
 
                 outputref = rethinkdb.db("Brain").table("Outputs").filter(
                     rethinkdb.row["OutputJob"]["id"] == job_data["job"]
