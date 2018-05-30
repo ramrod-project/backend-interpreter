@@ -67,7 +67,8 @@ class RethinkInterface:
                 self._log_db_error(err)
         self._stop()
 
-    def connect_to_db(self, host, port):
+    @staticmethod
+    def connect_to_db(host, port):
         """Attempt to establish a connection to db
 
         This method is called at the end of this object's
@@ -84,7 +85,7 @@ class RethinkInterface:
         while time() - now < 15:
             try:
                 conn = rethinkdb.connect(host, port)
-                return self._validate_db(conn)
+                return RethinkInterface.validate_db(conn)
             except ConnectionResetError:
                 sleep(0.5)
             except rethinkdb.ReqlDriverError:
@@ -92,7 +93,8 @@ class RethinkInterface:
         stderr.write("DB connection timeout!")
         sysexit(111)
 
-    def _validate_db(self, connection):
+    @staticmethod
+    def validate_db(connection):
         """Validate database connection
 
         This method validates that the databases
