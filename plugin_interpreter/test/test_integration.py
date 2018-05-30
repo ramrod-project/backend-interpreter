@@ -4,7 +4,7 @@ from time import asctime, gmtime, sleep, time
 
 import docker
 from pytest import fixture
-import rethinkdb
+from brain import r as rethinkdb
 
 from src import controller_plugin, supervisor, rethink_interface
 

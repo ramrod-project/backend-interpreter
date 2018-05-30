@@ -11,7 +11,7 @@ from queue import Empty
 from sys import exit as sysexit, stderr
 from time import sleep, time
 
-import rethinkdb
+from brain import r as rethinkdb
 
 
 class RethinkInterface:
