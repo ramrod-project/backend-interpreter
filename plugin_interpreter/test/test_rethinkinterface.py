@@ -5,7 +5,7 @@ from ctypes import c_bool
 from multiprocessing import Value
 from os import environ
 from threading import Thread
-from time import sleep
+from time import sleep, time
 
 from pytest import fixture, raises
 import docker
@@ -65,7 +65,13 @@ def rethink_empty():
         ports={"28015/tcp": 28016},
         remove=True
     )
-    conn = rethinkdb.connect("127.0.0.1", 28016)
+    conn = None
+    now = time()
+    while time() - now < 5:
+        try:
+            conn = rethinkdb.connect("127.0.0.1", 28016)
+        except rethinkdb.ReqlDriverError:
+            sleep(0.3)
     yield conn
     # Teardown
     containers = CLIENT.containers.list()
