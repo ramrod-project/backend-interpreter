@@ -94,8 +94,9 @@ class RethinkInterface:
             job_id {int} -- The job's id from the ID table
         """
         try:
-            job_status = rethinkdb.db("Brain").table("Jobs").get(job_id
+            job = rethinkdb.db("Brain").table("Jobs").get(job_id
             ).pluck("Status").run(self.rethink_connection)
+            job_status = job["Status"]
         except rethinkdb.ReqlDriverError:
             self._log(
                 "".join(["unable to find job: ", job_id]),20)
