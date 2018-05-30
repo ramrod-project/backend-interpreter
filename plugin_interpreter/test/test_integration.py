@@ -118,7 +118,6 @@ def rethink():
         ports={"28015/tcp": 28015},
         remove=True
     )
-    sleep(8)
     yield
     try:
         environ["LOGLEVEL"] = ""
@@ -138,7 +137,13 @@ def sup():
     sup.plugin = IntegrationTest()
     return sup
 
-def test_pull_job(sup, rethink):
+@fixture(scope="function")
+def connection():
+    conn = rethink_interface.RethinkInterface.connect_to_db("127.0.0.1", 28015)
+    yield conn
+    conn.close()
+
+def test_pull_job(sup, rethink, connection):
     """Test pulling a job
 
     This test runs a supervisor, which runs a plugin
@@ -152,7 +157,6 @@ def test_pull_job(sup, rethink):
     """
     environ["TEST_SELECTION"] = "TEST1"
     environ["STAGE"] = "TESTING"
-    connection = rethinkdb.connect("localhost", 28015)
     rethinkdb.db("Brain").table("Jobs").insert(
         SAMPLE_JOB
     ).run(connection)
@@ -164,7 +168,7 @@ def test_pull_job(sup, rethink):
     except SystemExit as ex:
         assert str(ex) == "0"
 
-def test_create_plugin(rethink):
+def test_create_plugin(rethink, connection):
     """Test creating a plugin
 
     This test tests to see if the previous test
@@ -176,11 +180,10 @@ def test_create_plugin(rethink):
         rethink {None} -- indicates that this test will need
         the rethinkdb to be accessable.
     """
-    connection = rethinkdb.connect("localhost", 28015)
     tables = rethinkdb.db("Plugins").table_list().run(connection)
     assert "IntegrationTest" in tables
 
-def test_send_output(sup, rethink):
+def test_send_output(sup, rethink, connection):
     """Test sending output from the plugin
 
     This test should send a mock output to the database
@@ -194,7 +197,6 @@ def test_send_output(sup, rethink):
     """
     environ["TEST_SELECTION"] = "TEST2"
     environ["STAGE"] = "TESTING"
-    connection = rethinkdb.connect("localhost", 28015)
     try:
         sup.create_servers()
         sup.spawn_servers()
@@ -207,7 +209,7 @@ def test_send_output(sup, rethink):
     assert output["OutputJob"]["id"] == SAMPLE_JOB["id"]
     assert output["Content"] == "test output"
 
-def test_job_status_update(sup, rethink):
+def test_job_status_update(sup, rethink, connection):
     """Test sending a job status update
 
     This test send a job status update from the plugin to the
@@ -221,7 +223,6 @@ def test_job_status_update(sup, rethink):
     """
     environ["TEST_SELECTION"] = "TEST3"
     environ["STAGE"] = "TESTING"
-    connection = rethinkdb.connect("localhost", 28015)
     try:
         sup.create_servers()
         sup.spawn_servers()
@@ -262,23 +263,24 @@ def test_log_to_logger(sup, rethink, file_handler):
     output = re.split(" +", file_handler.readline())
     while output:
         print(output) #confirms there are 6 other logs in the logger before the above.
-        try:
-            assert re.split(" +", asctime(gmtime(NOW))) == output[:5]
-            assert output[5] == "central"
-            assert output[6] == "CRITICAL"
-            assert output[7].split(":")[0] == "plugin"
-            assert " ".join(output[8:]).split("\n")[0] == "Testing out the logger."
-            found_plugin_log = True
-        except AssertionError:
-            pass
-        try:
-            assert output[5] == "central"
-            assert output[6] == "INFO"
-            assert output[7].split(":")[0] == "dbprocess"
-            assert " ".join(output[8:]).split("\n")[0] == "Succesfully opened connection to Rethinkdb"
-            found_rethink_log = True
-        except AssertionError:
-            pass
+        if re.match(r'(Mon|Tue|Wed|Thu|Fri|Sat|Sun)', output[0]):
+            try:
+                assert re.split(" +", asctime(gmtime(NOW))) == output[:5]
+                assert output[5] == "central"
+                assert output[6] == "CRITICAL"
+                assert output[7].split(":")[0] == "plugin"
+                assert " ".join(output[8:]).split("\n")[0] == "Testing out the logger."
+                found_plugin_log = True
+            except AssertionError:
+                pass
+            try:
+                assert output[5] == "central"
+                assert output[6] == "INFO"
+                assert output[7].split(":")[0] == "dbprocess"
+                assert " ".join(output[8:]).split("\n")[0] == "Succesfully opened connection to Rethinkdb"
+                found_rethink_log = True
+            except AssertionError:
+                pass
         output = None
         output = re.split(" +", file_handler.readline())
         if output[0] == "":

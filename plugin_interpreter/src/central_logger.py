@@ -89,7 +89,7 @@ class CentralLogger():
             date = asctime(gmtime(log[3]))
             self.logger.log(
                 log[2],
-                log[0] + ": " + log[1],
+                "".join([log[0], ": ", log[1]]),
                 extra={ 'date': date }
             )
 
@@ -102,7 +102,7 @@ class CentralLogger():
             "loggerprocess: Kill signal received, \
             stopping...",
             extra={
-                'date': asctime(gmtime(time()))
+                "date": asctime(gmtime(time()))
             }
         )
         for pipe in self.pipes:
