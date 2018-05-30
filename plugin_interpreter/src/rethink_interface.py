@@ -110,7 +110,9 @@ class RethinkInterface:
         """
 
         queries = [
-            rethinkdb.db("Plugins"),
+            rethinkdb.db_list().contains("Plugins"),
+            rethinkdb.db_list().contains("Brain"),
+            rethinkdb.db_list().contains("Audit"),
             rethinkdb.db("Brain").table("Targets"),
             rethinkdb.db("Brain").table("Outputs"),
             rethinkdb.db("Brain").table("Jobs"),
