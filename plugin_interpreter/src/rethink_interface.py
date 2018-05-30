@@ -119,13 +119,16 @@ class RethinkInterface:
 
         q = 0
         now = time()
-        while time() - now < 30 and q < len(queries):
+        while time() - now < 15 and q < len(queries):
             try:
                 queries[q].run(connection)
                 q += 1
             except rethinkdb.ReqlOpFailedError:
-                sleep(0.5)
+                sleep(0.2)
                 continue
+            except rethinkdb.ReqlDriverError:
+                stderr.write("Invalid connection provided!")
+                break
         if q >= len(queries):
             return connection
 

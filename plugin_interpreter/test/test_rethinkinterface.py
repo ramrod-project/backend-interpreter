@@ -72,6 +72,18 @@ def compare_to(tablecheck, compare_list):
 def test_rethink_setup(rethink):
     assert isinstance(rethink, rethink_interface.RethinkInterface)
 
+def test_validate_db(rethink):
+    """Tests that the rethink interface can validate that the database
+    has all of the requisite databases and tables pre populated, and
+    can return a connection to the database.
+    
+    Arguments:
+        rethink {Fixture} -- An instance of rethink interface
+    """
+    result = rethink._validate_db(rethink.rethink_connection)
+    assert isinstance(result, rethinkdb.net.DefaultConnection)
+    assert rethinkdb.db_list().run(result)
+
 def test_rethink_plugin_create(rethink):
     """Tests if the _plugin_create() function can successfully add a table to
     the plugin database and fill it with Commands. it then tests if the table
