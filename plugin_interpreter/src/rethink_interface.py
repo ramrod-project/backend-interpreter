@@ -108,15 +108,29 @@ class RethinkInterface:
             {rethinkdb.connection} -- connection object, returned
             if the validation passes.
         """
+
+        queries = [
+            rethinkdb.db("Plugins"),
+            rethinkdb.db("Brain").table("Targets"),
+            rethinkdb.db("Brain").table("Outputs"),
+            rethinkdb.db("Brain").table("Jobs"),
+            rethinkdb.db("Audit").table("Jobs")
+        ]
+
+        q = 0
         now = time()
-        while time() - now < 30:
+        while time() - now < 30 and q < len(queries):
             try:
-                rethinkdb.db("Plugins").run()
-                pass
+                queries[q].run(connection)
+                q += 1
             except rethinkdb.ReqlOpFailedError:
                 sleep(0.5)
                 continue
-        return connection
+        if q >= len(queries):
+            return connection
+
+        stderr.write("DB not available!")
+        sysexit(112)
 
     def _update_job(self, job_data):
         """Update's the specified job's status to the given status
