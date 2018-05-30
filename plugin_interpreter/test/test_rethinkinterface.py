@@ -238,7 +238,7 @@ def test_next_job(brain, rethink):
     test_job = rethink.plugin_queue.get(timeout=1)
     assert compare_to(new_job,test_job)
 
-def test_update_job(brain, rethink):
+def test_update_job_status(brain, rethink):
     """Tests _update_job() by placing a job in the Jobs table and calling 
     update_jobs() to change the status of the job
     
@@ -258,12 +258,75 @@ def test_update_job(brain, rethink):
             "job": test_job,
             "status": new_status
         }
-        rethink._update_job(job_dict)
+        rethink._update_job_status(job_dict)
         job_cursor = rethinkdb.db("Brain").table("Jobs").filter(
             (rethinkdb.row["JobTarget"]["PluginName"] == "jobtester") & (rethinkdb.row["Status"] == new_status)
             ).pluck("Status").run(rethink.rethink_connection)
         test_job = job_cursor.next().get("Status")
         assert(test_job == new_status)
+        job_dict = {
+            "job" : test_job,
+            "status": "Bad"
+        }
+        rethink._update_job_status(job_dict)
+        job_cursor = rethinkdb.db("Brain").table("Jobs").filter(
+            (rethinkdb.row["JobTarget"]["PluginName"] == "jobtester") & (rethinkdb.row["Status"] == new_status)
+            ).pluck("Status").run(rethink.rethink_connection)
+        test_job = job_cursor.next().get("Status")
+        assert test_job != "Bad"
+    except rethinkdb.ReqlCursorEmpty:
+        print("Failed to get job in test_update_job_status")
+
+def test_update_job(rethink):
+    """tests the ability to move through the normal flow of the
+    status "state machine"
+    
+    Arguments:
+        rethink {Fixture} -- An instance of rethink interface
+    """
+    new_job = {
+        "JobTarget":{
+            "PluginName": "advancer",
+            "Location": "8.8.8.8",
+            "Port": "80"
+        },
+        "JobCommand":{
+            "CommandName": "TestJob",
+            "Tooltip": "for testing jobs",
+            "Inputs":[]
+        },
+        "Status": "Ready",
+        "StartTime" : 0
+    }
+
+    try:
+        rethinkdb.db("Brain").table("Jobs").insert(new_job).run(rethink.rethink_connection)
+
+        job_cursor = rethinkdb.db("Brain").table("Jobs").filter(
+            (rethinkdb.row["JobTarget"]["PluginName"] == "advancer") & \
+            (rethinkdb.row["Status"] == "Ready")
+        ).pluck("id").run(rethink.rethink_connection)
+        test_job = job_cursor.next().get("id")
+
+        rethink._update_job(test_job)
+
+        job_cursor = rethinkdb.db("Brain").table("Jobs").get(test_job
+        ).pluck("Status").run(rethink.rethink_connection)
+        test_res = job_cursor.get("Status")
+        assert(test_res == "Pending")
+
+        rethink._update_job(test_job)
+
+        job_cursor = rethinkdb.db("Brain").table("Jobs").get(test_job
+        ).pluck("Status").run(rethink.rethink_connection)
+        test_res = job_cursor.get("Status")
+        assert(test_res == "Done")
+
+        rethink._update_job_error(test_job)
+        job_cursor = rethinkdb.db("Brain").table("Jobs").get(test_job
+        ).pluck("Status").run(rethink.rethink_connection)
+        test_res = job_cursor.get("Status")
+        assert(test_res == "Error")
     except rethinkdb.ReqlCursorEmpty:
         print("Failed to get job in test_update_job")
 
@@ -413,14 +476,14 @@ def test_update_output(brain, rethink):
         "status": "Pending"
     }
     #test updating without any associated output
-    rethink._update_job(updater)
+    rethink._update_job_status(updater)
     output_data = {
         "job": job_obj,
         "output": content
     }
     rethink._send_output(output_data)
     updater["status"] = "Done"
-    rethink._update_job(updater)
+    rethink._update_job_status(updater)
     output_cursor = rethinkdb.db("Brain").table("Outputs").filter(
         rethinkdb.row["OutputJob"]["id"] == job_obj.get("id")
     ).run(rethink.rethink_connection)

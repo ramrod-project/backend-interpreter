@@ -93,6 +93,54 @@ class RethinkInterface:
         stderr.write("DB connection timeout!")
         sysexit(111)
 
+    def _is_valid_state(self, state):
+        states = ["Ready", "Pending", "Done", "Error", "Stopped", "Waiting"]
+        if state in states:
+            return True
+        return False
+
+    def _update_job(self, job_id):
+        """advances the job's status to the next state
+
+        Arguments:
+            job_id {int} -- The job's id from the ID table
+        """
+        try:
+            job = rethinkdb.db("Brain").table("Jobs").get(
+                job_id).pluck("Status").run(self.rethink_connection)
+            job_status = job["Status"]
+        except rethinkdb.ReqlDriverError:
+            self._log(
+                "".join(["unable to find job: ", job_id]), 20)
+        if not self._is_valid_state(job_status):
+            self._log(
+                "".join([job_id, " has an invalid state, setting to error"]),
+                30
+            )
+
+        if job_status == "Ready":
+            self._update_job_status({"job": job_id, "status": "Pending"})
+        elif job_status == "Pending":
+            self._update_job_status({"job": job_id, "status": "Done"})
+        else:
+            self._log(
+                "".join([
+                    "Job: ",
+                    job_id,
+                    " attempted to advance from the invalid state: ",
+                    job_status
+                ]),
+                30
+            )
+
+    def _update_job_error(self, job_id):
+        """sets a job's status to Error
+
+        Arguments:
+            job_id {int} -- The job's id from the ID table
+        """
+        self._update_job_status({"job": job_id, "status": "Error"})
+
     @staticmethod
     def validate_db(connection):
         """Validate database connection
@@ -138,7 +186,7 @@ class RethinkInterface:
         stderr.write("DB not available!\n")
         sysexit(112)
 
-    def _update_job(self, job_data):
+    def _update_job_status(self, job_data):
         """Update's the specified job's status to the given status
 
 
@@ -149,33 +197,36 @@ class RethinkInterface:
             "Pending" or the "Pending" status to either "Done" or "Error"
         """
 
-        try:
-            rethinkdb.db("Brain").table("Jobs").get(job_data["job"]).update(
-                {"Status": job_data["status"]}
-            ).run(self.rethink_connection)
+        if self._is_valid_state(job_data["status"]):
+            try:
+                rethinkdb.db("Brain").table("Jobs").get(
+                    job_data["job"]
+                    ).update({"Status": job_data["status"]}).run(
+                        self.rethink_connection
+                        )
 
-            outputref = rethinkdb.db("Brain").table("Outputs").filter(
-                rethinkdb.row["OutputJob"]["id"] == job_data["job"]
-            ).run(self.rethink_connection)
-
-            if outputref != None:
-                rethinkdb.db("Brain").table("Outputs").filter(
+                outputref = rethinkdb.db("Brain").table("Outputs").filter(
                     rethinkdb.row["OutputJob"]["id"] == job_data["job"]
-                ).update({
-                    "OutputJob": {
-                        "Status": job_data["status"]
-                    }
-                }).run(self.rethink_connection)
-        except rethinkdb.ReqlDriverError:
-            self._log(
-                "".join([
-                    "Unable to update job '",
-                    job_data[0],
-                    "' to ",
-                    job_data[1]
-                ]),
-                20
-            )
+                ).run(self.rethink_connection)
+
+                if outputref != None:
+                    rethinkdb.db("Brain").table("Outputs").filter(
+                        rethinkdb.row["OutputJob"]["id"] == job_data["job"]
+                    ).update({
+                        "OutputJob": {
+                            "Status": job_data["status"]
+                        }
+                    }).run(self.rethink_connection)
+            except rethinkdb.ReqlDriverError:
+                self._log(
+                    "".join([
+                        "Unable to update job '",
+                        job_data[0],
+                        "' to ",
+                        job_data[1]
+                    ]),
+                    20
+                )
 
     def _get_next_job(self, plugin_name):
         """
@@ -268,7 +319,7 @@ class RethinkInterface:
         request_types = {
             "functionality": self._create_plugin_table,
             "job_request": self._get_next_job,
-            "job_update": self._update_job,
+            "job_update": self._update_job_status,
             "job_response": self._send_output,
             "target_update": self._update_target
         }
