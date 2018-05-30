@@ -130,13 +130,13 @@ class RethinkInterface:
             except rethinkdb.ReqlOpFailedError:
                 sleep(0.2)
                 continue
-            except rethinkdb.ReqlDriverError:
-                stderr.write("Invalid connection provided!")
+            except rethinkdb.ReqlDriverError as err:
+                stderr.write("".join((str(err), "\n")))
                 break
         if q >= len(queries):
             return connection
 
-        stderr.write("DB not available!")
+        stderr.write("DB not available!\n")
         sysexit(112)
 
     def _update_job(self, job_data):
