@@ -35,7 +35,7 @@ class RethinkInterface:
         self.port = server[1]
         # One Queue for responses from the plugin processes
         self.response_queue = Queue()
-        self.rethink_connection = self._connect_to_db()
+        self.rethink_connection = self.connect_to_db(self.host, self.port)
         plugin.initialize_queues(self.response_queue, self.plugin_queue)
 
     def start(self, logger, signal):
@@ -67,18 +67,76 @@ class RethinkInterface:
                 self._log_db_error(err)
         self._stop()
 
-    def _connect_to_db(self):
+    @staticmethod
+    def connect_to_db(host, port):
+        """Attempt to establish a connection to db
+
+        This method is called at the end of this object's
+        instantiation, and will attempt to connect to the
+        database for 30 seconds, and timeout if unable
+        to do so, calling a system exit.
+        #
+        Once a connection has been established, it hands
+        off to the _validate_db function, which checks to
+        see if the necessary databases and tables
+        are available.
+        """
         now = time()
-        while time() - now < 30:
+        while time() - now < 15:
             try:
-                conn = rethinkdb.connect(self.host, self.port)
-                return conn
+                conn = rethinkdb.connect(host, port)
+                return RethinkInterface.validate_db(conn)
             except ConnectionResetError:
-                sleep(3)
+                sleep(0.5)
             except rethinkdb.ReqlDriverError:
-                sleep(3)
+                sleep(0.5)
         stderr.write("DB connection timeout!")
         sysexit(111)
+
+    @staticmethod
+    def validate_db(connection):
+        """Validate database connection
+
+        This method validates that the databases
+        and tables needed for operation are available
+        in the database (which the connection argument
+        connects to).
+
+        Arguments:
+            connection {rethinkdb.connection} -- connection object
+            to the rethink database.
+
+        Returns:
+            {rethinkdb.connection} -- connection object, returned
+            if the validation passes.
+        """
+
+        queries = [
+            rethinkdb.db_list().contains("Plugins"),
+            rethinkdb.db_list().contains("Brain"),
+            rethinkdb.db_list().contains("Audit"),
+            rethinkdb.db("Brain").table("Targets"),
+            rethinkdb.db("Brain").table("Outputs"),
+            rethinkdb.db("Brain").table("Jobs"),
+            rethinkdb.db("Audit").table("Jobs")
+        ]
+
+        i = 0
+        now = time()
+        while time() - now < 15:
+            try:
+                queries[i].run(connection)
+                i += 1
+            except rethinkdb.ReqlOpFailedError:
+                sleep(0.2)
+            except rethinkdb.ReqlDriverError as err:
+                stderr.write("".join((str(err), "\n")))
+                break
+            if i >= len(queries):
+                return connection
+
+        stderr.write("DB not available!\n")
+        sysexit(112)
 
     def _update_job(self, job_data):
         """Update's the specified job's status to the given status
