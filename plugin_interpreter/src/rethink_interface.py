@@ -82,7 +82,7 @@ class RethinkInterface:
         are available.
         """
         now = time()
-        while time() - now < 60:
+        while time() - now < 15:
             try:
                 conn = rethinkdb.connect(host, port)
                 return RethinkInterface.validate_db(conn)
@@ -165,7 +165,7 @@ class RethinkInterface:
 
         i = 0
         now = time()
-        while time() - now < 60:
+        while time() - now < 15:
             try:
                 queries[i].run(connection)
                 i += 1
