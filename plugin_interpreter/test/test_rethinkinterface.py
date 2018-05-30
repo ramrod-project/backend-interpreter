@@ -5,18 +5,21 @@ from ctypes import c_bool
 from multiprocessing import Value
 from os import environ
 from threading import Thread
-from time import sleep
+from time import sleep, time
 
 from pytest import fixture, raises
 import docker
 import rethinkdb
-CLIENT = docker.from_env()
 
 from plugins import *
 from src import rethink_interface
 
 
+CLIENT = docker.from_env()
+
+
 class mock_logger():
+
 
     def __init__(self):
         pass
@@ -24,10 +27,10 @@ class mock_logger():
     def send(self, msg):
         pass
 
-
+# Provide database-brain container for module tests
 @fixture(scope='module')
-def rethink():
-    # Setup for module tests
+def brain():
+    # Setup for all module tests
     try:
         tag = environ["TRAVIS_BRANCH"]
     except KeyError:
@@ -39,18 +42,61 @@ def rethink():
         ports={"28015/tcp": 28015},
         remove=True
     )
-    server = ('127.0.0.1', 28015)
-    environ["STAGE"] = "DEV"
-    plugin = Harness()
-    rdb = rethink_interface.RethinkInterface(plugin, server)
-    rdb.logger = mock_logger()
-    yield rdb
-    # Teardown for module tests
+    yield
+    # Teardown for all module tests
     containers = CLIENT.containers.list()
     for container in containers:
         if container.name == "rethinkdb_rethink":
             container.stop()
             break
+
+# Provide connection to database-brain for module tests
+@fixture(scope='function')
+def rethink():
+    # Setup for each test
+    server = ("127.0.0.1", 28015)
+    environ["STAGE"] = "DEV"
+    plugin = Harness()
+    rdb = rethink_interface.RethinkInterface(plugin, server)
+    rdb.logger = mock_logger()
+    yield rdb
+    # Teardown for each test
+    rdb.rethink_connection.close()
+    clear_dbs(rethinkdb.connect("127.0.0.1", 28015))
+
+# Provide empty rethinkdb container for tests that need it
+@fixture(scope='function')
+def rethink_empty():
+    # Setup
+    CLIENT.containers.run(
+        "rethinkdb:2.3.6",
+        name="rethinkdb_rethink_empty",
+        detach=True,
+        ports={"28015/tcp": 28016},
+        remove=True
+    )
+    conn = None
+    now = time()
+    while time() - now < 5:
+        try:
+            conn = rethinkdb.connect("127.0.0.1", 28016)
+        except rethinkdb.ReqlDriverError:
+            sleep(0.3)
+    yield conn
+    # Teardown
+    containers = CLIENT.containers.list()
+    for container in containers:
+        if container.name == "rethinkdb_rethink_empty":
+            container.stop()
+            break
+
+def clear_dbs(conn):
+    rethinkdb.db("Brain").table("Targets").delete().run(conn)
+    rethinkdb.db("Brain").table("Outputs").delete().run(conn)
+    rethinkdb.db("Brain").table("Jobs").delete().run(conn)
+    rethinkdb.db("Audit").table("Jobs").delete().run(conn)
+    for table in rethinkdb.db("Plugins").table_list().run(conn):
+        rethinkdb.db("Plugins").table(table).delete().run(conn)
 
 def compare_to(tablecheck, compare_list):
     """[summary]
@@ -69,10 +115,27 @@ def compare_to(tablecheck, compare_list):
             return False
     return True
 
-def test_rethink_setup(rethink):
+def test_rethink_setup(brain, rethink):
     assert isinstance(rethink, rethink_interface.RethinkInterface)
 
-def test_rethink_plugin_create(rethink):
+def test_validate_db(brain, rethink, rethink_empty):
+    """Tests that the rethink interface can validate that the database
+    has all of the requisite databases and tables pre populated, and
+    can return a connection to the database.
+    
+    Arguments:
+        rethink {Fixture} -- An instance of rethink interface
+    """
+    result = rethink_interface.RethinkInterface.validate_db(rethink.rethink_connection)
+    assert isinstance(result, rethinkdb.net.DefaultConnection)
+    assert rethinkdb.db_list().run(result)
+    with raises(SystemExit):
+        _ = rethink_interface.RethinkInterface.validate_db(rethink_empty)
+    rethink.rethink_connection.close()
+    with raises(SystemExit):
+        _ = rethink_interface.RethinkInterface.validate_db(rethink.rethink_connection)
+
+def test_rethink_plugin_create(brain, rethink):
     """Tests if the _plugin_create() function can successfully add a table to
     the plugin database and fill it with Commands. it then tests if the table
     can be updated with new Commands
@@ -145,7 +208,7 @@ def test_rethink_plugin_create(rethink):
     #             "Tooltip": "This is also a test"
     #         }]))
     
-def test_next_job(rethink):
+def test_next_job(brain, rethink):
     """Tests the _get_next_job() function by inserting a job into the
     Brain and testing if the function correctly gets the job and adds it to the
     plugin_queue
@@ -175,7 +238,7 @@ def test_next_job(rethink):
     test_job = rethink.plugin_queue.get(timeout=1)
     assert compare_to(new_job,test_job)
 
-def test_update_job_status(rethink):
+def test_update_job(brain, rethink):
     """Tests _update_job() by placing a job in the Jobs table and calling 
     update_jobs() to change the status of the job
     
@@ -267,8 +330,7 @@ def test_update_job(rethink):
     except rethinkdb.ReqlCursorEmpty:
         print("Failed to get job in test_update_job")
 
-
-def test_send_output(rethink):
+def test_send_output(brain, rethink):
     """Tests _send_output() by placing a job in the job queue, getting its
     id, and then calling _send_output() with a string of output and checking
     if the entry was added to the Outputs Table
@@ -314,47 +376,81 @@ def test_send_output(rethink):
     except rethinkdb.ReqlDriverError:
         print("Could not insert test job into table")
 
-def test_get_table_contents(rethink):
+def test_get_table_contents(brain, rethink):
     """Tests getting an entire table
     
     Arguments:
         rethink {RethinkInterface} -- an instance of RethinkInterface
         for connecting to the test database.
     """
+    rethinkdb.db("Brain").table("Jobs").delete().run(rethink.rethink_connection)
+    results_none = rethink.get_table_contents("Brain", "Jobs")
+    assert results_none == []
+    rethinkdb.db("Brain").table("Jobs").insert([
+        {
+            "JobTarget":{
+                "PluginName": "testplugin",
+                "Location": "1.1.1.1",
+                "Port": "9000"
+            },
+            "JobCommand":{
+                "CommandName": "GetTest",
+                "Tooltip": "for getting test",
+                "Inputs":["string"]
+            },
+            "Status": "Ready",
+            "StartTime" : 1000
+        },
+        {
+            "JobTarget":{
+                "PluginName": "testplugin",
+                "Location": "1.1.1.1",
+                "Port": "9000"
+            },
+            "JobCommand":{
+                "CommandName": "SetTest",
+                "Tooltip": "for setting test",
+                "Inputs":["string"]
+            },
+            "Status": "Ready",
+            "StartTime" : 900
+        }
+    ]).run(rethink.rethink_connection)
     results = rethink.get_table_contents("Brain", "Jobs")
+    assert results != []
+    assert len(results) == 2
     results[0].pop("id", None)
     results[1].pop("id", None)
-    assert len(results) == 2
     assert {
         "JobTarget":{
-            "PluginName": "texter",
-            "Location": "8.8.8.8",
-            "Port": "80"
+            "PluginName": "testplugin",
+            "Location": "1.1.1.1",
+            "Port": "9000"
         },
         "JobCommand":{
-            "CommandName": "GetText",
-            "Tooltip": "for getting text",
-            "Inputs":[]
+            "CommandName": "GetTest",
+            "Tooltip": "for getting test",
+            "Inputs":["string"]
         },
         "Status": "Ready",
-        "StartTime" : 0
+        "StartTime" : 1000
     } in results
     assert {
         "JobTarget":{
-            "PluginName": "jobtester",
-            "Location": "8.8.8.8",
-            "Port": "80"
+            "PluginName": "testplugin",
+            "Location": "1.1.1.1",
+            "Port": "9000"
         },
         "JobCommand":{
-            "CommandName": "TestJob",
-            "Tooltip": "for testing jobs",
-            "Inputs":[]
+            "CommandName": "SetTest",
+            "Tooltip": "for setting test",
+            "Inputs":["string"]
         },
-        "Status": "Pending",
-        "StartTime" : 0
+        "Status": "Ready",
+        "StartTime" : 900
     } in results
 
-def test_update_output(rethink):
+def test_update_output(brain, rethink):
     content = "This is some different output"
     new_job = {
         "JobTarget":{
@@ -394,7 +490,7 @@ def test_update_output(rethink):
     output_status = output_cursor.next().get("OutputJob",{}).get("Status")
     assert output_status == "Done"
 
-def test_rethink_start(rethink):
+def test_rethink_start(brain, rethink):
     # Test running as thread (**THIS KILLS THE CONNECTION**)
     # Don't run tests after this one that require the connection...
     val = Value(c_bool, False)
