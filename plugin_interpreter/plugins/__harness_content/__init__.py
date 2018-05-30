@@ -101,7 +101,19 @@ None
 
 Returns: Status code
 """
+list_files_tt = """
+List Files in a given directory
 
+
+Arguments:
+1: Directory Path
+      MUST be a fully qualified path
+          and it MUST be a directory
+
+Returns:
+File listing of the specified directory
+
+"""
 
 list_procs_tt = """
 Lists Running Processes
@@ -334,6 +346,19 @@ command_templates = [
 "Tooltip":list_procs_tt,
 "Output":True,
 "Inputs":[],
+"OptionalInputs":[]
+},
+{
+"CommandName":"list_files",
+"Tooltip":list_files_tt,
+"Output":True,
+"Inputs":[
+        {"Name":"DirectoryPath",
+         "Type":"textbox",
+         "Tooltip":"Must be fully qualified path nand that path MUST be a directory",
+         "Value":""
+         },
+         ],
 "OptionalInputs":[]
 },
 {
