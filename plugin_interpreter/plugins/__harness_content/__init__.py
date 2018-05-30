@@ -235,7 +235,7 @@ Returns:
 None
 """
 
-command_templates = [
+command_templates = [t
 {
 "CommandName":"get_file",
 "Tooltip":read_file_tt,
@@ -355,7 +355,7 @@ command_templates = [
 "Inputs":[
         {"Name":"DirectoryPath",
          "Type":"textbox",
-         "Tooltip":"Must be fully qualified path nand that path MUST be a directory",
+         "Tooltip":"Must be fully qualified path and that path MUST be a directory",
          "Value":""
          },
          ],

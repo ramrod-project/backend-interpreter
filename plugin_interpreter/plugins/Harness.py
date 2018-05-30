@@ -169,8 +169,7 @@ class Harness(cp.ControllerPlugin):
                     output_content = output['Content']
                     self._respond_output(job, output_content)
 
-
-    def _provide_status_update(self, job_id, status): # pragma: no cover
+    def _provide_status_update(self, job_id, status):  # pragma: no cover
         """
         There are limited status updates the plugin can update.
         This code should probably be in the base class
@@ -181,7 +180,7 @@ class Harness(cp.ControllerPlugin):
         """
         raise NotImplementedError
 
-    def _put_blob_in_content_table(self, file_id, blob): # pragma: no cover
+    def _put_blob_in_content_table(self, file_id, blob):  # pragma: no cover
         """
         Caller must own _G_LOCK
         Internal function only
@@ -205,7 +204,7 @@ class Harness(cp.ControllerPlugin):
         self._clients[client] = telemetry
 
 
-    def _populate_work(self, location): # pragma: no cover
+    def _populate_work(self, location):  # pragma: no cover
         '''
         This function is test  code intended to be removed once
             the plugin is integrated
@@ -214,7 +213,7 @@ class Harness(cp.ControllerPlugin):
         '''
         [self._work[location].append(x) for x in _translated_commands]
 
-    def _convert_job(self, job):# pragma: no cover
+    def _convert_job(self, job):  # pragma: no cover
         '''
         Deprecated: Jobs should be in the new template format
         :param job:
