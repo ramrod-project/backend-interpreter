@@ -238,7 +238,7 @@ def test_next_job(brain, rethink):
     test_job = rethink.plugin_queue.get(timeout=1)
     assert compare_to(new_job,test_job)
 
-def test_update_job(brain, rethink):
+def test_update_job_status(brain, rethink):
     """Tests _update_job() by placing a job in the Jobs table and calling 
     update_jobs() to change the status of the job
     
