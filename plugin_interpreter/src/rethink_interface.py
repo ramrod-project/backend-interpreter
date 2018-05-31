@@ -238,8 +238,10 @@ class RethinkInterface:
         """
 
         # find jobs with the name of the plugin and are Ready to execute
-        self.job_cursor = brain.queries.get_next_job(plugin_name,
-                                                     self.rethink_connection)
+        next_job = brain.queries.get_next_job
+        self.job_cursor = next_job(plugin_name,
+                                   verify_job=False,
+                                   conn=self.rethink_connection)
         try:
             new_job = self.job_cursor.__next__()
             self.plugin_queue.put(new_job)
