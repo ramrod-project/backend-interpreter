@@ -83,12 +83,12 @@ class RethinkInterface:
         see if the necessary databases and tables
         are available.
         """
-        timeout = 15 # from prior hardcode
+        timeout = 15  # from prior hardcode
         try:
-            conn = brain.connection.brain_connect(host,
-                                                  port,
-                                                  timeout,
-                                                  verify=False)
+            conn = brain.connection.connect(host,
+                                            port,
+                                            timeout,
+                                            verify=False)
             return RethinkInterface.validate_db(conn)
         except brain.connection.BrainNotReady:
             stderr.write("DB connection timeout!")
