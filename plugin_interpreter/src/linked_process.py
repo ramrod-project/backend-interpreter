@@ -40,7 +40,6 @@ class LinkedProcess:
         )
 
         try:
-            print("starting linked")
             self.proc.start()
         except Exception as ex:
             print(ex)

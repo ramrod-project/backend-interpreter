@@ -81,16 +81,12 @@ class Harness(cp.ControllerPlugin):
         if __STANDALONE__:
             self._populate_work("127.0.0.1")
         else:
-            print("advertising")
             self._advertise_functionality()
-            print("advertised")
         _G_LOCK.release()
 
         self._start_webserver()
         try:
-            print("before process loop")
             self._processing_loop(logger, ext_signal) #blocks until ext_signal.value == True
-            print("after loop")
         except KeyboardInterrupt:
             self._stop(logger, _app)
         finally:
