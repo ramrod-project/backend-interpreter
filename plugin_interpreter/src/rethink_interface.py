@@ -238,8 +238,8 @@ class RethinkInterface:
         """
 
         # find jobs with the name of the plugin and are Ready to execute
-        self.job_cursor = brain.queries.get_next_job_for(plugin_name,
-                                                         self.rethink_connection)
+        self.job_cursor = brain.queries.get_next_job(plugin_name,
+                                                     self.rethink_connection)
         try:
             new_job = self.job_cursor.__next__()
             self.plugin_queue.put(new_job)
@@ -299,10 +299,11 @@ class RethinkInterface:
 
         if brain.queries.create_plugin(plugin_data[0]):
             try:
-                brain.queries.advertise_plugin_commands(plugin_data[0], # name
-                                                        plugin_data[1], # commands
-                                                        verify_commands=False,
-                                                        conn=self.rethink_connection)
+                advertise = brain.queries.advertise_plugin_commands
+                advertise(plugin_data[0],  # name
+                          plugin_data[1],  # commands
+                          verify_commands=False,
+                          conn=self.rethink_connection)
             except ValueError:
                 self._log(
                     "".join([
