@@ -10,6 +10,7 @@ from multiprocessing import Queue
 from queue import Empty
 from sys import exit as sysexit, stderr
 from time import sleep, time
+import threading
 
 from brain import r as rethinkdb
 
@@ -30,6 +31,9 @@ class RethinkInterface:
         self.job_cursor = None
         self.host = server[0]
         self.logger = None
+        self.plugin_name = plugin.__str__
+        self.job_fetcher = threading.Thread(target=self.changefeed_thread)
+        self.stop_fetcher = False
         # Generate dictionary of Queues for each plugin
         self.plugin_queue = Queue()
         self.port = server[1]
@@ -37,6 +41,21 @@ class RethinkInterface:
         self.response_queue = Queue()
         self.rethink_connection = self.connect_to_db(self.host, self.port)
         plugin.initialize_queues(self.response_queue, self.plugin_queue)
+
+    def changefeed_thread(self):
+        feed = rethinkdb.db("Brain").table("Jobs").filter(
+            (rethinkdb.row["Status"] == "Ready") &
+            (rethinkdb.row["JobTarget"]["PluginName"]  == self.plugin_name)
+        ).changes().run(self.rethink_connection)
+        try:
+            for change in feed:
+                if self.stop_fetcher:
+                    continue
+                self.plugin_queue.put(change["new_val"])
+        except RuntimeError:
+            self._log("Changefeed Disconnected. Job monitoring has stopped.", 30)
+            #if the changefeed is disconnected, leave function to allow a join
+            pass
 
     def start(self, logger, signal):
         """
@@ -55,6 +74,8 @@ class RethinkInterface:
             )
         else:
             self._stop()
+        self.job_fetcher.start()
+
         while not signal.value:
             try:
                 sleep(0.1)
@@ -318,7 +339,7 @@ class RethinkInterface:
     def _handle_response(self, response):
         request_types = {
             "functionality": self._create_plugin_table,
-            "job_request": self._get_next_job,
+            #"job_request": self._get_next_job,
             "job_update": self._update_job_status,
             "job_response": self._send_output,
             "target_update": self._update_target
@@ -420,5 +441,12 @@ class RethinkInterface:
         try:
             self.rethink_connection.close()
         except rethinkdb.ReqlDriverError:
+            pass
+        #after closing connection, join thread. the closed connection
+        #should cause the blocking to end and the thread to terminate
+        try:
+            self.stop_fetcher = True
+            self.job_fetcher.join(timeout=4)
+        except RuntimeError:
             pass
         sysexit(0)
