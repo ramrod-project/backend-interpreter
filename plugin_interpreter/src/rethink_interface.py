@@ -40,6 +40,7 @@ class RethinkInterface:
         # One Queue for responses from the plugin processes
         self.response_queue = Queue()
         self.rethink_connection = self.connect_to_db(self.host, self.port)
+        self.feed_connection = self.connect_to_db(self.host, self.port)
         plugin.initialize_queues(self.response_queue, self.plugin_queue)
 
     def changefeed_thread(self):
@@ -47,7 +48,7 @@ class RethinkInterface:
         feed = rethinkdb.db("Brain").table("Jobs").filter(
             (rethinkdb.row["Status"] == "Ready") &
             (rethinkdb.row["JobTarget"]["PluginName"]  == self.plugin_name)
-        ).changes().run(self.rethink_connection)
+        ).changes().run(self.feed_connection)
         try:
             for change in feed:
                 if self.stop_fetcher:
