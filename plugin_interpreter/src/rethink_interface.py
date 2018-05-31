@@ -43,6 +43,7 @@ class RethinkInterface:
         plugin.initialize_queues(self.response_queue, self.plugin_queue)
 
     def changefeed_thread(self):
+        print(self.plugin_name)
         feed = rethinkdb.db("Brain").table("Jobs").filter(
             (rethinkdb.row["Status"] == "Ready") &
             (rethinkdb.row["JobTarget"]["PluginName"]  == self.plugin_name)

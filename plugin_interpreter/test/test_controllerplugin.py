@@ -150,6 +150,7 @@ def test_request_job(plugin_base):
     """
     responder = Thread(target=dummy_interface)
     responder.start()
+    sleep(3)
     result = plugin_base._request_job()
     assert result == SAMPLE_JOB
     status = FROM_PLUGIN.get(timeout=3)
