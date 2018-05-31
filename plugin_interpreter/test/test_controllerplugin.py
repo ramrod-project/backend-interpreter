@@ -3,7 +3,7 @@
 
 import multiprocessing
 from threading import Thread
-from time import time
+from time import time, sleep
 
 from pytest import fixture, raises
 
