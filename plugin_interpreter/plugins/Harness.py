@@ -90,7 +90,6 @@ class Harness(cp.ControllerPlugin):
         try:
             print("before proc")
             self._processing_loop(logger, ext_signal) #blocks until ext_signal.value == True
-            print("after loop")
         except KeyboardInterrupt:
             self._stop(logger, _app)
         finally:
