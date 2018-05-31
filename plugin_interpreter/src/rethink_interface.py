@@ -31,7 +31,7 @@ class RethinkInterface:
         self.job_cursor = None
         self.host = server[0]
         self.logger = None
-        self.plugin_name = plugin.__str__
+        self.plugin_name
         self.job_fetcher = threading.Thread(target=self.changefeed_thread)
         self.stop_fetcher = False
         # Generate dictionary of Queues for each plugin
@@ -326,6 +326,8 @@ class RethinkInterface:
                 plugin_data[1],
                 conflict="update"
             ).run(self.rethink_connection)
+            #save the plugin's name
+            self.plugin_name = plugin_data[0]
         except rethinkdb.ReqlDriverError:
             self._log(
                 "".join([
