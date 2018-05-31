@@ -32,7 +32,7 @@ class RethinkInterface:
         self.host = server[0]
         self.logger = None
         self.plugin_name = None
-        self.job_fetcher = threading.Thread(target=self.changefeed_thread)
+        self.job_fetcher = None
         self.stop_fetcher = False
         # Generate dictionary of Queues for each plugin
         self.plugin_queue = Queue()
@@ -75,6 +75,7 @@ class RethinkInterface:
             )
         else:
             self._stop()
+        self.job_fetcher = threading.Thread(target=self.changefeed_thread)
         self.job_fetcher.start()
 
         while not signal.value:
