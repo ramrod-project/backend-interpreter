@@ -299,7 +299,8 @@ class RethinkInterface:
             the plugin and the list of Commands (plguin_name, command_list)
         """
 
-        if brain.queries.create_plugin(plugin_data[0]):
+        if brain.queries.create_plugin(plugin_data[0],
+                                       conn=self.rethink_connection):
             try:
                 advertise = brain.queries.advertise_plugin_commands
                 advertise(plugin_data[0],  # name
