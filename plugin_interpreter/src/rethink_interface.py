@@ -53,10 +53,11 @@ class RethinkInterface:
         self._log("subscribed",10)
         try:
             for change in feed:
-                self._log(change["new_val"],10)
+                newval = change["new_val"]
+                self._log(newval,10)
                 if self.stop_fetcher:
-                    continue
-                self.plugin_queue.put(change["new_val"])
+                    break
+                self.plugin_queue.put(newval)
         except RuntimeError:
             self._log("Changefeed Disconnected. Job monitoring has stopped.", 30)
             #if the changefeed is disconnected, leave function to allow a join
