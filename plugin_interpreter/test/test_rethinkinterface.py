@@ -500,5 +500,5 @@ def test_rethink_start(brain, rethink):
     rethink_thread.start()
     assert rethink_thread.is_alive()
     val.value = True
-    sleep(5)
+    sleep(15)
     assert not rethink_thread.is_alive()
