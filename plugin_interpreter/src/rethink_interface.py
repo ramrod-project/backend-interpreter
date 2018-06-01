@@ -46,7 +46,7 @@ class RethinkInterface:
     def changefeed_thread(self):
         feed = rethinkdb.db("Brain").table("Jobs").filter(
             (rethinkdb.row["Status"] == "Ready") &
-            (rethinkdb.row["JobTarget"]["PluginName"]  == self.plugin_name)
+            (rethinkdb.row["JobTarget"]["PluginName"] == self.plugin_name)
         ).changes().run(self.feed_connection)
         try:
             for change in feed:
