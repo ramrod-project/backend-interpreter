@@ -88,7 +88,7 @@ class RethinkInterface:
             conn = brain.connection.connect(host,
                                             port,
                                             timeout,
-                                            verify=False)
+                                            verify=True)
             return RethinkInterface.validate_db(conn)
         except brain.connection.BrainNotReady:
             stderr.write("DB connection timeout!")
@@ -159,33 +159,11 @@ class RethinkInterface:
             {rethinkdb.connection} -- connection object, returned
             if the validation passes.
         """
-
-        queries = [
-            rethinkdb.db_list().contains("Plugins"),
-            rethinkdb.db_list().contains("Brain"),
-            rethinkdb.db_list().contains("Audit"),
-            rethinkdb.db("Brain").table("Targets"),
-            rethinkdb.db("Brain").table("Outputs"),
-            rethinkdb.db("Brain").table("Jobs"),
-            rethinkdb.db("Audit").table("Jobs")
-        ]
-
-        i = 0
-        now = time()
-        while time() - now < 15:
-            try:
-                queries[i].run(connection)
-                i += 1
-            except rethinkdb.ReqlOpFailedError:
-                sleep(0.2)
-            except rethinkdb.ReqlDriverError as err:
-                stderr.write("".join((str(err), "\n")))
-                break
-            if i >= len(queries):
-                return connection
-
-        stderr.write("DB not available!\n")
-        sysexit(112)
+        try:
+            return brain.connection.brain_post(connection)
+        except AssertionError:
+            stderr.write("DB not available!\n")
+            sysexit(112)
 
     def _update_job_status(self, job_data):
         """Update's the specified job's status to the given status
