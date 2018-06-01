@@ -44,23 +44,19 @@ class RethinkInterface:
         plugin.initialize_queues(self.response_queue, self.plugin_queue)
 
     def changefeed_thread(self):
-        self._log("inside thread",10)
-        self._log(self.plugin_name,10)
         feed = rethinkdb.db("Brain").table("Jobs").filter(
             (rethinkdb.row["Status"] == "Ready") &
             (rethinkdb.row["JobTarget"]["PluginName"]  == self.plugin_name)
         ).changes().run(self.feed_connection)
-        self._log("subscribed",10)
         try:
             for change in feed:
                 newval = change["new_val"]
-                self._log(newval,10)
                 if self.stop_fetcher:
                     break
                 self.plugin_queue.put(newval)
         except RuntimeError:
-            self._log("Changefeed Disconnected. Job monitoring has stopped.", 30)
-            #if the changefeed is disconnected, leave function to allow a join
+            self._log("Changefeed Disconnected.", 30)
+            # if the changefeed is disconnected, leave function to allow a join
             pass
 
     def start(self, logger, signal):
@@ -336,7 +332,7 @@ class RethinkInterface:
                 plugin_data[1],
                 conflict="update"
             ).run(self.rethink_connection)
-            #save the plugin's name
+            # save the plugin's name
             self.plugin_name = plugin_data[0]
         except rethinkdb.ReqlDriverError:
             self._log(
@@ -351,7 +347,7 @@ class RethinkInterface:
     def _handle_response(self, response):
         request_types = {
             "functionality": self._create_plugin_table,
-            #"job_request": self._get_next_job,
+            # "job_request": self._get_next_job,
             "job_update": self._update_job_status,
             "job_response": self._send_output,
             "target_update": self._update_target
@@ -454,8 +450,8 @@ class RethinkInterface:
             self.rethink_connection.close()
         except rethinkdb.ReqlDriverError:
             pass
-        #after closing connection, join thread. the closed connection
-        #should cause the blocking to end and the thread to terminate
+        # after closing connection, join thread. the closed connection
+        # should cause the blocking to end and the thread to terminate
         try:
             self.stop_fetcher = True
             self.job_fetcher.join(timeout=4)
