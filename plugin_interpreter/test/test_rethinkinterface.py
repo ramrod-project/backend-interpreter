@@ -25,6 +25,7 @@ class mock_logger():
         pass
 
     def send(self, msg):
+        print(msg)
         pass
 
 # Provide database-brain container for module tests
@@ -499,5 +500,5 @@ def test_rethink_start(brain, rethink):
     rethink_thread.start()
     assert rethink_thread.is_alive()
     val.value = True
-    sleep(1)
+    sleep(5)
     assert not rethink_thread.is_alive()

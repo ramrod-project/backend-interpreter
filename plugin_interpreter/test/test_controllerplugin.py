@@ -92,9 +92,6 @@ def dummy_interface():
         TO_PLUGIN.put(SAMPLE_JOB)
     elif next_item["type"] == "functionality":
         return next_item["data"]
-    elif next_item["type"] == "job_response":
-        status_update = FROM_PLUGIN.get()
-        return (next_item["data"], status_update["data"]["status"])
     return None
 
 @fixture(scope="function")
@@ -148,9 +145,7 @@ def test_request_job(plugin_base):
         plugin_base {fixture} -- yields the SamplePlugin
         instance needed for testing.
     """
-    responder = Thread(target=dummy_interface)
-    responder.start()
-    sleep(3)
+    TO_PLUGIN.put(SAMPLE_JOB)
     now = time()
     while time() - now < 3:
         result = plugin_base._request_job()

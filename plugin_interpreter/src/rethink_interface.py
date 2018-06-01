@@ -82,7 +82,7 @@ class RethinkInterface:
             self._stop()
 
         # get the pluginname with the functionality advertisement
-        self._handle_response(self.response_queue.get())
+        self._handle_response(self.response_queue.get(timeout=3))
         self.job_fetcher = threading.Thread(target=self.changefeed_thread)
         self.job_fetcher.start()
 
