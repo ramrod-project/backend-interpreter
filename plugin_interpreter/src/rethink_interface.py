@@ -13,6 +13,8 @@ from time import sleep, time
 import threading
 
 from brain import r as rethinkdb
+import brain.connection
+import brain.queries
 
 
 class RethinkInterface:
@@ -108,17 +110,16 @@ class RethinkInterface:
         see if the necessary databases and tables
         are available.
         """
-        now = time()
-        while time() - now < 15:
-            try:
-                conn = rethinkdb.connect(host, port)
-                return RethinkInterface.validate_db(conn)
-            except ConnectionResetError:
-                sleep(0.5)
-            except rethinkdb.ReqlDriverError:
-                sleep(0.5)
-        stderr.write("DB connection timeout!")
-        sysexit(111)
+        timeout = 15  # from prior hardcode
+        try:
+            conn = brain.connection.connect(host,
+                                            port,
+                                            timeout,
+                                            verify=True)
+            return RethinkInterface.validate_db(conn)
+        except brain.connection.BrainNotReady:
+            stderr.write("DB connection timeout!")
+            sysexit(111)
 
     def _is_valid_state(self, state):
         states = ["Ready", "Pending", "Done", "Error", "Stopped", "Waiting"]
@@ -185,33 +186,11 @@ class RethinkInterface:
             {rethinkdb.connection} -- connection object, returned
             if the validation passes.
         """
-
-        queries = [
-            rethinkdb.db_list().contains("Plugins"),
-            rethinkdb.db_list().contains("Brain"),
-            rethinkdb.db_list().contains("Audit"),
-            rethinkdb.db("Brain").table("Targets"),
-            rethinkdb.db("Brain").table("Outputs"),
-            rethinkdb.db("Brain").table("Jobs"),
-            rethinkdb.db("Audit").table("Jobs")
-        ]
-
-        i = 0
-        now = time()
-        while time() - now < 15:
-            try:
-                queries[i].run(connection)
-                i += 1
-            except rethinkdb.ReqlOpFailedError:
-                sleep(0.2)
-            except rethinkdb.ReqlDriverError as err:
-                stderr.write("".join((str(err), "\n")))
-                break
-            if i >= len(queries):
-                return connection
-
-        stderr.write("DB not available!\n")
-        sysexit(112)
+        try:
+            return brain.connection.brain_post(connection)
+        except AssertionError:
+            stderr.write("DB not available!\n")
+            sysexit(112)
 
     def _update_job_status(self, job_data):
         """Update's the specified job's status to the given status
@@ -264,14 +243,14 @@ class RethinkInterface:
         """
 
         # find jobs with the name of the plugin and are Ready to execute
-        self.job_cursor = rethinkdb.db("Brain").table("Jobs").filter(
-            (rethinkdb.row["JobTarget"]["PluginName"] == plugin_name) &
-            (rethinkdb.row["Status"] == "Ready")
-        ).run(self.rethink_connection)
+        next_job = brain.queries.get_next_job
+        self.job_cursor = next_job(plugin_name,
+                                   verify_job=False,
+                                   conn=self.rethink_connection)
         try:
-            new_job = self.job_cursor.next()
+            new_job = self.job_cursor.__next__()
             self.plugin_queue.put(new_job)
-        except rethinkdb.ReqlCursorEmpty:
+        except StopIteration:
             self.plugin_queue.put(None)
 
     def _send_output(self, output_data):
@@ -304,7 +283,7 @@ class RethinkInterface:
                 ).run(self.rethink_connection)
             except rethinkdb.ReqlDriverError as ex:
                 self._log(
-                    "".join(("Could not write output to database", str(ex))),
+                    "".join(("Could * not write output to database", str(ex))),
                     30
                 )
         else:
@@ -325,24 +304,23 @@ class RethinkInterface:
             the plugin and the list of Commands (plguin_name, command_list)
         """
 
-        self._create_table("Plugins", plugin_data[0])
-
-        try:
-            rethinkdb.db("Plugins").table(plugin_data[0]).insert(
-                plugin_data[1],
-                conflict="update"
-            ).run(self.rethink_connection)
-            # save the plugin's name
-            self.plugin_name = plugin_data[0]
-        except rethinkdb.ReqlDriverError:
-            self._log(
-                "".join([
-                    "Unable to add command to table '",
-                    plugin_data[0],
-                    "'"
-                ]),
-                20
-            )
+        if brain.queries.create_plugin(plugin_data[0],
+                                       conn=self.rethink_connection):
+            try:
+                advertise = brain.queries.advertise_plugin_commands
+                advertise(plugin_data[0],  # name
+                          plugin_data[1],  # commands
+                          verify_commands=False,
+                          conn=self.rethink_connection)
+            except ValueError:
+                self._log(
+                    "".join([
+                        "Unable to add command to table '",
+                        plugin_data[0],
+                        "'"
+                    ]),
+                    20
+                )
 
     def _handle_response(self, response):
         request_types = {
