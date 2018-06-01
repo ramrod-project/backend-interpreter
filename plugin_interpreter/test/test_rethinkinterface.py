@@ -61,6 +61,7 @@ def rethink():
     rdb = rethink_interface.RethinkInterface(plugin, server)
     rdb.logger = mock_logger()
     yield rdb
+    rdb.feed_connection.close()
     # Teardown for each test
     rdb.rethink_connection.close()
     clear_dbs(rethinkdb.connect("127.0.0.1", 28015))
@@ -133,7 +134,7 @@ def test_validate_db(brain, rethink, rethink_empty):
     with raises(SystemExit):
         _ = rethink_interface.RethinkInterface.validate_db(rethink_empty)
     rethink.rethink_connection.close()
-    with raises(SystemExit):
+    with raises(rethinkdb.ReqlDriverError):
         _ = rethink_interface.RethinkInterface.validate_db(rethink.rethink_connection)
 
 def test_rethink_plugin_create(brain, rethink):
