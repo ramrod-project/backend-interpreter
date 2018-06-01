@@ -151,7 +151,12 @@ def test_request_job(plugin_base):
     responder = Thread(target=dummy_interface)
     responder.start()
     sleep(3)
-    result = plugin_base._request_job()
+    now = time()
+    while time() - now < 3:
+        result = plugin_base._request_job()
+        if result is not None:
+            break
+        sleep(0.1)
     assert result == SAMPLE_JOB
     status = FROM_PLUGIN.get(timeout=3)
     assert status["data"]["status"] == "Pending"
