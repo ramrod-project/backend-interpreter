@@ -88,10 +88,11 @@ def dummy_interface():
         on the plugin queue.
     """
     next_item = FROM_PLUGIN.get()
-    if next_item["type"] == "job_request":
-        TO_PLUGIN.put(SAMPLE_JOB)
-    elif next_item["type"] == "functionality":
+    if next_item["type"] == "functionality":
         return next_item["data"]
+    elif next_item["type"] == "job_response":
+        status_update = FROM_PLUGIN.get()
+        return (next_item["data"], status_update["data"]["status"])
     return None
 
 @fixture(scope="function")
