@@ -97,7 +97,7 @@ def dummy_interface():
         return (next_item["data"], status_update["data"]["status"])
     return None
 
-@fixture(scope="module")
+@fixture(scope="function")
 def plugin_base():
     """Generates SamplePlugin instance
 
