@@ -70,7 +70,12 @@ class IntegrationTest(controller_plugin.ControllerPlugin):
         """
         if environ["TEST_SELECTION"] == "TEST1":
             """Pull a job"""
-            new_job = self._request_job()
+            now = time()
+            while time() - now < 3:
+                new_job = self._request_job()
+                if new_job is not None:
+                    break
+                sleep(0.1)
             if not new_job == SAMPLE_JOB:
                 exit(666)
         elif environ["TEST_SELECTION"] == "TEST2":

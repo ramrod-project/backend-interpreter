@@ -10,6 +10,7 @@ from multiprocessing import Queue
 from queue import Empty
 from sys import exit as sysexit, stderr
 from time import sleep, time
+import threading
 
 from brain import r as rethinkdb
 
@@ -30,13 +31,33 @@ class RethinkInterface:
         self.job_cursor = None
         self.host = server[0]
         self.logger = None
+        self.plugin_name = None
+        self.job_fetcher = None
+        self.stop_fetcher = False
         # Generate dictionary of Queues for each plugin
         self.plugin_queue = Queue()
         self.port = server[1]
         # One Queue for responses from the plugin processes
         self.response_queue = Queue()
         self.rethink_connection = self.connect_to_db(self.host, self.port)
+        self.feed_connection = self.connect_to_db(self.host, self.port)
         plugin.initialize_queues(self.response_queue, self.plugin_queue)
+
+    def changefeed_thread(self):
+        feed = rethinkdb.db("Brain").table("Jobs").filter(
+            (rethinkdb.row["Status"] == "Ready") &
+            (rethinkdb.row["JobTarget"]["PluginName"] == self.plugin_name)
+        ).changes().run(self.feed_connection)
+        try:
+            for change in feed:
+                newval = change["new_val"]
+                if self.stop_fetcher:
+                    break
+                self.plugin_queue.put(newval)
+        except RuntimeError:
+            self._log("Changefeed Disconnected.", 30)
+            # if the changefeed is disconnected, leave function to allow a join
+            pass
 
     def start(self, logger, signal):
         """
@@ -55,6 +76,12 @@ class RethinkInterface:
             )
         else:
             self._stop()
+
+        # get the pluginname with the functionality advertisement
+        self._handle_response(self.response_queue.get(timeout=3))
+        self.job_fetcher = threading.Thread(target=self.changefeed_thread)
+        self.job_fetcher.start()
+
         while not signal.value:
             try:
                 sleep(0.1)
@@ -305,6 +332,8 @@ class RethinkInterface:
                 plugin_data[1],
                 conflict="update"
             ).run(self.rethink_connection)
+            # save the plugin's name
+            self.plugin_name = plugin_data[0]
         except rethinkdb.ReqlDriverError:
             self._log(
                 "".join([
@@ -318,7 +347,7 @@ class RethinkInterface:
     def _handle_response(self, response):
         request_types = {
             "functionality": self._create_plugin_table,
-            "job_request": self._get_next_job,
+            # "job_request": self._get_next_job,
             "job_update": self._update_job_status,
             "job_response": self._send_output,
             "target_update": self._update_target
@@ -420,5 +449,12 @@ class RethinkInterface:
         try:
             self.rethink_connection.close()
         except rethinkdb.ReqlDriverError:
+            pass
+        # after closing connection, join thread. the closed connection
+        # should cause the blocking to end and the thread to terminate
+        try:
+            self.stop_fetcher = True
+            self.job_fetcher.join(timeout=4)
+        except RuntimeError:
             pass
         sysexit(0)
