@@ -44,13 +44,16 @@ class RethinkInterface:
         plugin.initialize_queues(self.response_queue, self.plugin_queue)
 
     def changefeed_thread(self):
-        print(self.plugin_name)
+        self._log("inside thread",10)
+        self._log(self.plugin_name)
         feed = rethinkdb.db("Brain").table("Jobs").filter(
             (rethinkdb.row["Status"] == "Ready") &
             (rethinkdb.row["JobTarget"]["PluginName"]  == self.plugin_name)
         ).changes().run(self.feed_connection)
+        self._log("subscribed",10)
         try:
             for change in feed:
+                self._log(change["new_val"],10)
                 if self.stop_fetcher:
                     continue
                 self.plugin_queue.put(change["new_val"])
