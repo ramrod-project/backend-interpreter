@@ -16,16 +16,13 @@ from src import central_logger, controller_plugin, linked_process, rethink_inter
 @fixture(scope="module")
 def sup():
     environ["LOGLEVEL"] = "DEBUG"
-    tag = ":latest"
+    environ["STAGE"] = "TESTING"
     try:
-        if environ["TRAVIS_BRANCH"] == "dev":
-            tag = ":dev"
-        elif environ["TRAVIS_BRANCH"] == "qa":
-            tag = ":qa"
+        tag = environ["TRAVIS_BRANCH"]
     except KeyError:
-        pass
+        tag = "latest"
     CLIENT.containers.run(
-        "".join(("ramrodpcp/database-brain", tag)),
+        "".join(("ramrodpcp/database-brain:", tag)),
         name="rethinkdb",
         detach=True,
         ports={"28015/tcp": 28015},
