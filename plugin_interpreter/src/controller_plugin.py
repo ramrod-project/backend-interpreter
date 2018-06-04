@@ -8,6 +8,8 @@ from abc import ABC, abstractmethod
 from multiprocessing import Queue
 from queue import Empty
 
+from src import rethink_interface
+
 
 class ControllerPlugin(ABC):
     """
@@ -41,6 +43,7 @@ class ControllerPlugin(ABC):
     def __init__(self, name, proto, port, functionality):
         self.db_send = None
         self.db_recv = None
+        self.DBI = rethink_interface.RethinkInterface(self,("rethinkdb", 28015))
         self.functionality = functionality
         """
         List of dictionaries which advertises functionality of the plugin.
@@ -102,6 +105,9 @@ class ControllerPlugin(ABC):
         self.db_recv = recv_queue
         self._advertise_functionality()
 
+    def start_up_dbi(self):
+        
+
     @abstractmethod
     def start(self, logger, signal):
         """Start the plugin
@@ -131,13 +137,12 @@ class ControllerPlugin(ABC):
         pass
     
     def _update_job_status(self, id, status):
-        self.db_send.put({
-            "type": "job_update",
-            "data": {
+        self.DBI._update_job_status(
+            {
                 "job": id,
                 "status": status
             }
-        })
+        )
 
     def _advertise_functionality(self):
         """Advertises functionality to database
@@ -147,10 +152,7 @@ class ControllerPlugin(ABC):
         the plugin will be named the exact same string as the
         self.name attribute.
         """
-        self.db_send.put({
-            "type": "functionality",
-            "data": (self.name, self.functionality)
-        })
+        self.DBI._create_plugin_table((self.name, self.functionality))
 
     def _request_job(self):
         """Request next job
@@ -199,13 +201,10 @@ class ControllerPlugin(ABC):
         """
         if not isinstance(output, (bytes, str, int, float)):
             raise TypeError
-        self.db_send.put({
-            "type": "job_response",
-            "data": {
+        self.DBI._send_output({
                 "job": job,
                 "output": output
-            }
-        })
+            })
         self._update_job_status(job["id"], "Done")
 
     @abstractmethod

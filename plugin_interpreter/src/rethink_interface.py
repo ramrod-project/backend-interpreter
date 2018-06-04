@@ -78,24 +78,24 @@ class RethinkInterface:
             self._stop()
 
         # get the pluginname with the functionality advertisement
-        self._handle_response(self.response_queue.get(timeout=3))
+        #self._handle_response(self.response_queue.get(timeout=3))
         self.job_fetcher = threading.Thread(
             target=self.changefeed_thread,
             args=(signal,)
         )
         self.job_fetcher.start()
 
-        while not signal.value:
-            try:
-                sleep(0.1)
-                self._handle_response(self.response_queue.get_nowait())
-            except Empty:
-                continue
-            except KeyboardInterrupt:
-                continue
-            except rethinkdb.ReqlError as err:
-                self._log_db_error(err)
-        self._stop()
+        # while not signal.value:
+        #     try:
+        #         sleep(0.1)
+        #         self._handle_response(self.response_queue.get_nowait())
+        #     except Empty:
+        #         continue
+        #     except KeyboardInterrupt:
+        #         continue
+        #     except rethinkdb.ReqlError as err:
+        #         self._log_db_error(err)
+        # self._stop()
 
     @staticmethod
     def connect_to_db(host, port):
@@ -170,6 +170,15 @@ class RethinkInterface:
             job_id {int} -- The job's id from the ID table
         """
         self._update_job_status({"job": job_id, "status": "Error"})
+    
+    def check_for_plugin(self, plugin_name):
+        try:
+            rethinkdb.db("Plugins").table(plugin_name).run(
+                self.validate_db(self.rethink_connection)
+            )
+            return True
+        except rethinkdb.ReqlDriverError:
+            return False
 
     @staticmethod
     def validate_db(connection):
