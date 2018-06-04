@@ -2,7 +2,7 @@
 """
 
 from ctypes import c_bool
-from multiprocessing import Value
+from multiprocessing import Pipe, Value
 from os import environ
 from threading import Thread
 from time import sleep, time
@@ -12,7 +12,7 @@ import docker
 from brain import r as rethinkdb
 
 from plugins import *
-from src import rethink_interface
+from src import rethink_interface, linked_process
 
 
 CLIENT = docker.from_env()
@@ -62,7 +62,14 @@ def rethink():
     rdb.logger = mock_logger()
     yield rdb
     # Teardown for each test
-    rdb.rethink_connection.close()
+    try:
+        rdb.rethink_connection.close()
+    except:
+        pass
+    try:
+        rdb.feed_connection.close()
+    except:
+        pass
     clear_dbs(rethinkdb.connect("127.0.0.1", 28015))
 
 # Provide empty rethinkdb container for tests that need it
@@ -492,13 +499,18 @@ def test_update_output(brain, rethink):
     assert output_status == "Done"
 
 def test_rethink_start(brain, rethink):
-    # Test running as thread (**THIS KILLS THE CONNECTION**)
+    # Test running as linked process (**THIS KILLS THE CONNECTION**)
     # Don't run tests after this one that require the connection...
     val = Value(c_bool, False)
-    logger = mock_logger()
-    rethink_thread = Thread(target=rethink.start, args=(logger, val))
-    rethink_thread.start()
-    assert rethink_thread.is_alive()
+    send, _ = Pipe()
+    rethink_proc = linked_process.LinkedProcess(
+        name="dbprocess",
+        target=rethink.start,
+        logger_pipe=send,
+        signal=val
+    )
+    rethink_proc.start()
+    assert rethink_proc.is_alive()
     val.value = True
-    sleep(15)
-    assert not rethink_thread.is_alive()
+    sleep(7)
+    assert not rethink_proc.is_alive()
