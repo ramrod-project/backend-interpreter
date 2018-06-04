@@ -57,7 +57,6 @@ class RethinkInterface:
                 continue
             except RuntimeError:
                 self._log("Changefeed Disconnected.", 30)
-                # if the changefeed is disconnected, leave function to allow a join
                 break
 
     def start(self, logger, signal):
@@ -80,7 +79,10 @@ class RethinkInterface:
 
         # get the pluginname with the functionality advertisement
         self._handle_response(self.response_queue.get(timeout=3))
-        self.job_fetcher = threading.Thread(target=self.changefeed_thread, args=(signal,))
+        self.job_fetcher = threading.Thread(
+            target=self.changefeed_thread,
+            args=(signal,)
+        )
         self.job_fetcher.start()
 
         while not signal.value:
