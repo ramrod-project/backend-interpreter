@@ -123,6 +123,7 @@ def rethink():
         ports={"28015/tcp": 28015},
         remove=True
     )
+    sleep(3)
     yield
     try:
         environ["LOGLEVEL"] = ""

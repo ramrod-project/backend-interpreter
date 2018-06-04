@@ -33,7 +33,6 @@ class RethinkInterface:
         self.logger = None
         self.plugin_name = None
         self.job_fetcher = None
-        self.stop_fetcher = False
         # Generate dictionary of Queues for each plugin
         self.plugin_queue = Queue()
         self.port = server[1]
@@ -43,21 +42,22 @@ class RethinkInterface:
         self.feed_connection = self.connect_to_db(self.host, self.port)
         plugin.initialize_queues(self.response_queue, self.plugin_queue)
 
-    def changefeed_thread(self):
+    def changefeed_thread(self, stop_signal):
         feed = rethinkdb.db("Brain").table("Jobs").filter(
             (rethinkdb.row["Status"] == "Ready") &
             (rethinkdb.row["JobTarget"]["PluginName"] == self.plugin_name)
         ).changes().run(self.feed_connection)
-        try:
-            for change in feed:
+        while not stop_signal.value:
+            try:
+                change = feed.next(wait=False)
                 newval = change["new_val"]
-                if self.stop_fetcher:
-                    break
                 self.plugin_queue.put(newval)
-        except RuntimeError:
-            self._log("Changefeed Disconnected.", 30)
-            # if the changefeed is disconnected, leave function to allow a join
-            pass
+            except rethinkdb.ReqlTimeoutError:
+                sleep(0.1)
+                continue
+            except RuntimeError:
+                self._log("Changefeed Disconnected.", 30)
+                break
 
     def start(self, logger, signal):
         """
@@ -79,7 +79,10 @@ class RethinkInterface:
 
         # get the pluginname with the functionality advertisement
         self._handle_response(self.response_queue.get(timeout=3))
-        self.job_fetcher = threading.Thread(target=self.changefeed_thread)
+        self.job_fetcher = threading.Thread(
+            target=self.changefeed_thread,
+            args=(signal,)
+        )
         self.job_fetcher.start()
 
         while not signal.value:
@@ -450,10 +453,13 @@ class RethinkInterface:
             self.rethink_connection.close()
         except rethinkdb.ReqlDriverError:
             pass
+        try:
+            self.feed_connection.close()
+        except rethinkdb.ReqlDriverError:
+            pass
         # after closing connection, join thread. the closed connection
         # should cause the blocking to end and the thread to terminate
         try:
-            self.stop_fetcher = True
             self.job_fetcher.join(timeout=4)
         except RuntimeError:
             pass
