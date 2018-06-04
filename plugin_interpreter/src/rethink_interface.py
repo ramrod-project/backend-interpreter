@@ -49,15 +49,24 @@ class RethinkInterface:
             (rethinkdb.row["Status"] == "Ready") &
             (rethinkdb.row["JobTarget"]["PluginName"] == self.plugin_name)
         ).changes().run(self.feed_connection)
+        self._log(
+            "Changefeed started",
+            10
+        )
         while not stop_signal.value:
             try:
                 change = feed.next(wait=False)
                 newval = change["new_val"]
+                self._log(
+                    "".join(("New val: ", str(newval))),
+                    10
+                )
                 self.plugin_queue.put(newval)
             except rethinkdb.ReqlTimeoutError:
                 sleep(0.1)
                 continue
             except RuntimeError:
+                self._log("Changefeed Disconnected.", 30)
                 # if the changefeed is disconnected, leave function to allow a join
                 break
 
@@ -81,7 +90,7 @@ class RethinkInterface:
 
         # get the pluginname with the functionality advertisement
         self._handle_response(self.response_queue.get(timeout=3))
-        self.job_fetcher = threading.Thread(target=self.changefeed_thread, args=(signal.value,))
+        self.job_fetcher = threading.Thread(target=self.changefeed_thread, args=(signal,))
         self.job_fetcher.start()
 
         while not signal.value:
