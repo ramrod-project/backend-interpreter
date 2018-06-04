@@ -35,7 +35,6 @@ class RethinkInterface:
         self.logger = None
         self.plugin_name = None
         self.job_fetcher = None
-        self.stop_fetcher = Value(c_bool, False)
         # Generate dictionary of Queues for each plugin
         self.plugin_queue = Queue()
         self.port = server[1]
@@ -59,7 +58,6 @@ class RethinkInterface:
                 sleep(0.1)
                 continue
             except RuntimeError:
-                self._log("Changefeed Disconnected.", 30)
                 # if the changefeed is disconnected, leave function to allow a join
                 break
 
@@ -83,7 +81,7 @@ class RethinkInterface:
 
         # get the pluginname with the functionality advertisement
         self._handle_response(self.response_queue.get(timeout=3))
-        self.job_fetcher = threading.Thread(target=self.changefeed_thread, args=(self.stop_fetcher,))
+        self.job_fetcher = threading.Thread(target=self.changefeed_thread, args=(signal.value,))
         self.job_fetcher.start()
 
         while not signal.value:
@@ -433,7 +431,6 @@ class RethinkInterface:
         # after closing connection, join thread. the closed connection
         # should cause the blocking to end and the thread to terminate
         try:
-            self.stop_fetcher.value = True
             self.job_fetcher.join(timeout=4)
         except RuntimeError:
             pass

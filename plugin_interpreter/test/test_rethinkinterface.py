@@ -61,9 +61,10 @@ def rethink():
     rdb = rethink_interface.RethinkInterface(plugin, server)
     rdb.logger = mock_logger()
     yield rdb
-    rdb.feed_connection.close()
     # Teardown for each test
+    rdb.feed_connection.close()
     rdb.rethink_connection.close()
+    sleep(3)
     clear_dbs(rethinkdb.connect("127.0.0.1", 28015))
 
 # Provide empty rethinkdb container for tests that need it
