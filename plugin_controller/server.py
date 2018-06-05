@@ -7,6 +7,7 @@ TODO:
 - handle multiple plugins/containers
 - read config for plugin from file
 - dynamic ip assignment
+- *unit and integration tests*
 """
 import logging
 from os import environ, path as ospath
