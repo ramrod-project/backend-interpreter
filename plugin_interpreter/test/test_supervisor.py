@@ -19,7 +19,7 @@ def sup():
     environ["STAGE"] = "TESTING"
     environ["PORT"] = "5000"
     try:
-        tag = environ["TRAVIS_BRANCH"]
+        tag = environ["TRAVIS_BRANCH"].replace("master", "latest")
     except KeyError:
         tag = "latest"
     CLIENT.containers.run(

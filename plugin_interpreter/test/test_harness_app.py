@@ -14,16 +14,12 @@ from src import central_logger, controller_plugin, linked_process, rethink_inter
 
 def startup_brain():
     environ["LOGLEVEL"] = "DEBUG"
-    tag = ":latest"
     try:
-        if environ["TRAVIS_BRANCH"] == "dev":
-            tag = ":dev"
-        elif environ["TRAVIS_BRANCH"] == "qa":
-            tag = ":qa"
+        tag = environ["TRAVIS_BRANCH"].replace("master", "latest")
     except KeyError:
         pass
     CLIENT.containers.run(
-        "".join(("ramrodpcp/database-brain", tag)),
+        "".join(("ramrodpcp/database-brain:", tag)),
         name="rethinkdbtestapp",
         detach=True,
         ports={"28015/tcp": 28015},
