@@ -60,7 +60,7 @@ class RethinkInterface:
                 break
         self._stop()
 
-    def start(self, logger, signal):
+    def start(self, signal):
         """
         Start the Rethinkdb interface process. Control loop that handles
         communication with the database.
