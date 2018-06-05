@@ -6,6 +6,7 @@ TODO:
 
 from abc import ABC, abstractmethod
 from multiprocessing import Queue
+from os import environ
 from queue import Empty
 
 from src import rethink_interface
@@ -43,8 +44,11 @@ class ControllerPlugin(ABC):
     def __init__(self, name, proto, port, functionality,):
         self.db_recv = None
         self.signal = None
-        self.DBI = rethink_interface.RethinkInterface(self,("rethinkdb", 28015))
-        self.stop_signal = None
+        if environ["STAGE"] == "TESTING":
+            self.DBI = rethink_interface.RethinkInterface(self,("127.0.0.1", 28015))
+        else:
+            self.DBI = rethink_interface.RethinkInterface(self,("rethinkdb", 28015))
+        # self.stop_signal = None
         self.functionality = functionality
         """
         List of dictionaries which advertises functionality of the plugin.
@@ -106,7 +110,8 @@ class ControllerPlugin(ABC):
         self._advertise_functionality()
 
     def _start(self, logger, signal):
-        self.stop_signal = signal
+        self.DBI.stop_signal = signal
+        self.DBI.logger = logger
         self.DBI.start()
         return self.start(logger, signal)
 

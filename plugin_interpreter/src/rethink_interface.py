@@ -69,7 +69,7 @@ class RethinkInterface:
             logger {Pipe} - Pipe to the logger
             signal {c type boolean} - used for cleanup
         """
-        self.logger = logger
+        # self.logger = logger
         if self.rethink_connection:
             self._log(
                 "Succesfully opened connection to Rethinkdb",
