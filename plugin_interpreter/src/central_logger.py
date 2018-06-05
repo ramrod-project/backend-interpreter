@@ -1,7 +1,7 @@
 """
 The CentralLogger class is a wrapper for a global app
-logger. It's instantiated with a collection of pipes to
-each process that are used for transmitting logs.
+logger. Each plugin will use this logging function to
+establish logging.
 """
 
 # TODO:
@@ -23,10 +23,10 @@ logging.basicConfig(
 
 class CentralLogger():
 
-    def __init__(self, pipes, level):
+    def __init__(self, level):
         # pipes must be a list to be used with select
-        if isinstance(pipes, list):
-            self.pipes = pipes
+        if isinstance(level, str):
+            self.level = level
         else:
             raise TypeError
         self.logger = logging.getLogger('central')
@@ -49,12 +49,8 @@ class CentralLogger():
         LinkedProcess that is run by the Supervisor.
         
         Arguments:
-            logger {Pipe} -- the central logger start function
-            uses the same calling convention as other processes,
-            but it does not use a logger Pipe, so None is passed in.
-            signal {Value} -- this is the multiprocessing Value
-            that has a c_bool type value which serves as the process
-            kill signal.
+            logger  -- the central logger object to be
+            used for the plugin to be stood up
         """
         last_pass = False
         while True:
@@ -63,8 +59,8 @@ class CentralLogger():
                     # Do one last pass to catch any logs
                     last_pass = True
                     sleep(1)
-                readable, _, _ = select(self.pipes, [], [], 1)
-                logs = []
+#                readable, _, _ = select(self.pipes, [], [], 1)
+#                logs = []readable
                 for p in readable:
                     logs.append(p.recv())
                 self._to_log(logs)
@@ -81,7 +77,7 @@ class CentralLogger():
 
     def _to_log(self, logs):
         """The _to_log function is called by the
-        class instance to send a collection of storted
+        class instance to send a collection of sorted
         logs to the main logger. Iterate over list
         of [<component>, <log>, <severity>, <timestamp>]
         """

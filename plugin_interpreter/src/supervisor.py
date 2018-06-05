@@ -6,8 +6,8 @@ TODO:
 - Add handler class for SIGTERM event (docker stop is received)
 """
 
-__version__ = "0.2"
-__author__ = "Christopher Manzi"
+__version__ = "0.3"
+__author__ = "Christopher Manzi/Luke Hitch/Matt Trippy"
 
 
 from ctypes import c_bool
@@ -75,9 +75,9 @@ class SupervisorController:
         self.db_interface = None
         self.db_process = None
         self.logger_instance = None
-        self.logger_pipe = None
+#        self.logger_pipe = None
         self.logger_process = None
-        self.signal = Value(c_bool, False)
+#        self.signal = Value(c_bool, False)
 
     def create_servers(self):
         """Create all processes
@@ -95,7 +95,7 @@ class SupervisorController:
                   to DEV, TESTING, or PROD!")
             raise KeyError
 
-        logger_pipes = []
+#        logger_pipes = []
 
         logger_pipes.append(self._plugin_setup())
         logger_pipes.append(self._create_rethink_interface())
@@ -103,9 +103,9 @@ class SupervisorController:
         log_receiver, self.logger_pipe = Pipe()
         logger_pipes.append(log_receiver)
 
-        self._create_logger(logger_pipes)
+        self.create_logger(logger_pipes)
 
-    def _create_logger(self, logger_pipes):
+    def create_logger(self, logger_pipes):
         """Set up the logger
 
         Sets up the central logger instance and process.
@@ -126,7 +126,7 @@ class SupervisorController:
     def _create_process(self, instance, name):
         """Create a LinkedProcess
 
-        This takes an object intsance and creates a
+        This takes an object instance and creates a
         LinkedProcess from it.
 
         Arguments:
@@ -148,11 +148,10 @@ class SupervisorController:
         )
         return (created_process, log_receiver)
 
-    def _plugin_setup(self):
+    def plugin_setup(self):
         """Set up the plugin
 
-        Create the plugin process and the pipe from the
-        plugin to the logger.
+        Create the plugin and associated logging for the plugin
 
         Returns:
             {Pipe} -- the receiving pipe from the plugin
@@ -164,15 +163,15 @@ class SupervisorController:
         )
         return log_receiver
 
-    def _create_rethink_interface(self):
-        """Set up the rethink interface
+    def create_db_interface(self):
+        """Set up the db interface, currently limited to rethinkdb
 
         Create RethinkInterface instance and process
 
         Checks if environment variable STAGE is DEV/TESTING/PROD.
 
         Returns:
-            {Pipe} -- receiving pipe for the logger from the rethink
+            Logging handler object for the logger from the rethink
             interface.
         """
         if environ["STAGE"] == "TESTING":
