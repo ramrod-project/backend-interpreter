@@ -4,7 +4,7 @@
 import multiprocessing
 from os import environ
 from threading import Thread
-from time import time
+from time import time, sleep
 
 from pytest import fixture, raises
 
@@ -90,16 +90,14 @@ def dummy_interface():
         on the plugin queue.
     """
     next_item = FROM_PLUGIN.get()
-    if next_item["type"] == "job_request":
-        TO_PLUGIN.put(SAMPLE_JOB)
-    elif next_item["type"] == "functionality":
+    if next_item["type"] == "functionality":
         return next_item["data"]
     elif next_item["type"] == "job_response":
         status_update = FROM_PLUGIN.get()
         return (next_item["data"], status_update["data"]["status"])
     return None
 
-@fixture(scope="module")
+@fixture(scope="function")
 def plugin_base():
     """Generates SamplePlugin instance
 
@@ -150,9 +148,13 @@ def test_request_job(plugin_base):
         plugin_base {fixture} -- yields the SamplePlugin
         instance needed for testing.
     """
-    responder = Thread(target=dummy_interface)
-    responder.start()
-    result = plugin_base._request_job()
+    TO_PLUGIN.put(SAMPLE_JOB)
+    now = time()
+    while time() - now < 3:
+        result = plugin_base._request_job()
+        if result is not None:
+            break
+        sleep(0.1)
     assert result == SAMPLE_JOB
     status = FROM_PLUGIN.get(timeout=3)
     assert status["data"]["status"] == "Pending"

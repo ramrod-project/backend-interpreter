@@ -67,12 +67,6 @@ class LinkedProcess:
             ])
             return False
         if self.is_alive():
-            self._log([
-                self.name,
-                "".join((self.name, " already running.")),
-                20,
-                time()
-            ])
             return True
         else:
             self._log([

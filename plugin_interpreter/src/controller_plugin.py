@@ -174,14 +174,7 @@ class ControllerPlugin(ABC):
         try:
             job = self.db_recv.get_nowait()
         except Empty:
-            self.db_send.put({
-                "type": "job_request",
-                "data": self.name
-            })
-            try:
-                job = self.db_recv.get(timeout=3)
-            except Empty:
-                job = None
+            job = None
 
         if job:
             self._update_job_status(job["id"], "Pending")

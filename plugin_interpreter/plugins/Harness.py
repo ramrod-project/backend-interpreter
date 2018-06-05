@@ -167,8 +167,7 @@ class Harness(cp.ControllerPlugin):
                     output_content = output['Content']
                     self._respond_output(job, output_content)
 
-
-    def _provide_status_update(self, job_id, status):
+    def _provide_status_update(self, job_id, status):  # pragma: no cover
         """
         There are limited status updates the plugin can update.
         This code should probably be in the base class
@@ -179,7 +178,7 @@ class Harness(cp.ControllerPlugin):
         """
         raise NotImplementedError
 
-    def _put_blob_in_content_table(self, file_id, blob):
+    def _put_blob_in_content_table(self, file_id, blob):  # pragma: no cover
         """
         Caller must own _G_LOCK
         Internal function only
@@ -203,7 +202,7 @@ class Harness(cp.ControllerPlugin):
         self._clients[client] = telemetry
 
 
-    def _populate_work(self, location):
+    def _populate_work(self, location):  # pragma: no cover
         '''
         This function is test  code intended to be removed once
             the plugin is integrated
@@ -212,7 +211,7 @@ class Harness(cp.ControllerPlugin):
         '''
         [self._work[location].append(x) for x in _translated_commands]
 
-    def _convert_job(self, job):
+    def _convert_job(self, job):  # pragma: no cover
         '''
         Deprecated: Jobs should be in the new template format
         :param job:
@@ -235,7 +234,7 @@ class Harness(cp.ControllerPlugin):
                                 "name":cmd,
                                 "argv":args})
 
-    def _dump_internal_worklist(self):
+    def _dump_internal_worklist(self): # pragma: no cover
         """
         :return: string serialized copy of the current worklist
         """
@@ -425,7 +424,7 @@ def _get_blob(serial, file_id):
             file_content = _content[file_id]
             for next_byte in file_content:
                 yield next_byte
-
+    _handle_client_response(validated['Location'], file_id)
     return Response(stream_with_context(gens(file_id)))
 
 

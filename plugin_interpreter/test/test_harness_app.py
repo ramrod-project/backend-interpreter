@@ -94,8 +94,36 @@ TEST_COMMANDS = [
                  'Type': 'textbox',
                  'Name': 'SleepTime',
                  'Value': '1500'}],
-     'Tooltip': '\nSleep\n\nPut the program to sleep for\na number of miliseconds\n\nArguments:\n1. Number of miliseconds\n\nReturns:\nNone\n',
-     'CommandName': 'sleep', 'OptionalInputs': []
+     'Tooltip': '',
+     'CommandName': 'sleep',
+     'OptionalInputs': []
+     },
+    {'Output': False,
+     'Inputs': [],
+     'Tooltip': '',
+     'CommandName': 'put_file',
+     'OptionalInputs': [{'Tooltip': '',
+                         'Type': 'textbox',
+                         'Name': 'file_id',
+                         'Value': '399'},
+                        {'Tooltip': '',
+                         'Type': 'textbox',
+                         'Name': 'filename',
+                         'Value': 'test_file'}
+                        ]
+     },
+    {'Output': False,
+     'Inputs': [],
+     'Tooltip': '',
+     'CommandName': 'get_file',
+     'OptionalInputs': [{'Tooltip': '',
+                         'Type': 'textbox',
+                         'Name': 'fid',
+                         'Value': '405'},
+                        {'Tooltip': '',
+                         'Type': 'textbox',
+                         'Name': 'filename',
+                         'Value': 'test_file'}]
      },
      {'Output': False,
       'Inputs': [],
@@ -103,12 +131,13 @@ TEST_COMMANDS = [
       'CommandName': 'terminate',
       'OptionalInputs': []
       },
+
 ]
 
 def the_pretend_getter(client):
     import requests
     from requests.exceptions import ReadTimeout
-    import rethinkdb as r
+    from brain import rethinkdb as r
     MAX_REQUEST_TIMEOUT = 120
     try:
         resp = requests.get("http://{}/harness/testing_testing_testing?args=First".format(client), timeout=MAX_REQUEST_TIMEOUT)
@@ -126,6 +155,18 @@ def the_pretend_getter(client):
         assert("sleep" in resp.text), "Expected second command to be sleep"
         sleep(3) #make sure all the updates get made
         resp = requests.get("http://{}/harness/testing_testing_testing?args=Third".format(client), timeout=MAX_REQUEST_TIMEOUT)
+        print(resp.text)
+        #confirm put_file
+        assert("put_file" in resp.text), "Expected second command to be put_file"
+        resp = requests.get("http://{}/givemethat/testing_testing_testing/399?args=Fourth".format(client), timeout=MAX_REQUEST_TIMEOUT)
+        sleep(3) #make sure all the updates get made
+        #confirm get_file makes it to the database
+        resp = requests.get("http://{}/harness/testing_testing_testing?args=Fifth".format(client), timeout=MAX_REQUEST_TIMEOUT)
+        print(resp.text)
+        assert("get_file" in resp.text), "Expected second command to be get_file"
+        resp = requests.post("http://{}/givemethat/testing_testing_testing/401?args=Sixth".format(client), data={"data":"this is a file"}, timeout=MAX_REQUEST_TIMEOUT)
+        sleep(3) #make sure all the updates get made
+        resp = requests.get("http://{}/harness/testing_testing_testing?args=Seventh".format(client), timeout=MAX_REQUEST_TIMEOUT)
         print(resp.text)
         assert("terminate" in resp.text), "Expected third command to be terminate"
         resp = requests.get("http://{}/harness/testing_testing_testing?args=NoCommandsForMe".format(client), timeout=MAX_REQUEST_TIMEOUT)
@@ -164,8 +205,8 @@ def test_the_Harness_app():
     supervisor_server_spawn(s)
     sleep(5)
     try:
-        import rethinkdb as r
-        conn = r.connect("127.0.0.1")
+        from brain import connect, r
+        conn = connect()
         sleep(5)
         for command in TEST_COMMANDS:
             job_target = {"PluginName": "Harness",
