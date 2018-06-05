@@ -28,6 +28,9 @@ SAMPLE_JOB = {
     "JobCommand": "Do stuff"
 }
 
+environ["PORT"] = "8080"
+
+
 class IntegrationTest(controller_plugin.ControllerPlugin):
     """A class to be used for integration testing.
     

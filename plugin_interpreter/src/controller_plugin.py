@@ -44,7 +44,7 @@ class ControllerPlugin(ABC):
     def __init__(self, name, functionality):
         self.db_send = None
         self.db_recv = None
-        self.port = environ["PORT"]
+        self.port = int(environ["PORT"])
         self.functionality = functionality
         """
         List of dictionaries which advertises functionality of the plugin.

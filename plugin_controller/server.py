@@ -151,7 +151,7 @@ def launch_container(plugin, port, host_port, host_proto):
             "STAGE": environ["STAGE"],
             "LOGLEVEL": environ["LOGLEVEL"],
             "PLUGIN": plugin,
-            "PORT": port
+            "PORT": str(port)
         },
         detach=True,
         remove=True,

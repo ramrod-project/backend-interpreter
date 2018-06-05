@@ -41,6 +41,7 @@ def rethink():
     )
     server = ('127.0.0.1', 28015)
     environ["STAGE"] = "DEV"
+    environ["PORT"] = "5000"
     plugin = Harness()
     rdb = rethink_interface.RethinkInterface(plugin, server)
     rdb.logger = mock_logger()

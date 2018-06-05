@@ -153,7 +153,8 @@ def the_pretend_app():
         assert False not in test_results
 
 def test_the_Harness_app():
-    environ['STAGE'] = "TESTING"
+    environ["STAGE"] = "TESTING"
+    environ["PORT"] = "5000"
     sup_gen = startup_brain()
     s = sup_gen.__next__()
     supervisor_setup(s)
