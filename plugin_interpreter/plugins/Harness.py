@@ -40,11 +40,10 @@ class Harness(cp.ControllerPlugin):
         """
         self.name = "Harness"
         if _environ['STAGE'] == "DEV":
-            self.port = 5005
             self.debug = True
         else:
-            self.port = 5000
             self.debug = False
+        self.port = _environ["PORT"]
         self.proto = "TCP"
         self._work = defaultdict(list)
         self._output = defaultdict(list)
