@@ -200,8 +200,6 @@ class SupervisorController:
         try:
             if not self.logger_process.start():
                 raise RuntimeError
-            if not self.db_process.start():
-                raise RuntimeError
             if not self.plugin_process.start():
                 raise RuntimeError
         except RuntimeError as err:
@@ -213,7 +211,7 @@ class SupervisorController:
 
         This method runs for the duration of the application lifecycle...
         """
-        processes = [self.plugin_process, self.db_process, self.logger_process]
+        processes = [self.plugin_process, self.logger_process]
         while True:
             try:
                 sleep(3)
@@ -236,8 +234,6 @@ class SupervisorController:
         self.signal.value = True
         sleep(5)
 
-        if self.db_process.is_alive():
-            self.db_process.terminate()
         if self.plugin_process.is_alive():
             self.plugin_process.terminate()
         if self.logger_process.is_alive():
