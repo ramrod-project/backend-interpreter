@@ -44,6 +44,7 @@ class ControllerPlugin(ABC):
         self.db_recv = None
         self.signal = None
         self.DBI = rethink_interface.RethinkInterface(self,("rethinkdb", 28015))
+        self.stop_signal = None
         self.functionality = functionality
         """
         List of dictionaries which advertises functionality of the plugin.
@@ -80,7 +81,6 @@ class ControllerPlugin(ABC):
         properly."""
         self.proto, self.port = proto, port
         super().__init__()
-        self.DBI.start()
 
     def initialize_queues(self, send_queue, recv_queue):
         """Initialize command/response queues
@@ -104,6 +104,11 @@ class ControllerPlugin(ABC):
         """
         self.db_recv = recv_queue
         self._advertise_functionality()
+
+    def _start(self, logger, signal):
+        self.stop_signal = signal
+        self.DBI.start()
+        return self.start(logger, signal)
 
     @abstractmethod
     def start(self, logger, signal):

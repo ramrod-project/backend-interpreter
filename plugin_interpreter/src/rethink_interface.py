@@ -33,7 +33,7 @@ class RethinkInterface:
         self.logger = None
         self.plugin_name = plugin.name
         self.job_fetcher = None
-        self.stop_signal = False
+        self.stop_signal = None
         # Generate dictionary of Queues for each plugin
         self.plugin_queue = Queue()
         self.port = server[1]
@@ -466,7 +466,7 @@ class RethinkInterface:
             pass
         # after closing connection, join thread. the closed connection
         # should cause the blocking to end and the thread to terminate
-        self.stop_signal = True
+        # self.stop_signal = True
         try:
             self.job_fetcher.join(timeout=4)
         except RuntimeError:
