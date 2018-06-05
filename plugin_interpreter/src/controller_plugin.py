@@ -40,9 +40,9 @@ class ControllerPlugin(ABC):
     exported plugin controller class.
     """
 
-    def __init__(self, name, proto, port, functionality, signal):
+    def __init__(self, name, proto, port, functionality,):
         self.db_recv = None
-        self.signal = signal
+        self.signal = None
         self.DBI = rethink_interface.RethinkInterface(self,("rethinkdb", 28015))
         self.functionality = functionality
         """
@@ -80,7 +80,7 @@ class ControllerPlugin(ABC):
         properly."""
         self.proto, self.port = proto, port
         super().__init__()
-        self.DBI.start(signal)
+        self.DBI.start()
 
     def initialize_queues(self, send_queue, recv_queue):
         """Initialize command/response queues
@@ -213,3 +213,8 @@ class ControllerPlugin(ABC):
         needed and execute any cleanup required.
         """
         exit(0)
+
+    def __del__(self):
+        """destructor
+        """
+        self.DBI._stop()
