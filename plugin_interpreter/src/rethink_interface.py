@@ -33,6 +33,7 @@ class RethinkInterface:
         self.logger = None
         self.plugin_name = plugin.name
         self.job_fetcher = None
+        self.stop_signal = False
         # Generate dictionary of Queues for each plugin
         self.plugin_queue = Queue()
         self.port = server[1]
@@ -42,12 +43,12 @@ class RethinkInterface:
         self.feed_connection = self.connect_to_db(self.host, self.port)
         plugin.initialize_queues(self.response_queue, self.plugin_queue)
 
-    def changefeed_thread(self, stop_signal):
+    def changefeed_thread(self):
         feed = rethinkdb.db("Brain").table("Jobs").filter(
             (rethinkdb.row["Status"] == "Ready") &
             (rethinkdb.row["JobTarget"]["PluginName"] == self.plugin_name)
         ).changes().run(self.feed_connection)
-        while not stop_signal.value:
+        while not self.stop_signal:
             try:
                 change = feed.next(wait=False)
                 newval = change["new_val"]
@@ -58,9 +59,8 @@ class RethinkInterface:
             except RuntimeError:
                 self._log("Changefeed Disconnected.", 30)
                 break
-        self._stop()
 
-    def start(self, signal):
+    def start(self):
         """
         Start the Rethinkdb interface process. Control loop that handles
         communication with the database.
@@ -81,8 +81,7 @@ class RethinkInterface:
         # get the pluginname with the functionality advertisement
         #self._handle_response(self.response_queue.get(timeout=3))
         self.job_fetcher = threading.Thread(
-            target=self.changefeed_thread,
-            args=(signal,)
+            target=self.changefeed_thread
         )
         self.job_fetcher.start()
 
@@ -467,6 +466,7 @@ class RethinkInterface:
             pass
         # after closing connection, join thread. the closed connection
         # should cause the blocking to end and the thread to terminate
+        self.stop_signal = True
         try:
             self.job_fetcher.join(timeout=4)
         except RuntimeError:
