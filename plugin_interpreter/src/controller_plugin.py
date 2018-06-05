@@ -41,7 +41,6 @@ class ControllerPlugin(ABC):
     """
 
     def __init__(self, name, proto, port, functionality):
-        self.db_send = None
         self.db_recv = None
         self.DBI = rethink_interface.RethinkInterface(self,("rethinkdb", 28015))
         self.functionality = functionality
@@ -80,6 +79,7 @@ class ControllerPlugin(ABC):
         properly."""
         self.proto, self.port = proto, port
         super().__init__()
+        self.DBI.start()
 
     def initialize_queues(self, send_queue, recv_queue):
         """Initialize command/response queues
@@ -101,12 +101,8 @@ class ControllerPlugin(ABC):
             recv_queue {Queue} -- The queue used to receive commands from the
             frontend through the database.
         """
-        self.db_send = send_queue
         self.db_recv = recv_queue
         self._advertise_functionality()
-
-    def start_up_dbi(self):
-        
 
     @abstractmethod
     def start(self, logger, signal):

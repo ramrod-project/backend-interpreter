@@ -31,7 +31,7 @@ class RethinkInterface:
         self.job_cursor = None
         self.host = server[0]
         self.logger = None
-        self.plugin_name = None
+        self.plugin_name = plugin.name
         self.job_fetcher = None
         # Generate dictionary of Queues for each plugin
         self.plugin_queue = Queue()
@@ -58,6 +58,7 @@ class RethinkInterface:
             except RuntimeError:
                 self._log("Changefeed Disconnected.", 30)
                 break
+        self._stop()
 
     def start(self, logger, signal):
         """
@@ -344,8 +345,6 @@ class RethinkInterface:
                 plugin_data[1],
                 conflict="update"
             ).run(self.rethink_connection)
-            # save the plugin's name
-            self.plugin_name = plugin_data[0]
         except rethinkdb.ReqlDriverError:
             self._log(
                 "".join([
