@@ -13,6 +13,7 @@ import logging
 from os import environ, path as ospath
 from random import randint
 from signal import signal, SIGTERM
+from sys import stderr
 from time import asctime, gmtime, sleep, time
 
 import docker
@@ -23,8 +24,8 @@ logging.basicConfig(
     filemode="a",
     format='%(date)s %(name)-12s %(levelname)-8s %(message)s'
 )
-logger = logging.getLogger("controller")
-logger.addHandler(logging.StreamHandler())
+LOGGER = logging.getLogger("controller")
+LOGGER.addHandler(logging.StreamHandler())
 
 CLIENT = docker.from_env()
 INTERPRETER_PATH = ospath.join(
@@ -33,13 +34,16 @@ INTERPRETER_PATH = ospath.join(
 )
 HOST_PROTO = "TCP"
 PLUGIN = "Harness"
-
-if environ["STAGE"] == "DEV":
+try:
+    if environ["STAGE"] == "PROD":
+        NETWORK_NAME = "pcp"
+        HOST_PORT = 5000
+    else:
+        NETWORK_NAME = "test"
+        HOST_PORT = 5005
+except KeyError:
     NETWORK_NAME = "test"
     HOST_PORT = 5005
-else:
-    NETWORK_NAME = "pcp"
-    HOST_PORT = 5000
 
 try:
     TAG = environ["TRAVIS_BRANCH"].replace("master", "latest")
@@ -47,35 +51,44 @@ except KeyError:
     TAG = "latest"
 
 
-def set_logging():
+def set_logging(logger):
     """Set the logging level
 
     Set the python logging level for this process
     based on the "LOGLEVEL" env variable.
     """
-
-    logger.setLevel(logging.DEBUG)
-    if environ["LOGLEVEL"] == "INFO":
-        logger.setLevel(logging.INFO)
-    elif environ["LOGLEVEL"] == "WARNING":
-        logger.setLevel(logging.WARNING)
-    elif environ["LOGLEVEL"] == "ERROR":
-        logger.setLevel(logging.ERROR)
-    elif environ["LOGLEVEL"] == "CRITICAL":
-        logger.setLevel(logging.CRITICAL)
-
+    try:
+        if environ["LOGLEVEL"] == "DEBUG":
+            logger.setLevel(logging.DEBUG)
+        elif environ["LOGLEVEL"] == "INFO":
+            logger.setLevel(logging.INFO)
+        elif environ["LOGLEVEL"] == "WARNING":
+            logger.setLevel(logging.WARNING)
+        elif environ["LOGLEVEL"] == "ERROR":
+            logger.setLevel(logging.ERROR)
+        elif environ["LOGLEVEL"] == "CRITICAL":
+            logger.setLevel(logging.CRITICAL)
+        else:
+            raise KeyError
+    except KeyError:
+        stderr.write("Invalid LOGLEVEL setting!\n")
+        exit(1)
 
 def dev_db(port_mapping):
     """Spins up db for dev environment
 
     When operating in a dev environment ("STAGE"
     environment variable is "DEV")
-    
+
     Arguments:
         port_mapping {dict} -- a mapping for keeping
         track of used {host port: container}
         combinations.
     """
+    if 28015 in port_mapping:
+        return False
+
+    CLIENT.networks.prune()
     CLIENT.networks.create(NETWORK_NAME)
 
     rethink_container = CLIENT.containers.run(
@@ -88,6 +101,7 @@ def dev_db(port_mapping):
     )
     port_mapping[28015] = rethink_container
     sleep(3)
+    return True
 
 def generate_port(port_mapping):
     """Generate a random port for container
@@ -102,7 +116,7 @@ def generate_port(port_mapping):
         container (internally).
     """
     rand_port = randint(1025, 65535)
-    while rand_port not in port_mapping.keys():
+    while rand_port in port_mapping.keys():
         rand_port = randint(1025, 65535)
     return rand_port
 
@@ -115,7 +129,7 @@ def log(level, message):
         log levels.
         message {str} -- a string message to log.
     """
-    logger.log(
+    LOGGER.log(
         level,
         message,
         extra={
@@ -137,6 +151,15 @@ def launch_container(plugin, port, host_port, host_proto):
         {Container} -- a Container object corresponding
         to the launched container.
     """
+    assert isinstance(plugin, str), \
+    "Provided plugin name must be string!"
+    assert host_proto == "TCP" or host_proto == "UDP", \
+    "Host protocol must either be 'TCP' or 'UDP'"
+    assert isinstance(host_port, int), \
+    "Host port must be integer"
+    assert host_port <= 65535, \
+    "Host port must be <=65535"
+
     docker_string = "".join([
         str(port),
         "/{}".format(HOST_PROTO.lower())
@@ -162,7 +185,7 @@ def launch_container(plugin, port, host_port, host_proto):
     return container
 
 
-def teardown(containers):
+def stop_containers(containers):
     """Clean up containers and network
 
     Stops all running containers and prunes
@@ -181,10 +204,10 @@ def teardown(containers):
             if container.name == "controller":
                 continue
             container.stop()
-        except:
+        except docker.errors.NotFound:
             log(
                 20,
-                "".join((container.name, " stopped or not running"))
+                "".join((container.name, " not found!"))
             )
             continue
     if environ["STAGE"] == "DEV":
@@ -199,16 +222,22 @@ if __name__ == "__main__":  # pragma: no cover
 
     port_mapping = {}
 
+    set_logging(LOGGER)
+
     def sigterm_handler(_signo, _stack_frame):
-        teardown(port_mapping.values())
+        stop_containers(port_mapping.values())
         exit(0)
 
     signal(SIGTERM, sigterm_handler)
 
-    set_logging()
-
     if environ["STAGE"] == "DEV":
-        dev_db(port_mapping)
+        if not dev_db(port_mapping):
+            log(
+                40,
+                "Port 28015 already allocated, \
+                cannot launch rethinkdb container!"
+            )
+            exit(1)
 
     plugin_container = launch_container(PLUGIN, generate_port(port_mapping), HOST_PORT, HOST_PROTO)
     port_mapping[HOST_PORT] = plugin_container
@@ -221,5 +250,5 @@ if __name__ == "__main__":  # pragma: no cover
         try:
             sleep(1)
         except KeyboardInterrupt:
-            teardown(port_mapping.values())
+            stop_containers(port_mapping.values())
             exit(0)
