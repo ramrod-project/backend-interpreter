@@ -6,6 +6,7 @@ TODO:
 
 from abc import ABC, abstractmethod
 from multiprocessing import Queue
+from os import environ
 from queue import Empty
 
 
@@ -16,10 +17,12 @@ class ControllerPlugin(ABC):
     implement any subset of its methods that is required.
     #
     For proper instantiation, plugin subclasses should be initialized
-    with a 'name' string, and a 'server' tuple of the form
-    (["UDP" or "TCP"], PORT). This information will be used to
-    keep track of which network resources are allocated to which
-    plugins.
+    with a 'name' string, and 'functionality' dictionary which describes
+    the functions available in the plugin.
+    #
+    Port allocation is done automatically by the controller, and upon
+    instantiation the plugin will be given a PORT environment variable
+    where it should be running its server.
     #
     The initialize_queues method *SHOUD NOT* be overridden by the
     inheriting class, as the Supervisor will attempt to initialize
@@ -38,9 +41,10 @@ class ControllerPlugin(ABC):
     exported plugin controller class.
     """
 
-    def __init__(self, name, proto, port, functionality):
+    def __init__(self, name, functionality):
         self.db_send = None
         self.db_recv = None
+        self.port = int(environ["PORT"])
         self.functionality = functionality
         """
         List of dictionaries which advertises functionality of the plugin.
@@ -73,9 +77,6 @@ class ControllerPlugin(ABC):
         will be displayed to the user through the interface.
         """
         self.name = name
-        """Define server port/proto requirement (TCP/UDP) so docker can be run
-        properly."""
-        self.proto, self.port = proto, port
         super().__init__()
 
     def initialize_queues(self, send_queue, recv_queue):

@@ -14,16 +14,12 @@ from src import central_logger, controller_plugin, linked_process, rethink_inter
 
 def startup_brain():
     environ["LOGLEVEL"] = "DEBUG"
-    tag = ":latest"
     try:
-        if environ["TRAVIS_BRANCH"] == "dev":
-            tag = ":dev"
-        elif environ["TRAVIS_BRANCH"] == "qa":
-            tag = ":qa"
+        tag = environ["TRAVIS_BRANCH"].replace("master", "latest")
     except KeyError:
         pass
     CLIENT.containers.run(
-        "".join(("ramrodpcp/database-brain", tag)),
+        "".join(("ramrodpcp/database-brain:", tag)),
         name="rethinkdbtestapp",
         detach=True,
         ports={"28015/tcp": 28015},
@@ -194,7 +190,8 @@ def the_pretend_app():
         assert False not in test_results
 
 def test_the_Harness_app():
-    environ['STAGE'] = "TESTING"
+    environ["STAGE"] = "TESTING"
+    environ["PORT"] = "5000"
     sup_gen = startup_brain()
     s = sup_gen.__next__()
     supervisor_setup(s)
