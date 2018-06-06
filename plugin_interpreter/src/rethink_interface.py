@@ -116,6 +116,7 @@ class RethinkInterface:
         while time() - now < 15:
             try:
                 conn = rethinkdb.connect(host, port)
+                print(conn)
                 return RethinkInterface.validate_db(conn)
             except ConnectionResetError:
                 sleep(0.5)
