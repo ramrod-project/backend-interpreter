@@ -98,7 +98,7 @@ class SupervisorController:
         logger_pipes = []
 
         logger_pipes.append(self._plugin_setup())
-        logger_pipes.append(self._create_rethink_interface())
+        # logger_pipes.append(self._create_rethink_interface())
 
         log_receiver, self.logger_pipe = Pipe()
         logger_pipes.append(log_receiver)
