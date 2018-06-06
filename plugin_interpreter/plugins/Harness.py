@@ -32,7 +32,7 @@ _LOCK_WAIT = 3
 class Harness(cp.ControllerPlugin):
     functionality = _command_templates
 
-    def __init__(self, ext_signal):
+    def __init__(self):
         """
         The plugin class is the last class to init,
         but Database and logger have not started yet
@@ -50,7 +50,7 @@ class Harness(cp.ControllerPlugin):
         self._output = defaultdict(list)
         self._complete = defaultdict(list)
         self._clients = defaultdict(list)
-        super().__init__(self.name, self.proto, self.port, self.functionality, ext_signal)
+        super().__init__(self.name, self.proto, self.port, self.functionality)
 
     def _stop(self, logger, httpd):
         logger.send([
