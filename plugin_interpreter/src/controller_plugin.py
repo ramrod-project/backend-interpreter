@@ -116,7 +116,7 @@ class ControllerPlugin(ABC):
         self.DBI.logger = logger
         self.initialize_queues(self.DBI.plugin_queue)
         self.DBI.start()
-        return self.start(logger, signal)
+        self.start(logger, signal)
 
     @abstractmethod
     def start(self, logger, signal):
