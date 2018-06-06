@@ -142,7 +142,6 @@ class SupervisorController:
             target = instance.start
             log_sender = None
 
-        target = target=start
         created_process = linked_process.LinkedProcess(
             name=name,
             target=target,
