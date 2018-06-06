@@ -138,6 +138,7 @@ class SupervisorController:
         """
         log_receiver, log_sender = Pipe()
         target = instance._start
+        print(name)
         if name == "loggerprocess":
             target = instance.start
             log_sender = None
