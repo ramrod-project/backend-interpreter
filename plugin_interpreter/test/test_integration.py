@@ -210,7 +210,7 @@ def test_send_output(sup, rethink, connection):
     try:
         sup.create_servers()
         sup.spawn_servers()
-        sleep(5)
+        sleep(10)
         sup.teardown(0)
     except SystemExit as ex:
         assert str(ex) == "0"
@@ -236,7 +236,7 @@ def test_job_status_update(sup, rethink, connection):
     try:
         sup.create_servers()
         sup.spawn_servers()
-        sleep(5)
+        sleep(10)
         sup.teardown(0)
     except SystemExit as ex:
         assert str(ex) == "0"
