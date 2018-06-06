@@ -204,7 +204,7 @@ class SupervisorController:
         try:
             if not self.logger_process.start():
                 raise RuntimeError
-            if not self.plugin_process._start():
+            if not self.plugin_process.start():
                 raise RuntimeError
         except RuntimeError as err:
             print(err)
