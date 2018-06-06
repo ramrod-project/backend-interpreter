@@ -44,7 +44,7 @@ class ControllerPlugin(ABC):
     def __init__(self, name, proto, port, functionality):
         self.db_recv = None
         self.signal = None
-        
+        self.DBI = None
         # self.stop_signal = None
         self.functionality = functionality
         """
@@ -82,10 +82,10 @@ class ControllerPlugin(ABC):
         properly."""
         self.proto, self.port = proto, port
         print(environ["STAGE"])
+        host = "rethindb"
         if environ["STAGE"] == "TESTING":
-            self.DBI = rethink_interface.RethinkInterface(self,("127.0.0.1", 28015))
-        else:
-            self.DBI = rethink_interface.RethinkInterface(self,("rethinkdb", 28015))
+            host = "127.0.0.1"
+        self.DBI = rethink_interface.RethinkInterface(self,(host, 28015))
         super().__init__()
 
     def initialize_queues(self, recv_queue):
