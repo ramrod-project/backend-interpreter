@@ -74,7 +74,7 @@ def set_logging(logger):
         stderr.write("Invalid LOGLEVEL setting!\n")
         exit(1)
 
-def dev_db(port_mapping):
+def dev_db(ports):
     """Spins up db for dev environment
 
     When operating in a dev environment ("STAGE"
@@ -85,7 +85,7 @@ def dev_db(port_mapping):
         track of used {host port: container}
         combinations.
     """
-    if 28015 in port_mapping:
+    if 28015 in ports:
         return False
 
     CLIENT.networks.prune()
@@ -99,31 +99,31 @@ def dev_db(port_mapping):
         network=NETWORK_NAME,
         remove=True
     )
-    port_mapping[28015] = rethink_container
+    ports[28015] = rethink_container
     sleep(3)
     return True
 
-def generate_port(port_mapping):
+def generate_port(ports):
     """Generate a random port for container
-    
+
     Arguments:
         port_mapping {dict} -- a mapping for keeping
         track of used {host port: container}
         combinations.
-    
+
     Returns:
         {int} -- the port to use for the docker
         container (internally).
     """
     rand_port = randint(1025, 65535)
-    while rand_port in port_mapping.keys():
+    while rand_port in ports.keys():
         rand_port = randint(1025, 65535)
     return rand_port
 
 
 def log(level, message):
     """Log a message
-    
+
     Arguments:
         level {int} -- 10,20,30,40,50 are valid
         log levels.
@@ -139,14 +139,14 @@ def log(level, message):
 
 def launch_container(plugin, port, host_port, host_proto):
     """Launch a plugin container
-    
+
     Arguments:
         plugin {str} -- name of the plugin to run.
         port {int} -- internal docker container port.
         host_port {int} -- port to use on the host.
         host_proto {str} -- TCP or UDP, the protocol used
         by the plugin.
-    
+
     Returns:
         {Container} -- a Container object corresponding
         to the launched container.
@@ -190,7 +190,7 @@ def stop_containers(containers):
 
     Stops all running containers and prunes
     the network (in dev environment).
-    
+
     Arguments:
         containers {list} -- a list of all the containers
         ran by the container.
@@ -225,6 +225,8 @@ if __name__ == "__main__":  # pragma: no cover
     set_logging(LOGGER)
 
     def sigterm_handler(_signo, _stack_frame):
+        """Handles SIGTERM signal
+        """
         stop_containers(port_mapping.values())
         exit(0)
 
@@ -239,7 +241,12 @@ if __name__ == "__main__":  # pragma: no cover
             )
             exit(1)
 
-    plugin_container = launch_container(PLUGIN, generate_port(port_mapping), HOST_PORT, HOST_PROTO)
+    plugin_container = launch_container(
+        PLUGIN,
+        generate_port(port_mapping),
+        HOST_PORT,
+        HOST_PROTO
+    )
     port_mapping[HOST_PORT] = plugin_container
 
     log(
