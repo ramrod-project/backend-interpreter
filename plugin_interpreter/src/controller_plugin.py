@@ -43,18 +43,12 @@ class ControllerPlugin(ABC):
     exported plugin controller class.
     """
 
-<<<<<<< HEAD
-    def __init__(self, name, proto, port, functionality):
+    def __init__(self, name,functionality):
         self.db_recv = None
         self.signal = None
         self.DBI = None
-        # self.stop_signal = None
-=======
-    def __init__(self, name, functionality):
-        self.db_send = None
-        self.db_recv = None
         self.port = int(environ["PORT"])
->>>>>>> dev
+        # self.stop_signal = None
         self.functionality = functionality
         """
         List of dictionaries which advertises functionality of the plugin.
@@ -87,17 +81,13 @@ class ControllerPlugin(ABC):
         will be displayed to the user through the interface.
         """
         self.name = name
-<<<<<<< HEAD
         """Define server port/proto requirement (TCP/UDP) so docker can be run
         properly."""
-        self.proto, self.port = proto, port
         print(environ["STAGE"])
         host = "rethindb"
         if environ["STAGE"] == "TESTING":
             host = "127.0.0.1"
         self.DBI = rethink_interface.RethinkInterface(self,(host, 28015))
-=======
->>>>>>> dev
         super().__init__()
 
     def initialize_queues(self, recv_queue):

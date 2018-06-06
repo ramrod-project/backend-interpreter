@@ -57,6 +57,7 @@ class IntegrationTest(controller_plugin.ControllerPlugin):
                 "reference": "no reference"
             }
         ]
+        super().__init__(self.name, self.functionality)
 
     def start(self, logger, signal):
         """Run the integration tests
