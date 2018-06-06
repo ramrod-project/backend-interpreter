@@ -57,22 +57,19 @@ def set_logging(logger):
     Set the python logging level for this process
     based on the "LOGLEVEL" env variable.
     """
+    levels = {
+        "DEBUG": logging.DEBUG,
+        "INFO": logging.INFO,
+        "WARNING": logging.WARNING,
+        "ERROR": logging.ERROR,
+        "CRITICAL": logging.CRITICAL
+    }
     try:
-        if environ["LOGLEVEL"] == "DEBUG":
-            logger.setLevel(logging.DEBUG)
-        elif environ["LOGLEVEL"] == "INFO":
-            logger.setLevel(logging.INFO)
-        elif environ["LOGLEVEL"] == "WARNING":
-            logger.setLevel(logging.WARNING)
-        elif environ["LOGLEVEL"] == "ERROR":
-            logger.setLevel(logging.ERROR)
-        elif environ["LOGLEVEL"] == "CRITICAL":
-            logger.setLevel(logging.CRITICAL)
-        else:
-            raise KeyError
+        logger.setLevel(levels[environ["LOGLEVEL"]])
     except KeyError:
         stderr.write("Invalid LOGLEVEL setting!\n")
         exit(1)
+
 
 def dev_db(ports):
     """Spins up db for dev environment
@@ -102,6 +99,7 @@ def dev_db(ports):
     ports[28015] = rethink_container
     sleep(3)
     return True
+
 
 def generate_port(ports):
     """Generate a random port for container
@@ -137,6 +135,7 @@ def log(level, message):
         }
     )
 
+
 def launch_container(plugin, port, host_port, host_proto):
     """Launch a plugin container
 
@@ -151,21 +150,10 @@ def launch_container(plugin, port, host_port, host_proto):
         {Container} -- a Container object corresponding
         to the launched container.
     """
-    assert isinstance(plugin, str), \
-    "Provided plugin name must be string!"
-    assert host_proto == "TCP" or host_proto == "UDP", \
-    "Host protocol must either be 'TCP' or 'UDP'"
-    assert isinstance(host_port, int), \
-    "Host port must be integer"
-    assert host_port <= 65535, \
-    "Host port must be <=65535"
+    assert host_proto == "TCP" or host_proto == "UDP"
+    assert host_port <= 65535
 
-    docker_string = "".join([
-        str(port),
-        "/{}".format(HOST_PROTO.lower())
-    ])
-
-    container = CLIENT.containers.run(
+    return CLIENT.containers.run(
         "".join(("ramrodpcp/interpreter-plugin:", TAG)),
         name="".join((
             plugin,
@@ -180,9 +168,13 @@ def launch_container(plugin, port, host_port, host_proto):
         detach=True,
         remove=True,
         network=NETWORK_NAME,
-        ports={docker_string: host_port}
+        ports={
+            "".join([
+                str(port),
+                "/{}".format(HOST_PROTO.lower())
+            ]): host_port
+        }
     )
-    return container
 
 
 def stop_containers(containers):
@@ -201,8 +193,6 @@ def stop_containers(containers):
     )
     for container in containers:
         try:
-            if container.name == "controller":
-                continue
             container.stop()
         except docker.errors.NotFound:
             log(
@@ -232,14 +222,13 @@ if __name__ == "__main__":  # pragma: no cover
 
     signal(SIGTERM, sigterm_handler)
 
-    if environ["STAGE"] == "DEV":
-        if not dev_db(port_mapping):
-            log(
-                40,
-                "Port 28015 already allocated, \
-                cannot launch rethinkdb container!"
-            )
-            exit(1)
+    if environ["STAGE"] == "DEV" and not dev_db(port_mapping):
+        log(
+            40,
+            "Port 28015 already allocated, \
+            cannot launch rethinkdb container!"
+        )
+        exit(1)
 
     plugin_container = launch_container(
         PLUGIN,
