@@ -38,10 +38,10 @@ class RethinkInterface:
         self.plugin_queue = Queue()
         self.port = server[1]
         # One Queue for responses from the plugin processes
-        self.response_queue = Queue()
+        # self.response_queue = Queue()
         self.rethink_connection = self.connect_to_db(self.host, self.port)
         self.feed_connection = self.connect_to_db(self.host, self.port)
-        plugin.initialize_queues(self.response_queue, self.plugin_queue)
+        plugin.initialize_queues(self.plugin_queue)
 
     def changefeed_thread(self):
         feed = rethinkdb.db("Brain").table("Jobs").filter(
