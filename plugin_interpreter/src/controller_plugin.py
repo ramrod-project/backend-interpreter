@@ -6,6 +6,7 @@ TODO:
 
 from abc import ABC, abstractmethod
 from multiprocessing import Queue
+from os import environ
 from queue import Empty
 
 from src import rethink_interface
@@ -40,10 +41,11 @@ class ControllerPlugin(ABC):
     exported plugin controller class.
     """
 
-    def __init__(self, name, proto, port, functionality,):
+    def __init__(self, name, proto, port, functionality):
         self.db_recv = None
         self.signal = None
-        self.DBI = rethink_interface.RethinkInterface(self,("rethinkdb", 28015))
+        self.DBI = None
+        # self.stop_signal = None
         self.functionality = functionality
         """
         List of dictionaries which advertises functionality of the plugin.
@@ -79,10 +81,14 @@ class ControllerPlugin(ABC):
         """Define server port/proto requirement (TCP/UDP) so docker can be run
         properly."""
         self.proto, self.port = proto, port
+        print(environ["STAGE"])
+        host = "rethindb"
+        if environ["STAGE"] == "TESTING":
+            host = "127.0.0.1"
+        self.DBI = rethink_interface.RethinkInterface(self,(host, 28015))
         super().__init__()
-        self.DBI.start()
 
-    def initialize_queues(self, send_queue, recv_queue):
+    def initialize_queues(self, recv_queue):
         """Initialize command/response queues
 
         The 'initialize_queues' method is called by the Supervisor with
@@ -104,6 +110,13 @@ class ControllerPlugin(ABC):
         """
         self.db_recv = recv_queue
         self._advertise_functionality()
+
+    def _start(self, logger, signal):
+        self.DBI.stop_signal = signal
+        self.DBI.logger = logger
+        self.initialize_queues(self.DBI.plugin_queue)
+        self.DBI.start()
+        self.start(logger, signal)
 
     @abstractmethod
     def start(self, logger, signal):
@@ -213,8 +226,3 @@ class ControllerPlugin(ABC):
         needed and execute any cleanup required.
         """
         exit(0)
-
-    def __del__(self):
-        """destructor
-        """
-        self.DBI._stop()

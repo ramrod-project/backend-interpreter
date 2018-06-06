@@ -33,15 +33,15 @@ class RethinkInterface:
         self.logger = None
         self.plugin_name = plugin.name
         self.job_fetcher = None
-        self.stop_signal = False
+        self.stop_signal = None
         # Generate dictionary of Queues for each plugin
         self.plugin_queue = Queue()
         self.port = server[1]
         # One Queue for responses from the plugin processes
-        self.response_queue = Queue()
+        # self.response_queue = Queue()
         self.rethink_connection = self.connect_to_db(self.host, self.port)
         self.feed_connection = self.connect_to_db(self.host, self.port)
-        plugin.initialize_queues(self.response_queue, self.plugin_queue)
+        # plugin.initialize_queues(self.plugin_queue)
 
     def changefeed_thread(self):
         feed = rethinkdb.db("Brain").table("Jobs").filter(
@@ -59,6 +59,7 @@ class RethinkInterface:
             except RuntimeError:
                 self._log("Changefeed Disconnected.", 30)
                 break
+        self._stop()
 
     def start(self):
         """
@@ -69,7 +70,7 @@ class RethinkInterface:
             logger {Pipe} - Pipe to the logger
             signal {c type boolean} - used for cleanup
         """
-        self.logger = logger
+        # self.logger = logger
         if self.rethink_connection:
             self._log(
                 "Succesfully opened connection to Rethinkdb",
@@ -115,6 +116,7 @@ class RethinkInterface:
         while time() - now < 15:
             try:
                 conn = rethinkdb.connect(host, port)
+                print(conn)
                 return RethinkInterface.validate_db(conn)
             except ConnectionResetError:
                 sleep(0.5)
@@ -466,7 +468,7 @@ class RethinkInterface:
             pass
         # after closing connection, join thread. the closed connection
         # should cause the blocking to end and the thread to terminate
-        self.stop_signal = True
+        # self.stop_signal = True
         try:
             self.job_fetcher.join(timeout=4)
         except RuntimeError:
