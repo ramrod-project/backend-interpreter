@@ -94,11 +94,7 @@ def test_launch_container(env):
     """Tests the launch_container function
     """
     with raises(AssertionError):
-        launch_container(9000, 6000, 5005, "TCP")
-    with raises(AssertionError):
         launch_container("Harness", 6000, 5005, "RTCP")
-    with raises(AssertionError):
-        launch_container("Harness", 6000, "80", "TCP")
     with raises(AssertionError):
         launch_container("Harness", 6000, 999999, "TCP")
     CLIENT.networks.create("test")
