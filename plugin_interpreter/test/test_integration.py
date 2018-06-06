@@ -138,7 +138,7 @@ def rethink():
 @fixture
 def sup():
     environ["LOGLEVEL"] = "DEBUG"
-    environ["STAGE"] = "TESTNG"
+    environ["STAGE"] = "TESTING"
     sup = supervisor.SupervisorController("Harness")
     sup.plugin = IntegrationTest()
     return sup
