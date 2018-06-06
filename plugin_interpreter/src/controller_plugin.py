@@ -87,7 +87,7 @@ class ControllerPlugin(ABC):
             self.DBI = rethink_interface.RethinkInterface(self,("rethinkdb", 28015))
         super().__init__()
 
-    def initialize_queues(self, send_queue, recv_queue):
+    def initialize_queues(self, recv_queue):
         """Initialize command/response queues
 
         The 'initialize_queues' method is called by the Supervisor with
