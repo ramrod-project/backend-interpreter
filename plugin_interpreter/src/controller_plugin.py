@@ -224,8 +224,3 @@ class ControllerPlugin(ABC):
         needed and execute any cleanup required.
         """
         exit(0)
-
-    def __del__(self):
-        """destructor
-        """
-        self.DBI._stop()
