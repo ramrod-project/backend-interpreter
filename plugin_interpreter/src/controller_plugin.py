@@ -81,6 +81,7 @@ class ControllerPlugin(ABC):
         """Define server port/proto requirement (TCP/UDP) so docker can be run
         properly."""
         self.proto, self.port = proto, port
+        print(environ["STAGE"])
         if environ["STAGE"] == "TESTING":
             self.DBI = rethink_interface.RethinkInterface(self,("127.0.0.1", 28015))
         else:
