@@ -53,7 +53,7 @@ script:
   - containers=$(docker ps -a | grep -v CONTAINER | awk '{print $1}')
   # print the logs for each plugin
   - docker logs controller
-  - docker logs plugin1
+  - docker logs $(docker ps -a | grep interpreter-plugin | awk '{print $1}')
   - docker logs rethinkdb
   - for c in "${containers[@]}"; do docker stop $c; done
 
