@@ -33,7 +33,7 @@ class mock_logger():
 def brain():
     # Setup for all module tests
     try:
-        tag = environ["TRAVIS_BRANCH"]
+        tag = environ["TRAVIS_BRANCH"].replace("master", "latest")
     except KeyError:
         tag = "latest"
     CLIENT.containers.run(
@@ -57,6 +57,7 @@ def rethink():
     # Setup for each test
     server = ("127.0.0.1", 28015)
     environ["STAGE"] = "DEV"
+    environ["PORT"] = "5000"
     plugin = Harness()
     rdb = rethink_interface.RethinkInterface(plugin, server)
     rdb.logger = mock_logger()

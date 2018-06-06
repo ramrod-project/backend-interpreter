@@ -2,6 +2,7 @@
 """
 
 import multiprocessing
+from os import environ
 from threading import Thread
 from time import time, sleep
 
@@ -30,6 +31,9 @@ SAMPLE_JOB = {
     "JobCommand": "Do stuff"
 }
 
+environ["PORT"] = "8080"
+
+
 class SamplePlugin(controller_plugin.ControllerPlugin):
     """Sample plugin for testing
 
@@ -48,8 +52,6 @@ class SamplePlugin(controller_plugin.ControllerPlugin):
     def __init__(self):
         super().__init__(
             "SamplePlugin",
-            "TCP",
-            "8080",
             [
                 {
                     "name": "read_file",

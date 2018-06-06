@@ -39,18 +39,16 @@ class Harness(cp.ControllerPlugin):
         Should not be using the database handles or the logger in this fn
         """
         self.name = "Harness"
-        if _environ['STAGE'] == "DEV":
-            self.port = 5005
+        if _environ["STAGE"] == "DEV":
             self.debug = True
         else:
-            self.port = 5000
             self.debug = False
         self.proto = "TCP"
         self._work = defaultdict(list)
         self._output = defaultdict(list)
         self._complete = defaultdict(list)
         self._clients = defaultdict(list)
-        super().__init__(self.name, self.proto, self.port, self.functionality)
+        super().__init__(self.name, self.functionality)
 
     def _stop(self, logger, httpd):
         logger.send([

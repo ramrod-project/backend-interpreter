@@ -28,6 +28,9 @@ SAMPLE_JOB = {
     "JobCommand": "Do stuff"
 }
 
+environ["PORT"] = "8080"
+
+
 class IntegrationTest(controller_plugin.ControllerPlugin):
     """A class to be used for integration testing.
     
@@ -113,7 +116,7 @@ def file_handler():
 @fixture(scope="module")
 def rethink():
     try:
-        tag = environ["TRAVIS_BRANCH"]
+        tag = environ["TRAVIS_BRANCH"].replace("master", "latest")
     except KeyError:
         tag = "latest"
     CLIENT.containers.run(
