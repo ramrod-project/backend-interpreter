@@ -23,6 +23,7 @@ before_install:
 
 install:
   - pip install -r plugin_interpreter/requirements.txt
+  - pip install -r plugin_controller/requirements.txt
   - pip install pytest-cov
   - if [ "$TRAVIS_BRANCH" == "master"  ]; 
     then travis_wait 10 docker pull ramrodpcp/database-brain:latest; 
@@ -32,7 +33,7 @@ install:
   - ./cc-test-reporter before-build
 
 before_script:
-  - pytest --cov plugin_interpreter --cov-config .coveragerc --cov-report xml plugin_interpreter/test
+  - pytest --cov plugin_controller --cov plugin_interpreter --cov-config .coveragerc --cov-report xml ./plugin*
   - ./cc-test-reporter after-build -t coverage.py --exit-code 0
 
 script:
