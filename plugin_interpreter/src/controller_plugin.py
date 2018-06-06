@@ -86,7 +86,6 @@ class ControllerPlugin(ABC):
         if environ["STAGE"] == "TESTING":
             host = "127.0.0.1"
         self.DBI = rethink_interface.RethinkInterface(self,(host, 28015))
-        self.initialize_queues(self.DBI.plugin_queue)
         super().__init__()
 
     def initialize_queues(self, recv_queue):
@@ -115,6 +114,7 @@ class ControllerPlugin(ABC):
     def _start(self, logger, signal):
         self.DBI.stop_signal = signal
         self.DBI.logger = logger
+        self.initialize_queues(self.DBI.plugin_queue)
         self.DBI.start()
         return self.start(logger, signal)
 
