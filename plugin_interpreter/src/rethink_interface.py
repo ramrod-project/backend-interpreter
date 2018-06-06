@@ -59,6 +59,7 @@ class RethinkInterface:
             except RuntimeError:
                 self._log("Changefeed Disconnected.", 30)
                 break
+        self._stop()
 
     def start(self):
         """
