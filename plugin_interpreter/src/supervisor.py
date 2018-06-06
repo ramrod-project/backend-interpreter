@@ -137,11 +137,12 @@ class SupervisorController:
             and a Pipe for the log receiver
         """
         log_receiver, log_sender = Pipe()
-        target = instance._start
+        target = instance.start
         print(name)
         if name == "loggerprocess":
-            target = instance.start
             log_sender = None
+        else:
+            target = instance._start
 
         created_process = linked_process.LinkedProcess(
             name=name,
