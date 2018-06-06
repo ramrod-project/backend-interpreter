@@ -41,7 +41,7 @@ class ControllerPlugin(ABC):
     exported plugin controller class.
     """
 
-    def __init__(self, name, proto, port, functionality,):
+    def __init__(self, name, proto, port, functionality):
         self.db_recv = None
         self.signal = None
         
