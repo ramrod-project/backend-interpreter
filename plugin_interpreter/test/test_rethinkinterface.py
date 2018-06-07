@@ -508,7 +508,8 @@ def test_update_output(brain, rethink):
 
 # rethink_interface is no longer a process
 def test_rethink_start(brain, rethink):
-    # Test running as linked process (**THIS KILLS THE CONNECTION**)
+    # Test the thread that monitors the changefeed
+    # (**THIS KILLS THE CONNECTION**)
     # Don't run tests after this one that require the connection...
     val = Value(c_bool, False)
     # send, _ = Pipe()
