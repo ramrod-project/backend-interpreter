@@ -223,6 +223,7 @@ def test_rethink_plugin_create(brain, rethink):
     #             "Tooltip": "This is also a test"
     #         }]))
     
+    #no longer get jobs with this function. use queue
 def test_next_job(brain, rethink):
     """Tests the _get_next_job() function by inserting a job into the
     Brain and testing if the function correctly gets the job and adds it to the
@@ -506,19 +507,13 @@ def test_update_output(brain, rethink):
     assert output_status == "Done"
 
 # rethink_interface is no longer a process
-# def test_rethink_start(brain, rethink):
-#     # Test running as linked process (**THIS KILLS THE CONNECTION**)
-#     # Don't run tests after this one that require the connection...
-#     val = Value(c_bool, False)
-#     send, _ = Pipe()
-#     rethink_proc = linked_process.LinkedProcess(
-#         name="dbprocess",
-#         target=rethink.start,
-#         logger_pipe=send,
-#         signal=val
-#     )
-#     rethink_proc.start()
-#     assert rethink_proc.is_alive()
-#     val.value = True
-#     sleep(7)
-#     assert not rethink_proc.is_alive()
+def test_rethink_start(brain, rethink):
+    # Test running as linked process (**THIS KILLS THE CONNECTION**)
+    # Don't run tests after this one that require the connection...
+    val = Value(c_bool, False)
+    # send, _ = Pipe()
+    rethink.start()
+    assert rethink.job_fetcher.is_alive()
+    val.value = True
+    sleep(7)
+    assert not rethink.job_fetcher.is_alive()
