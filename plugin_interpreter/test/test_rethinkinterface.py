@@ -34,6 +34,7 @@ def brain():
     # Setup for all module tests
     try:
         tag = environ["TRAVIS_BRANCH"].replace("master", "latest")
+        environ["STAGE"] = "TESTING"
     except KeyError:
         tag = "latest"
     CLIENT.containers.run(
@@ -58,7 +59,12 @@ def rethink():
     server = ("127.0.0.1", 28015)
     environ["STAGE"] = "DEV"
     environ["PORT"] = "5000"
-    plugin = Harness()
+    class TestPlugin():
+        def __init__(self):
+            self.name = None
+            pass
+    plugin = TestPlugin()
+    plugin.name = "test"
     rdb = rethink_interface.RethinkInterface(plugin, server)
     rdb.logger = mock_logger()
     yield rdb
@@ -499,19 +505,20 @@ def test_update_output(brain, rethink):
     output_status = output_cursor.next().get("OutputJob",{}).get("Status")
     assert output_status == "Done"
 
-def test_rethink_start(brain, rethink):
-    # Test running as linked process (**THIS KILLS THE CONNECTION**)
-    # Don't run tests after this one that require the connection...
-    val = Value(c_bool, False)
-    send, _ = Pipe()
-    rethink_proc = linked_process.LinkedProcess(
-        name="dbprocess",
-        target=rethink.start,
-        logger_pipe=send,
-        signal=val
-    )
-    rethink_proc.start()
-    assert rethink_proc.is_alive()
-    val.value = True
-    sleep(7)
-    assert not rethink_proc.is_alive()
+# rethink_interface is no longer a process
+# def test_rethink_start(brain, rethink):
+#     # Test running as linked process (**THIS KILLS THE CONNECTION**)
+#     # Don't run tests after this one that require the connection...
+#     val = Value(c_bool, False)
+#     send, _ = Pipe()
+#     rethink_proc = linked_process.LinkedProcess(
+#         name="dbprocess",
+#         target=rethink.start,
+#         logger_pipe=send,
+#         signal=val
+#     )
+#     rethink_proc.start()
+#     assert rethink_proc.is_alive()
+#     val.value = True
+#     sleep(7)
+#     assert not rethink_proc.is_alive()
