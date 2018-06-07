@@ -262,9 +262,9 @@ class RethinkInterface:
                 self._log(
                     "".join([
                         "Unable to update job '",
-                        job_data[0],
+                        job_data["job"],
                         "' to ",
-                        job_data[1]
+                        job_data["status"]
                     ]),
                     20
                 )
