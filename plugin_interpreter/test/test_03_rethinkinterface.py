@@ -62,7 +62,6 @@ def rethink():
     class TestPlugin():
         def __init__(self):
             self.name = None
-            pass
     plugin = TestPlugin()
     plugin.name = "test"
     rdb = rethink_interface.RethinkInterface("test", server)
@@ -513,6 +512,7 @@ def test_rethink_start(brain, rethink):
     # Don't run tests after this one that require the connection...
     val = Value(c_bool, False)
     send, _ = Pipe()
+    rethink.plugin_name = "updater"
     rethink.start(send, val)
     assert rethink.job_fetcher.is_alive()
     #test retrieving a job
@@ -534,6 +534,7 @@ def test_rethink_start(brain, rethink):
     rethinkdb.db("Brain").table("Jobs").insert(new_job).run(rethink.rethink_connection)
     sleep(3)
     test_job = rethink.plugin_queue.get()
+    del test_job["id"]
     assert test_job == new_job
     val.value = True
     sleep(7)
