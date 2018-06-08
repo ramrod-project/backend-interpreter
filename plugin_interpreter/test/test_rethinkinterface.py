@@ -515,6 +515,26 @@ def test_rethink_start(brain, rethink):
     send, _ = Pipe()
     rethink.start(send, val)
     assert rethink.job_fetcher.is_alive()
+    #test retrieving a job
+    rethinkdb.db("Brain").table("Jobs").delete().run(rethink.rethink_connection)
+    new_job = {
+        "JobTarget":{
+            "PluginName": "updater",
+            "Location": "8.8.8.8",
+            "Port": "80"
+        },
+        "JobCommand":{
+            "CommandName": "TestJob",
+            "Tooltip": "for testing updates",
+            "Inputs":[]
+        },
+        "Status": "Ready",
+        "StartTime" : 0
+    }
+    rethinkdb.db("Brain").table("Jobs").insert(new_job).run(rethink.rethink_connection)
+    sleep(3)
+    test_job = rethink.plugin_queue.get()
+    assert test_job == new_job
     val.value = True
     sleep(7)
     assert not rethink.job_fetcher.is_alive()
