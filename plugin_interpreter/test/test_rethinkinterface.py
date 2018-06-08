@@ -65,7 +65,7 @@ def rethink():
             pass
     plugin = TestPlugin()
     plugin.name = "test"
-    rdb = rethink_interface.RethinkInterface(plugin, server)
+    rdb = rethink_interface.RethinkInterface("test", server)
     rdb.logger = mock_logger()
     yield rdb
     # Teardown for each test
