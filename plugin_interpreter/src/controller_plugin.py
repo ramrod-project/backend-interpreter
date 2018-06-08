@@ -8,6 +8,7 @@ from abc import ABC, abstractmethod
 from multiprocessing import Queue
 from os import environ
 from queue import Empty
+from time import time
 
 from src import rethink_interface
 
@@ -83,10 +84,6 @@ class ControllerPlugin(ABC):
         self.name = name
         """Define server port/proto requirement (TCP/UDP) so docker can be run
         properly."""
-        host = "rethinkdb"
-        if environ["STAGE"] == "TESTING":
-            host = "127.0.0.1"
-        self.DBI = rethink_interface.RethinkInterface(self.name,(host, 28015))
         super().__init__()
 
     def initialize_queues(self, recv_queue):
@@ -113,6 +110,10 @@ class ControllerPlugin(ABC):
         self._advertise_functionality()
 
     def _start(self, logger, signal):
+        host = "rethinkdb"
+        if environ["STAGE"] == "TESTING":
+            host = "127.0.0.1"
+        self.DBI = rethink_interface.RethinkInterface(self.name,(host, 28015))
         self.initialize_queues(self.DBI.plugin_queue)
         self.DBI.start(logger, signal)
         self.start(logger, signal)

@@ -72,8 +72,6 @@ class SupervisorController:
         self.plugin = get_class_instance(plugin_name)
         if not self.plugin:
             raise FileNotFoundError
-        self.db_interface = None
-        self.db_process = None
         self.logger_instance = None
         self.logger_pipe = None
         self.logger_process = None
@@ -98,7 +96,6 @@ class SupervisorController:
         logger_pipes = []
 
         logger_pipes.append(self._plugin_setup())
-        # logger_pipes.append(self._create_rethink_interface())
 
         log_receiver, self.logger_pipe = Pipe()
         logger_pipes.append(log_receiver)

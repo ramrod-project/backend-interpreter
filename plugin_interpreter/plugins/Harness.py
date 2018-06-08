@@ -102,7 +102,7 @@ class Harness(cp.ControllerPlugin):
         """
         while not ext_signal.value:
             if _G_LOCK.acquire(timeout=_LOCK_WAIT):
-                if self.db_send is not None:  # check we're not testing
+                if self.DBI:  # check we're not testing
                     self._collect_new_jobs()
                     self._push_complete_output()
                 _G_LOCK.release()

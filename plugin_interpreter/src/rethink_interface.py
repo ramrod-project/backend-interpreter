@@ -45,7 +45,7 @@ class RethinkInterface:
             (rethinkdb.row["Status"] == "Ready") &
             (rethinkdb.row["JobTarget"]["PluginName"] == self.plugin_name)
         ).changes().run(self.feed_connection)
-        while not signal:
+        while not signal.value:
             try:
                 change = feed.next(wait=False)
                 newval = change["new_val"]
@@ -372,12 +372,13 @@ class RethinkInterface:
             )
 
     def _log(self, log, level):
-        self.logger.send([
-            "dbprocess",
-            log,
-            level,
-            time()
-        ])
+        if self.logger:
+            self.logger.send([
+                "dbprocess",
+                log,
+                level,
+                time()
+            ])
 
     def _log_db_error(self, err):
         if isinstance(err, rethinkdb.ReqlTimeoutError):
