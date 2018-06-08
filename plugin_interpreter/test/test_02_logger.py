@@ -53,7 +53,6 @@ def file_handler():
     file_handler = open("logfile", "r")
     yield file_handler
     file_handler.close()
-    remove("./logfile")
 
 def test_logger_setup():
     """Test the CentralLogger class.
