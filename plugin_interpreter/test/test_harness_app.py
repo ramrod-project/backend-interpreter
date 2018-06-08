@@ -58,7 +58,7 @@ def supervisor_server_creation(sup):
     # Test server creation
     sup.create_servers()
 
-    for proc in [sup.logger_process, sup.db_process, sup.plugin_process]:
+    for proc in [sup.logger_process, sup.plugin_process]:
         assert isinstance(proc, linked_process.LinkedProcess)
 
     assert isinstance(sup.plugin, controller_plugin.ControllerPlugin)
@@ -69,7 +69,7 @@ def supervisor_server_spawn(sup):
     # Test server supawning
     sup.spawn_servers()
 
-    for proc in [sup.logger_process, sup.db_process, sup.plugin_process]:
+    for proc in [sup.logger_process, sup.plugin_process]:
         assert proc.is_alive()
 
 TEST_COMMANDS = [
