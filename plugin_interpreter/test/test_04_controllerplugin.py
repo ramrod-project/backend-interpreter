@@ -34,6 +34,23 @@ SAMPLE_JOB = {
 environ["PORT"] = "8080"
 
 
+class DummyDBInterface():
+
+
+    def __init__(self):
+        self.result = None
+        self.update = None
+
+    def create_plugin_table(self, db_data):
+        self.result = db_data
+
+    def update_job(self, job_id):
+        self.update = job_id
+
+    def send_output(self, output_data):
+        self.result = output_data
+
+
 class SamplePlugin(controller_plugin.ControllerPlugin):
     """Sample plugin for testing
 
@@ -71,6 +88,7 @@ class SamplePlugin(controller_plugin.ControllerPlugin):
                 }
             ]
         )
+        self.DBI = DummyDBInterface()
 
     def start(self, logger, signal):
         """abstractmethod overload"""
@@ -80,22 +98,6 @@ class SamplePlugin(controller_plugin.ControllerPlugin):
         """abstractmethod overload"""
         pass
 
-
-# def dummy_interface():
-#     """Simulates database interface
-
-#     Returns:
-#         object -- returns the 'data'
-#         value from the message received
-#         on the plugin queue.
-#     """
-#     next_item = FROM_PLUGIN.get()
-#     if next_item["type"] == "functionality":
-#         return next_item["data"]
-#     elif next_item["type"] == "job_response":
-#         status_update = FROM_PLUGIN.get()
-#         return (next_item["data"], status_update["data"]["status"])
-#     return None
 
 @fixture(scope="function")
 def plugin_base():
@@ -121,9 +123,6 @@ def test_instantiate():
     plugin = SamplePlugin()
     assert isinstance(plugin, controller_plugin.ControllerPlugin)
     plugin.initialize_queues(TO_PLUGIN)
-    # Empty the plugin of the _advertise_functionality() data
-    # _ = FROM_PLUGIN.get()
-    # assert isinstance(plugin.db_send, multiprocessing.queues.Queue)
     assert isinstance(plugin.db_recv, multiprocessing.queues.Queue)
 
 def test_advertise(plugin_base):
@@ -134,9 +133,9 @@ def test_advertise(plugin_base):
         instance needed for testing.
     """
     plugin_base._advertise_functionality()
-    # result = dummy_interface()
-    # assert result[0] == "SamplePlugin"
-    # assert result[1] == plugin_base.functionality
+    result = plugin_base.DBI.result
+    assert result[0] == "SamplePlugin"
+    assert result[1] == plugin_base.functionality
 
 def test_request_job(plugin_base):
     """Test requesting a job
@@ -156,44 +155,35 @@ def test_request_job(plugin_base):
             break
         sleep(0.1)
     assert result == SAMPLE_JOB
-    # status = FROM_PLUGIN.get(timeout=3)
-    # assert status["data"]["status"] == "Pending"
+    assert plugin_base.DBI.update == "138thg-eg98198-sf98gy3-feh8h8"
 
-# def test_respond_to_job(plugin_base):
-#     """Test sending job response
+def test_respond_to_job(plugin_base):
+    """Test sending job response
 
-#     Tests the various types of allowed response
-#     data types.
+    Tests the various types of allowed response
+    data types.
 
-#     Arguments:
-#         plugin_base {fixture} -- yields the SamplePlugin
-#         instance needed for testing.
-#     """
-#     with raises(TypeError):
-#         plugin_base._respond_output(SAMPLE_JOB, None)
-#     with raises(TypeError):
-#         plugin_base._respond_output(SAMPLE_JOB, dummy_interface)
+    Arguments:
+        plugin_base {fixture} -- yields the SamplePlugin
+        instance needed for testing.
+    """
+    with raises(TypeError):
+        plugin_base._respond_output(SAMPLE_JOB, None)
+    with raises(TypeError):
+        plugin_base._respond_output(SAMPLE_JOB, DummyDBInterface)
 
-#     plugin_base._respond_output(SAMPLE_JOB, "Sample Job Response")
-#     result, status = dummy_interface()
-#     assert result["job"] == SAMPLE_JOB
-#     assert result["output"] == "Sample Job Response"
-#     assert status == "Done"
+    plugin_base._respond_output(SAMPLE_JOB, "Sample Job Response")
+    assert plugin_base.DBI.result["job"] == SAMPLE_JOB
+    assert plugin_base.DBI.result["output"] == "Sample Job Response"
 
-#     plugin_base._respond_output(SAMPLE_JOB, bytes("Sample Job Response", "utf-8"))
-#     result, status = dummy_interface()
-#     assert result["job"] == SAMPLE_JOB
-#     assert result["output"] == bytes("Sample Job Response", "utf-8")
-#     assert status == "Done"
+    plugin_base._respond_output(SAMPLE_JOB, bytes("Sample Job Response", "utf-8"))
+    assert plugin_base.DBI.result["job"] == SAMPLE_JOB
+    assert plugin_base.DBI.result["output"] == bytes("Sample Job Response", "utf-8")
 
-#     plugin_base._respond_output(SAMPLE_JOB, 666)
-#     result, status = dummy_interface()
-#     assert result["job"] == SAMPLE_JOB
-#     assert result["output"] == 666
-#     assert status == "Done"
+    plugin_base._respond_output(SAMPLE_JOB, 666)
+    assert plugin_base.DBI.result["job"] == SAMPLE_JOB
+    assert plugin_base.DBI.result["output"] == 666
 
-#     plugin_base._respond_output(SAMPLE_JOB, 42.42)
-#     result, status = dummy_interface()
-#     assert result["job"] == SAMPLE_JOB
-#     assert result["output"] == 42.42
-#     assert status == "Done"
+    plugin_base._respond_output(SAMPLE_JOB, 42.42)
+    assert plugin_base.DBI.result["job"] == SAMPLE_JOB
+    assert plugin_base.DBI.result["output"] == 42.42
