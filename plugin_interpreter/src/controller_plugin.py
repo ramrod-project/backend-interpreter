@@ -86,7 +86,7 @@ class ControllerPlugin(ABC):
         host = "rethinkdb"
         if environ["STAGE"] == "TESTING":
             host = "127.0.0.1"
-        self.DBI = rethink_interface.RethinkInterface(self,(host, 28015))
+        self.DBI = rethink_interface.RethinkInterface(self.name,(host, 28015))
         super().__init__()
 
     def initialize_queues(self, recv_queue):
@@ -113,10 +113,8 @@ class ControllerPlugin(ABC):
         self._advertise_functionality()
 
     def _start(self, logger, signal):
-        self.DBI.stop_signal = signal
-        self.DBI.logger = logger
         self.initialize_queues(self.DBI.plugin_queue)
-        self.DBI.start()
+        self.DBI.start(logger, signal)
         self.start(logger, signal)
 
     @abstractmethod
@@ -146,6 +144,9 @@ class ControllerPlugin(ABC):
 
         """
         pass
+
+    def _update_job(self, id):
+        self.DBI.update_job(id)
     
     def _update_job_status(self, id, status):
         self.DBI._update_job_status(
@@ -163,7 +164,7 @@ class ControllerPlugin(ABC):
         the plugin will be named the exact same string as the
         self.name attribute.
         """
-        self.DBI._create_plugin_table((self.name, self.functionality))
+        self.DBI.create_plugin_table((self.name, self.functionality))
 
     def _request_job(self):
         """Request next job
@@ -189,7 +190,7 @@ class ControllerPlugin(ABC):
             job = None
 
         if job:
-            self._update_job_status(job["id"], "Pending")
+            self._update_job(job["id"])
         return job
 
     def _respond_output(self, job, output):
@@ -212,11 +213,11 @@ class ControllerPlugin(ABC):
         """
         if not isinstance(output, (bytes, str, int, float)):
             raise TypeError
-        self.DBI._send_output({
+        self.DBI.send_output({
                 "job": job,
                 "output": output
             })
-        self._update_job_status(job["id"], "Done")
+        self._update_job(job["id"])
 
     @abstractmethod
     def _stop(self, **kwargs):

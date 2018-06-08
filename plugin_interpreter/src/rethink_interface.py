@@ -27,28 +27,25 @@ class RethinkInterface:
     SupervisorController class.
     """
 
-    def __init__(self, plugin, server):
+    def __init__(self, name, server):
         self.job_cursor = None
         self.host = server[0]
         self.logger = None
-        self.plugin_name = plugin.name
+        self.plugin_name = name
         self.job_fetcher = None
-        self.stop_signal = None
         # Generate dictionary of Queues for each plugin
         self.plugin_queue = Queue()
         self.port = server[1]
         # One Queue for responses from the plugin processes
-        # self.response_queue = Queue()
         self.rethink_connection = self.connect_to_db(self.host, self.port)
         self.feed_connection = self.connect_to_db(self.host, self.port)
-        # plugin.initialize_queues(self.plugin_queue)
 
-    def changefeed_thread(self):
+    def changefeed_thread(self, signal):
         feed = rethinkdb.db("Brain").table("Jobs").filter(
             (rethinkdb.row["Status"] == "Ready") &
             (rethinkdb.row["JobTarget"]["PluginName"] == self.plugin_name)
         ).changes().run(self.feed_connection)
-        while not self.stop_signal:
+        while not signal:
             try:
                 change = feed.next(wait=False)
                 newval = change["new_val"]
@@ -61,7 +58,7 @@ class RethinkInterface:
                 break
         self._stop()
 
-    def start(self):
+    def start(self, logger, signal):
         """
         Start the Rethinkdb interface process. Control loop that handles
         communication with the database.
@@ -70,7 +67,7 @@ class RethinkInterface:
             logger {Pipe} - Pipe to the logger
             signal {c type boolean} - used for cleanup
         """
-        # self.logger = logger
+        self.logger = logger
         if self.rethink_connection:
             self._log(
                 "Succesfully opened connection to Rethinkdb",
@@ -82,7 +79,8 @@ class RethinkInterface:
         # get the pluginname with the functionality advertisement
         #self._handle_response(self.response_queue.get(timeout=3))
         self.job_fetcher = threading.Thread(
-            target=self.changefeed_thread
+            target=self.changefeed_thread,
+            args=(signal,)
         )
         self.job_fetcher.start()
 
@@ -131,7 +129,7 @@ class RethinkInterface:
             return True
         return False
 
-    def _update_job(self, job_id):
+    def update_job(self, job_id):
         """advances the job's status to the next state
 
         Arguments:
@@ -165,7 +163,7 @@ class RethinkInterface:
                 30
             )
 
-    def _update_job_error(self, job_id):
+    def update_job_error(self, job_id):
         """sets a job's status to Error
 
         Arguments:
@@ -269,6 +267,7 @@ class RethinkInterface:
                     20
                 )
 
+    # defunct, changefeed populates queue instead
     def _get_next_job(self, plugin_name):
         """
         Adds the next job to the plugin's queue
@@ -288,7 +287,7 @@ class RethinkInterface:
         except rethinkdb.ReqlCursorEmpty:
             self.plugin_queue.put(None)
 
-    def _send_output(self, output_data):
+    def send_output(self, output_data):
         """sends the plugin's output message to the Outputs table
 
         Arguments:
@@ -330,7 +329,7 @@ class RethinkInterface:
     def _update_target(self, target_data):
         pass
 
-    def _create_plugin_table(self, plugin_data):
+    def create_plugin_table(self, plugin_data):
         """
         Adds a new plugin to the Plugins Database
 
@@ -356,12 +355,12 @@ class RethinkInterface:
                 20
             )
 
+    # defunct, use class methods instead
     def _handle_response(self, response):
         request_types = {
-            "functionality": self._create_plugin_table,
-            # "job_request": self._get_next_job,
+            "functionality": self.create_plugin_table,
             "job_update": self._update_job_status,
-            "job_response": self._send_output,
+            "job_response": self.send_output,
             "target_update": self._update_target
         }
         try:
