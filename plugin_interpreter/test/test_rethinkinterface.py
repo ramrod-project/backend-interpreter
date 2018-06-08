@@ -151,7 +151,7 @@ def test_validate_db(brain, rethink, rethink_empty):
         _ = rethink_interface.RethinkInterface.validate_db(rethink.rethink_connection)
 
 def test_rethink_plugin_create(brain, rethink):
-    """Tests if the _plugin_create() function can successfully add a table to
+    """Tests if the create_plugin_table() function can successfully add a table to
     the plugin database and fill it with Commands. it then tests if the table
     can be updated with new Commands
     
@@ -173,7 +173,7 @@ def test_rethink_plugin_create(brain, rethink):
                 "Tooltip": "This is also a test"
             }]
     plugin_data = ("TestTable",command_list)
-    rethink._create_plugin_table(plugin_data)
+    rethink.create_plugin_table(plugin_data)
     tablecheck = rethinkdb.db("Plugins").table("TestTable").run(rethink.rethink_connection)
     assert compare_to(tablecheck, command_list)
 
@@ -197,7 +197,7 @@ def test_rethink_plugin_create(brain, rethink):
                 "Tooltip": "a bonus command"
             }]
     plugin_data = ("TestTable",command_list)
-    rethink._create_plugin_table(plugin_data)
+    rethink.create_plugin_table(plugin_data)
     tablecheck = rethinkdb.db("Plugins").table("TestTable").run(rethink.rethink_connection)
     assert compare_to(tablecheck, command_list)
 
@@ -255,7 +255,7 @@ def test_next_job(brain, rethink):
     assert compare_to(new_job,test_job)
 
 def test_update_job_status(brain, rethink):
-    """Tests _update_job() by placing a job in the Jobs table and calling 
+    """Tests update_job() by placing a job in the Jobs table and calling 
     update_jobs() to change the status of the job
     
     Arguments:
@@ -274,7 +274,7 @@ def test_update_job_status(brain, rethink):
             "job": test_job,
             "status": new_status
         }
-        rethink._update_job_status(job_dict)
+        rethink.update_job_status(job_dict)
         job_cursor = rethinkdb.db("Brain").table("Jobs").filter(
             (rethinkdb.row["JobTarget"]["PluginName"] == "jobtester") & (rethinkdb.row["Status"] == new_status)
             ).pluck("Status").run(rethink.rethink_connection)
@@ -324,21 +324,21 @@ def test_update_job(rethink):
         ).pluck("id").run(rethink.rethink_connection)
         test_job = job_cursor.next().get("id")
 
-        rethink._update_job(test_job)
+        rethink.update_job(test_job)
 
         job_cursor = rethinkdb.db("Brain").table("Jobs").get(test_job
         ).pluck("Status").run(rethink.rethink_connection)
         test_res = job_cursor.get("Status")
         assert(test_res == "Pending")
 
-        rethink._update_job(test_job)
+        rethink.update_job(test_job)
 
         job_cursor = rethinkdb.db("Brain").table("Jobs").get(test_job
         ).pluck("Status").run(rethink.rethink_connection)
         test_res = job_cursor.get("Status")
         assert(test_res == "Done")
 
-        rethink._update_job_error(test_job)
+        rethink.update_job_error(test_job)
         job_cursor = rethinkdb.db("Brain").table("Jobs").get(test_job
         ).pluck("Status").run(rethink.rethink_connection)
         test_res = job_cursor.get("Status")
@@ -347,8 +347,8 @@ def test_update_job(rethink):
         print("Failed to get job in test_update_job")
 
 def test_send_output(brain, rethink):
-    """Tests _send_output() by placing a job in the job queue, getting its
-    id, and then calling _send_output() with a string of output and checking
+    """Tests send_output() by placing a job in the job queue, getting its
+    id, and then calling send_output() with a string of output and checking
     if the entry was added to the Outputs Table
     
     Arguments:
@@ -380,7 +380,7 @@ def test_send_output(brain, rethink):
             "job": job_id,
             "output": content
         }
-        rethink._send_output(output_data)
+        rethink.send_output(output_data)
         output_cursor = rethinkdb.db("Brain").table("Outputs").filter(
             rethinkdb.row["OutputJob"]["id"]
             ).run(rethink.rethink_connection)
@@ -497,7 +497,7 @@ def test_update_output(brain, rethink):
         "job": job_obj,
         "output": content
     }
-    rethink._send_output(output_data)
+    rethink.send_output(output_data)
     updater["status"] = "Done"
     rethink._update_job_status(updater)
     output_cursor = rethinkdb.db("Brain").table("Outputs").filter(
@@ -512,8 +512,8 @@ def test_rethink_start(brain, rethink):
     # (**THIS KILLS THE CONNECTION**)
     # Don't run tests after this one that require the connection...
     val = Value(c_bool, False)
-    # send, _ = Pipe()
-    rethink.start()
+    send, _ = Pipe()
+    rethink.start(send, val)
     assert rethink.job_fetcher.is_alive()
     val.value = True
     sleep(7)
