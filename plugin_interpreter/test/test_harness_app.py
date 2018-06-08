@@ -57,13 +57,11 @@ def supervisor_setup(sup):
 def supervisor_server_creation(sup):
     # Test server creation
     sup.create_servers()
-    sup.db_interface.host = "127.0.0.1"
 
     for proc in [sup.logger_process, sup.db_process, sup.plugin_process]:
         assert isinstance(proc, linked_process.LinkedProcess)
 
     assert isinstance(sup.plugin, controller_plugin.ControllerPlugin)
-    assert isinstance(sup.db_interface, rethink_interface.RethinkInterface)
     assert isinstance(sup.logger_instance, central_logger.CentralLogger)
 
 
