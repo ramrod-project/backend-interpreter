@@ -57,6 +57,7 @@ class IntegrationTest(controller_plugin.ControllerPlugin):
                 "reference": "no reference"
             }
         ]
+        super().__init__(self.name, self.functionality)
 
     def start(self, logger, signal):
         """Run the integration tests
@@ -106,13 +107,6 @@ class IntegrationTest(controller_plugin.ControllerPlugin):
         """placeholder"""
         exit(0)
 
-
-@fixture(scope="module")
-def file_handler():
-    file_handler = open("logfile", "r")
-    yield file_handler
-    file_handler.close()
-
 @fixture(scope="module")
 def rethink():
     try:
@@ -141,7 +135,7 @@ def rethink():
 @fixture
 def sup():
     environ["LOGLEVEL"] = "DEBUG"
-    environ["STAGE"] = "TESTNG"
+    environ["STAGE"] = "TESTING"
     sup = supervisor.SupervisorController("Harness")
     sup.plugin = IntegrationTest()
     return sup
@@ -209,7 +203,7 @@ def test_send_output(sup, rethink, connection):
     try:
         sup.create_servers()
         sup.spawn_servers()
-        sleep(5)
+        sleep(10)
         sup.teardown(0)
     except SystemExit as ex:
         assert str(ex) == "0"
@@ -235,7 +229,7 @@ def test_job_status_update(sup, rethink, connection):
     try:
         sup.create_servers()
         sup.spawn_servers()
-        sleep(5)
+        sleep(10)
         sup.teardown(0)
     except SystemExit as ex:
         assert str(ex) == "0"
@@ -245,7 +239,7 @@ def test_job_status_update(sup, rethink, connection):
     assert job["id"] == SAMPLE_JOB["id"]
     assert job["Status"] == "Pending"
 
-def test_log_to_logger(sup, rethink, file_handler):
+def test_log_to_logger(sup, rethink):
     """Test logging to the logger
 
     This test logs to the logger from the plugin.
@@ -269,31 +263,32 @@ def test_log_to_logger(sup, rethink, file_handler):
     found_plugin_log = False
     found_rethink_log = False
 
-    output = re.split(" +", file_handler.readline())
-    while output:
-        print(output) #confirms there are 6 other logs in the logger before the above.
-        if re.match(r'(Mon|Tue|Wed|Thu|Fri|Sat|Sun)', output[0]):
-            try:
-                assert re.split(" +", asctime(gmtime(NOW))) == output[:5]
-                assert output[5] == "central"
-                assert output[6] == "CRITICAL"
-                assert output[7].split(":")[0] == "plugin"
-                assert " ".join(output[8:]).split("\n")[0] == "Testing out the logger."
-                found_plugin_log = True
-            except AssertionError:
-                pass
-            try:
-                assert output[5] == "central"
-                assert output[6] == "INFO"
-                assert output[7].split(":")[0] == "dbprocess"
-                assert " ".join(output[8:]).split("\n")[0] == "Succesfully opened connection to Rethinkdb"
-                found_rethink_log = True
-            except AssertionError:
-                pass
-        output = None
+    with open("logfile","r+") as file_handler:
         output = re.split(" +", file_handler.readline())
-        if output[0] == "":
-            break
+        while output:
+            print(output) #confirms there are 6 other logs in the logger before the above.
+            if re.match(r'(Mon|Tue|Wed|Thu|Fri|Sat|Sun)', output[0]):
+                try:
+                    assert re.split(" +", asctime(gmtime(NOW))) == output[:5]
+                    assert output[5] == "central"
+                    assert output[6] == "CRITICAL"
+                    assert output[7].split(":")[0] == "plugin"
+                    assert " ".join(output[8:]).split("\n")[0] == "Testing out the logger."
+                    found_plugin_log = True
+                except AssertionError:
+                    pass
+                try:
+                    assert output[5] == "central"
+                    assert output[6] == "INFO"
+                    assert output[7].split(":")[0] == "dbprocess"
+                    assert " ".join(output[8:]).split("\n")[0] == "Succesfully opened connection to Rethinkdb"
+                    found_rethink_log = True
+                except AssertionError:
+                    pass
+            output = None
+            output = re.split(" +", file_handler.readline())
+            if output[0] == "":
+                break
     assert found_plugin_log 
     assert found_rethink_log
 

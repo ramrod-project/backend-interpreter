@@ -34,6 +34,7 @@ def brain():
     # Setup for all module tests
     try:
         tag = environ["TRAVIS_BRANCH"].replace("master", "latest")
+        environ["STAGE"] = "TESTING"
     except KeyError:
         tag = "latest"
     CLIENT.containers.run(
@@ -58,8 +59,7 @@ def rethink():
     server = ("127.0.0.1", 28015)
     environ["STAGE"] = "DEV"
     environ["PORT"] = "5000"
-    plugin = Harness()
-    rdb = rethink_interface.RethinkInterface(plugin, server)
+    rdb = rethink_interface.RethinkInterface("test", server)
     rdb.logger = mock_logger()
     yield rdb
     # Teardown for each test
@@ -145,7 +145,7 @@ def test_validate_db(brain, rethink, rethink_empty):
         _ = rethink_interface.RethinkInterface.validate_db(rethink.rethink_connection)
 
 def test_rethink_plugin_create(brain, rethink):
-    """Tests if the _plugin_create() function can successfully add a table to
+    """Tests if the create_plugin_table() function can successfully add a table to
     the plugin database and fill it with Commands. it then tests if the table
     can be updated with new Commands
     
@@ -167,7 +167,7 @@ def test_rethink_plugin_create(brain, rethink):
                 "Tooltip": "This is also a test"
             }]
     plugin_data = ("TestTable",command_list)
-    rethink._create_plugin_table(plugin_data)
+    rethink.create_plugin_table(plugin_data)
     tablecheck = rethinkdb.db("Plugins").table("TestTable").run(rethink.rethink_connection)
     assert compare_to(tablecheck, command_list)
 
@@ -191,64 +191,12 @@ def test_rethink_plugin_create(brain, rethink):
                 "Tooltip": "a bonus command"
             }]
     plugin_data = ("TestTable",command_list)
-    rethink._create_plugin_table(plugin_data)
+    rethink.create_plugin_table(plugin_data)
     tablecheck = rethinkdb.db("Plugins").table("TestTable").run(rethink.rethink_connection)
     assert compare_to(tablecheck, command_list)
 
-    # #test table with entries without primary key
-    # command_list = [{
-    #             "name": "test_func_1",
-    #             "Input": ["string"],
-    #             "Output": "string",
-    #             "Tooltip": "This is a test"
-    #         },
-    #         {
-    #             "CommandName": "test_func_2",
-    #             "Input": ["string"],
-    #             "Output": "string",
-    #             "Tooltip": "This is also a test"
-    #         }]
-    # plugin_data = ("TestNoKey", command_list)
-    # rethink._create_plugin_table(plugin_data)
-    # assert(compare_to(rethink._create_plugin_table(plugin_data), [{
-    #             "CommandName": "test_func_2",
-    #             "Input": ["string"],
-    #             "Output": "string",
-    #             "Tooltip": "This is also a test"
-    #         }]))
-    
-def test_next_job(brain, rethink):
-    """Tests the _get_next_job() function by inserting a job into the
-    Brain and testing if the function correctly gets the job and adds it to the
-    plugin_queue
-    
-    Arguments:
-        rethink {Fixture} -- An instance of rethink interface
-    """
-
-    new_job = {
-        "JobTarget":{
-            "PluginName": "jobtester",
-            "Location": "8.8.8.8",
-            "Port": "80"
-        },
-        "JobCommand":{
-            "CommandName": "TestJob",
-            "Tooltip": "for testing jobs",
-            "Inputs":[]
-        },
-        "Status": "Ready",
-        "StartTime" : 0
-    }
-    rethink._get_next_job("jobtester")
-    assert(rethink.plugin_queue.get(timeout=1) == None)
-    rethinkdb.db("Brain").table("Jobs").insert(new_job).run(rethink.rethink_connection)
-    rethink._get_next_job("jobtester")
-    test_job = rethink.plugin_queue.get(timeout=1)
-    assert compare_to(new_job,test_job)
-
 def test_update_job_status(brain, rethink):
-    """Tests _update_job() by placing a job in the Jobs table and calling 
+    """Tests update_job() by placing a job in the Jobs table and calling 
     update_jobs() to change the status of the job
     
     Arguments:
@@ -267,7 +215,7 @@ def test_update_job_status(brain, rethink):
             "job": test_job,
             "status": new_status
         }
-        rethink._update_job_status(job_dict)
+        rethink.update_job_status(job_dict)
         job_cursor = rethinkdb.db("Brain").table("Jobs").filter(
             (rethinkdb.row["JobTarget"]["PluginName"] == "jobtester") & (rethinkdb.row["Status"] == new_status)
             ).pluck("Status").run(rethink.rethink_connection)
@@ -317,21 +265,21 @@ def test_update_job(rethink):
         ).pluck("id").run(rethink.rethink_connection)
         test_job = job_cursor.next().get("id")
 
-        rethink._update_job(test_job)
+        rethink.update_job(test_job)
 
         job_cursor = rethinkdb.db("Brain").table("Jobs").get(test_job
         ).pluck("Status").run(rethink.rethink_connection)
         test_res = job_cursor.get("Status")
         assert(test_res == "Pending")
 
-        rethink._update_job(test_job)
+        rethink.update_job(test_job)
 
         job_cursor = rethinkdb.db("Brain").table("Jobs").get(test_job
         ).pluck("Status").run(rethink.rethink_connection)
         test_res = job_cursor.get("Status")
         assert(test_res == "Done")
 
-        rethink._update_job_error(test_job)
+        rethink.update_job_error(test_job)
         job_cursor = rethinkdb.db("Brain").table("Jobs").get(test_job
         ).pluck("Status").run(rethink.rethink_connection)
         test_res = job_cursor.get("Status")
@@ -340,8 +288,8 @@ def test_update_job(rethink):
         print("Failed to get job in test_update_job")
 
 def test_send_output(brain, rethink):
-    """Tests _send_output() by placing a job in the job queue, getting its
-    id, and then calling _send_output() with a string of output and checking
+    """Tests send_output() by placing a job in the job queue, getting its
+    id, and then calling send_output() with a string of output and checking
     if the entry was added to the Outputs Table
     
     Arguments:
@@ -373,7 +321,7 @@ def test_send_output(brain, rethink):
             "job": job_id,
             "output": content
         }
-        rethink._send_output(output_data)
+        rethink.send_output(output_data)
         output_cursor = rethinkdb.db("Brain").table("Outputs").filter(
             rethinkdb.row["OutputJob"]["id"]
             ).run(rethink.rethink_connection)
@@ -490,7 +438,7 @@ def test_update_output(brain, rethink):
         "job": job_obj,
         "output": content
     }
-    rethink._send_output(output_data)
+    rethink.send_output(output_data)
     updater["status"] = "Done"
     rethink._update_job_status(updater)
     output_cursor = rethinkdb.db("Brain").table("Outputs").filter(
@@ -499,19 +447,37 @@ def test_update_output(brain, rethink):
     output_status = output_cursor.next().get("OutputJob",{}).get("Status")
     assert output_status == "Done"
 
-def test_rethink_start(brain, rethink):
-    # Test running as linked process (**THIS KILLS THE CONNECTION**)
+# rethink_interface is no longer a process
+def test_changefeed(brain, rethink):
+    # Test the thread that monitors the changefeed
+    # (**THIS KILLS THE CONNECTION**)
     # Don't run tests after this one that require the connection...
     val = Value(c_bool, False)
     send, _ = Pipe()
-    rethink_proc = linked_process.LinkedProcess(
-        name="dbprocess",
-        target=rethink.start,
-        logger_pipe=send,
-        signal=val
-    )
-    rethink_proc.start()
-    assert rethink_proc.is_alive()
+    rethink.plugin_name = "updater"
+    rethink.start(send, val)
+    assert rethink.job_fetcher.is_alive()
+    #test retrieving a job
+    rethinkdb.db("Brain").table("Jobs").delete().run(rethink.rethink_connection)
+    new_job = {
+        "JobTarget":{
+            "PluginName": "updater",
+            "Location": "8.8.8.8",
+            "Port": "80"
+        },
+        "JobCommand":{
+            "CommandName": "TestJob",
+            "Tooltip": "for testing updates",
+            "Inputs":[]
+        },
+        "Status": "Ready",
+        "StartTime" : 0
+    }
+    rethinkdb.db("Brain").table("Jobs").insert(new_job).run(rethink.rethink_connection)
+    sleep(3)
+    test_job = rethink.plugin_queue.get()
+    del test_job["id"]
+    assert test_job == new_job
     val.value = True
     sleep(7)
-    assert not rethink_proc.is_alive()
+    assert not rethink.job_fetcher.is_alive()

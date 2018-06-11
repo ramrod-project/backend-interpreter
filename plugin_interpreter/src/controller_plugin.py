@@ -5,9 +5,10 @@ TODO:
 """
 
 from abc import ABC, abstractmethod
-from multiprocessing import Queue
 from os import environ
 from queue import Empty
+
+from src import rethink_interface
 
 
 class ControllerPlugin(ABC):
@@ -42,8 +43,9 @@ class ControllerPlugin(ABC):
     """
 
     def __init__(self, name, functionality):
-        self.db_send = None
         self.db_recv = None
+        self.signal = None
+        self.DBI = None
         self.port = int(environ["PORT"])
         self.functionality = functionality
         """
@@ -54,32 +56,39 @@ class ControllerPlugin(ABC):
                 "name": "read_file",
                 "input": ["string"],
                 "family": "filesystem",
-                "tooltip": "Provided a full directory path, this function reads a file.",
+                "tooltip": "Provided a full directory path, \
+                this function reads a file.",
                 "reference": "<reference url>"
             },
             {
                 "name": "send_file",
                 "input": ["string", "binary"],
                 "family": "filesystem",
-                "tooltip": "Provided a file and destination directory, this function sends a file.",
+                "tooltip": "Provided a file and destination \
+                directory, this function sends a file.",
                 "reference": "<reference url>"
             }
         ]
-        The 'name' key is the unique identifier used to refer to the function
-        in communication between the front end interface and the back end.
-        This exact identifier will be sent back with corresponding commands to let
-        the plugin know which funcion should be called.
+        The 'name' key is the unique identifier used to refer to the
+        function in communication between the front end interface and
+        the back end. This exact identifier will be sent back with
+        corresponding commands to let the plugin know which funcion
+        should be called.
 
-        The 'input' key is a list of required input types to properly call
-        the function. Possible input types include: string, int, binary.
+        The 'input' key is a list of required input types to properly
+        call the function. Possible input types include: string,
+        int, binary.
 
-        The 'tooltip' key is a human readable explanation of the function usage. It
-        will be displayed to the user through the interface.
+        The 'tooltip' key is a human readable explanation of the
+        function usage. It will be displayed to the user through
+        the interface.
         """
         self.name = name
+        """Define server port/proto requirement (TCP/UDP) so docker can be run
+        properly."""
         super().__init__()
 
-    def initialize_queues(self, send_queue, recv_queue):
+    def initialize_queues(self, recv_queue):
         """Initialize command/response queues
 
         The 'initialize_queues' method is called by the Supervisor with
@@ -99,9 +108,17 @@ class ControllerPlugin(ABC):
             recv_queue {Queue} -- The queue used to receive commands from the
             frontend through the database.
         """
-        self.db_send = send_queue
         self.db_recv = recv_queue
         self._advertise_functionality()
+
+    def _start(self, logger, signal):
+        host = "rethinkdb"
+        if environ["STAGE"] == "TESTING":
+            host = "127.0.0.1"
+        self.DBI = rethink_interface.RethinkInterface(self.name, (host, 28015))
+        self.initialize_queues(self.DBI.plugin_queue)
+        self.DBI.start(logger, signal)
+        self.start(logger, signal)
 
     @abstractmethod
     def start(self, logger, signal):
@@ -127,18 +144,19 @@ class ControllerPlugin(ABC):
         plugin container. When set to 'True', the mprocess is expected
         to gracefullly tear itself down, or else the Supervisor will
         terminate it after a timeout period.
-
         """
         pass
-    
-    def _update_job_status(self, id, status):
-        self.db_send.put({
-            "type": "job_update",
-            "data": {
-                "job": id,
+
+    def _update_job(self, job_id):
+        self.DBI.update_job(job_id)
+
+    def _update_job_status(self, job_id, status):
+        self.DBI._update_job_status(
+            {
+                "job": job_id,
                 "status": status
             }
-        })
+        )
 
     def _advertise_functionality(self):
         """Advertises functionality to database
@@ -148,10 +166,7 @@ class ControllerPlugin(ABC):
         the plugin will be named the exact same string as the
         self.name attribute.
         """
-        self.db_send.put({
-            "type": "functionality",
-            "data": (self.name, self.functionality)
-        })
+        self.DBI.create_plugin_table((self.name, self.functionality))
 
     def _request_job(self):
         """Request next job
@@ -177,7 +192,7 @@ class ControllerPlugin(ABC):
             job = None
 
         if job:
-            self._update_job_status(job["id"], "Pending")
+            self._update_job(job["id"])
         return job
 
     def _respond_output(self, job, output):
@@ -200,14 +215,11 @@ class ControllerPlugin(ABC):
         """
         if not isinstance(output, (bytes, str, int, float)):
             raise TypeError
-        self.db_send.put({
-            "type": "job_response",
-            "data": {
-                "job": job,
-                "output": output
-            }
+        self.DBI.send_output({
+            "job": job,
+            "output": output
         })
-        self._update_job_status(job["id"], "Done")
+        self._update_job(job["id"])
 
     @abstractmethod
     def _stop(self, **kwargs):

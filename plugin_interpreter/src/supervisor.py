@@ -72,8 +72,6 @@ class SupervisorController:
         self.plugin = get_class_instance(plugin_name)
         if not self.plugin:
             raise FileNotFoundError
-        self.db_interface = None
-        self.db_process = None
         self.logger_instance = None
         self.logger_pipe = None
         self.logger_process = None
@@ -98,7 +96,6 @@ class SupervisorController:
         logger_pipes = []
 
         logger_pipes.append(self._plugin_setup())
-        logger_pipes.append(self._create_rethink_interface())
 
         log_receiver, self.logger_pipe = Pipe()
         logger_pipes.append(log_receiver)
@@ -137,12 +134,15 @@ class SupervisorController:
             and a Pipe for the log receiver
         """
         log_receiver, log_sender = Pipe()
+        target = instance.start
         if name == "loggerprocess":
             log_sender = None
+        else:
+            target = instance._start
 
         created_process = linked_process.LinkedProcess(
             name=name,
-            target=instance.start,
+            target=target,
             logger_pipe=log_sender,
             signal=self.signal
         )
@@ -200,12 +200,9 @@ class SupervisorController:
         try:
             if not self.logger_process.start():
                 raise RuntimeError
-            if not self.db_process.start():
-                raise RuntimeError
             if not self.plugin_process.start():
                 raise RuntimeError
         except RuntimeError as err:
-            print(err)
             self.teardown(99)
 
     def monitor(self):
@@ -213,7 +210,7 @@ class SupervisorController:
 
         This method runs for the duration of the application lifecycle...
         """
-        processes = [self.plugin_process, self.db_process, self.logger_process]
+        processes = [self.plugin_process, self.logger_process]
         while True:
             try:
                 sleep(3)
@@ -236,8 +233,6 @@ class SupervisorController:
         self.signal.value = True
         sleep(5)
 
-        if self.db_process.is_alive():
-            self.db_process.terminate()
         if self.plugin_process.is_alive():
             self.plugin_process.terminate()
         if self.logger_process.is_alive():
