@@ -53,9 +53,8 @@ class LinkedProcess:
         of the process.
         
         Returns:
-            bool -- Successful restart (or not)
+            bool -- Process is alive (or not)
         """
-
         if not self.proc:
             self._log([
                 self.name,
@@ -67,7 +66,9 @@ class LinkedProcess:
                 time()
             ])
             return False
-        if not self.is_alive():
+        if self.is_alive():
+            return True
+        else:
             self._log([
                 self.name,
                 "".join((self.name, " restarting...")),
@@ -76,14 +77,6 @@ class LinkedProcess:
             ])
             self.start()
             return self._did_start()
-        else:
-            self._log([
-                self.name,
-                "".join((self.name, " already running.")),
-                20,
-                time()
-            ])
-        return False
 
     def is_alive(self):
         """Check to see if contained process is alive.
