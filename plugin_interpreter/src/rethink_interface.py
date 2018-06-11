@@ -13,8 +13,10 @@ import threading
 
 from brain import r as rethinkdb
 
+
 class InvalidStatus(Exception):
     pass
+
 
 class RethinkInterface:
     """
@@ -27,7 +29,9 @@ class RethinkInterface:
     It runs as a process and is instantiated by and controlled by the
     SupervisorController class.
     """
-    VALID_STATES = ["Ready", "Pending", "Done", "Error", "Stopped", "Waiting", "Active"]
+    VALID_STATES = frozenset([
+        "Ready", "Pending", "Done", "Error", "Stopped", "Waiting", "Active"
+    ])
 
 
     def __init__(self, name, server):
@@ -36,10 +40,8 @@ class RethinkInterface:
         self.logger = None
         self.plugin_name = name
         self.job_fetcher = None
-        # Generate dictionary of Queues for each plugin
         self.plugin_queue = Queue()
         self.port = server[1]
-        # One Queue for responses from the plugin processes
         self.rethink_connection = self.connect_to_db(self.host, self.port)
         self.feed_connection = self.connect_to_db(self.host, self.port)
 
@@ -238,7 +240,7 @@ class RethinkInterface:
         Arguments:
             job_data {Dictionary} -- Dictionary containing the job
             id and the new status.
-            job: string 
+            job: string
             status: string
             Interpreter should in most cases be setting "Ready" status to
             "Pending" or the "Pending" status to either "Done" or "Error"
@@ -248,9 +250,9 @@ class RethinkInterface:
             try:
                 rethinkdb.db("Brain").table("Jobs").get(
                     job_data["job"]
-                    ).update({"Status": job_data["status"]}).run(
-                        self.rethink_connection
-                        )
+                ).update({"Status": job_data["status"]}).run(
+                    self.rethink_connection
+                )
 
                 outputref = rethinkdb.db("Brain").table("Outputs").filter(
                     rethinkdb.row["OutputJob"]["id"] == job_data["job"]
@@ -275,7 +277,12 @@ class RethinkInterface:
                     20
                 )
         else:
-            raise InvalidStatus
+            err = "".join([
+                job_data["status"],
+                " is not in ",
+                self.VALID_STATES
+            ])
+            raise InvalidStatus(err)
 
     # defunct, changefeed populates queue instead
     def _get_next_job(self, plugin_name):
@@ -363,22 +370,6 @@ class RethinkInterface:
                     "'"
                 ]),
                 20
-            )
-
-    # defunct, use class methods instead
-    def _handle_response(self, response):
-        request_types = {
-            "functionality": self.create_plugin_table,
-            "job_update": self._update_job_status,
-            "job_response": self.send_output,
-            "target_update": self._update_target
-        }
-        try:
-            request_types[response["type"]](response["data"])
-        except KeyError as err:
-            self._log(
-                " ".join(("Unknown response format!", str(err))),
-                40
             )
 
     def _log(self, log, level):

@@ -195,59 +195,6 @@ def test_rethink_plugin_create(brain, rethink):
     tablecheck = rethinkdb.db("Plugins").table("TestTable").run(rethink.rethink_connection)
     assert compare_to(tablecheck, command_list)
 
-    # #test table with entries without primary key
-    # command_list = [{
-    #             "name": "test_func_1",
-    #             "Input": ["string"],
-    #             "Output": "string",
-    #             "Tooltip": "This is a test"
-    #         },
-    #         {
-    #             "CommandName": "test_func_2",
-    #             "Input": ["string"],
-    #             "Output": "string",
-    #             "Tooltip": "This is also a test"
-    #         }]
-    # plugin_data = ("TestNoKey", command_list)
-    # rethink._create_plugin_table(plugin_data)
-    # assert(compare_to(rethink._create_plugin_table(plugin_data), [{
-    #             "CommandName": "test_func_2",
-    #             "Input": ["string"],
-    #             "Output": "string",
-    #             "Tooltip": "This is also a test"
-    #         }]))
-    
-    #no longer get jobs with this function. use queue
-def test_next_job(brain, rethink):
-    """Tests the _get_next_job() function by inserting a job into the
-    Brain and testing if the function correctly gets the job and adds it to the
-    plugin_queue
-    
-    Arguments:
-        rethink {Fixture} -- An instance of rethink interface
-    """
-
-    new_job = {
-        "JobTarget":{
-            "PluginName": "jobtester",
-            "Location": "8.8.8.8",
-            "Port": "80"
-        },
-        "JobCommand":{
-            "CommandName": "TestJob",
-            "Tooltip": "for testing jobs",
-            "Inputs":[]
-        },
-        "Status": "Ready",
-        "StartTime" : 0
-    }
-    rethink._get_next_job("jobtester")
-    assert(rethink.plugin_queue.get(timeout=1) == None)
-    rethinkdb.db("Brain").table("Jobs").insert(new_job).run(rethink.rethink_connection)
-    rethink._get_next_job("jobtester")
-    test_job = rethink.plugin_queue.get(timeout=1)
-    assert compare_to(new_job,test_job)
-
 def test_update_job_status(brain, rethink):
     """Tests update_job() by placing a job in the Jobs table and calling 
     update_jobs() to change the status of the job
@@ -501,7 +448,7 @@ def test_update_output(brain, rethink):
     assert output_status == "Done"
 
 # rethink_interface is no longer a process
-def test_rethink_start(brain, rethink):
+def test_changefeed(brain, rethink):
     # Test the thread that monitors the changefeed
     # (**THIS KILLS THE CONNECTION**)
     # Don't run tests after this one that require the connection...
