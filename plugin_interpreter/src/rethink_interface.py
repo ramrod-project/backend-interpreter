@@ -13,6 +13,8 @@ import threading
 
 from brain import r as rethinkdb
 
+class InvalidStatus(Exception):
+    pass
 
 class RethinkInterface:
     """
@@ -25,7 +27,7 @@ class RethinkInterface:
     It runs as a process and is instantiated by and controlled by the
     SupervisorController class.
     """
-    VALID_STATES = ["Ready", "Pending", "Done", "Error", "Stopped", "Waiting"]
+    VALID_STATES = ["Ready", "Pending", "Done", "Error", "Stopped", "Waiting", "Active"]
 
 
     def __init__(self, name, server):
@@ -134,7 +136,7 @@ class RethinkInterface:
         except rethinkdb.ReqlDriverError:
             self._log(
                 "".join(["unable to find job: ", job_id]), 20)
-        if not job["Status"] in self.VALID_STATES:
+        if job["Status"] not in self.VALID_STATES:
             self._log(
                 "".join([job_id, " has an invalid state, setting to error"]),
                 30
@@ -235,7 +237,9 @@ class RethinkInterface:
 
         Arguments:
             job_data {Dictionary} -- Dictionary containing the job
-            id and the new status. (job, status)
+            id and the new status.
+            job: string 
+            status: string
             Interpreter should in most cases be setting "Ready" status to
             "Pending" or the "Pending" status to either "Done" or "Error"
         """
@@ -270,6 +274,8 @@ class RethinkInterface:
                     ]),
                     20
                 )
+        else:
+            raise InvalidStatus
 
     # defunct, changefeed populates queue instead
     def _get_next_job(self, plugin_name):
