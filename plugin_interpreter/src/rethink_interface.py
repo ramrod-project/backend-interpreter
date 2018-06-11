@@ -26,6 +26,8 @@ class RethinkInterface:
     It runs as a process and is instantiated by and controlled by the
     SupervisorController class.
     """
+    VALID_STATES = ["Ready", "Pending", "Done", "Error", "Stopped", "Waiting"]
+
 
     def __init__(self, name, server):
         self.job_cursor = None
@@ -123,12 +125,6 @@ class RethinkInterface:
         stderr.write("DB connection timeout!")
         sysexit(111)
 
-    def _is_valid_state(self, state):
-        states = ["Ready", "Pending", "Done", "Error", "Stopped", "Waiting"]
-        if state in states:
-            return True
-        return False
-
     def update_job(self, job_id):
         """advances the job's status to the next state
 
@@ -138,19 +134,18 @@ class RethinkInterface:
         try:
             job = rethinkdb.db("Brain").table("Jobs").get(
                 job_id).pluck("Status").run(self.rethink_connection)
-            job_status = job["Status"]
         except rethinkdb.ReqlDriverError:
             self._log(
                 "".join(["unable to find job: ", job_id]), 20)
-        if not self._is_valid_state(job_status):
+        if not job["Status"] in self.VALID_STATES:
             self._log(
                 "".join([job_id, " has an invalid state, setting to error"]),
                 30
             )
 
-        if job_status == "Ready":
+        if job["Status"] == "Ready":
             self._update_job_status({"job": job_id, "status": "Pending"})
-        elif job_status == "Pending":
+        elif job["Status"] == "Pending":
             self._update_job_status({"job": job_id, "status": "Done"})
         else:
             self._log(
@@ -158,7 +153,7 @@ class RethinkInterface:
                     "Job: ",
                     job_id,
                     " attempted to advance from the invalid state: ",
-                    job_status
+                    job["Status"]
                 ]),
                 30
             )
@@ -236,7 +231,7 @@ class RethinkInterface:
             "Pending" or the "Pending" status to either "Done" or "Error"
         """
 
-        if self._is_valid_state(job_data["status"]):
+        if job_data["status"] in self.VALID_STATES:
             try:
                 rethinkdb.db("Brain").table("Jobs").get(
                     job_data["job"]
