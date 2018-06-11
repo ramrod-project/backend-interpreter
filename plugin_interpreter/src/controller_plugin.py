@@ -5,10 +5,8 @@ TODO:
 """
 
 from abc import ABC, abstractmethod
-from multiprocessing import Queue
 from os import environ
 from queue import Empty
-from time import time
 
 from src import rethink_interface
 
@@ -44,12 +42,11 @@ class ControllerPlugin(ABC):
     exported plugin controller class.
     """
 
-    def __init__(self, name,functionality):
+    def __init__(self, name, functionality):
         self.db_recv = None
         self.signal = None
         self.DBI = None
         self.port = int(environ["PORT"])
-        # self.stop_signal = None
         self.functionality = functionality
         """
         List of dictionaries which advertises functionality of the plugin.
@@ -59,27 +56,32 @@ class ControllerPlugin(ABC):
                 "name": "read_file",
                 "input": ["string"],
                 "family": "filesystem",
-                "tooltip": "Provided a full directory path, this function reads a file.",
+                "tooltip": "Provided a full directory path, \
+                this function reads a file.",
                 "reference": "<reference url>"
             },
             {
                 "name": "send_file",
                 "input": ["string", "binary"],
                 "family": "filesystem",
-                "tooltip": "Provided a file and destination directory, this function sends a file.",
+                "tooltip": "Provided a file and destination \
+                directory, this function sends a file.",
                 "reference": "<reference url>"
             }
         ]
-        The 'name' key is the unique identifier used to refer to the function
-        in communication between the front end interface and the back end.
-        This exact identifier will be sent back with corresponding commands to let
-        the plugin know which funcion should be called.
+        The 'name' key is the unique identifier used to refer to the
+        function in communication between the front end interface and
+        the back end. This exact identifier will be sent back with
+        corresponding commands to let the plugin know which funcion
+        should be called.
 
-        The 'input' key is a list of required input types to properly call
-        the function. Possible input types include: string, int, binary.
+        The 'input' key is a list of required input types to properly
+        call the function. Possible input types include: string,
+        int, binary.
 
-        The 'tooltip' key is a human readable explanation of the function usage. It
-        will be displayed to the user through the interface.
+        The 'tooltip' key is a human readable explanation of the
+        function usage. It will be displayed to the user through
+        the interface.
         """
         self.name = name
         """Define server port/proto requirement (TCP/UDP) so docker can be run
@@ -113,7 +115,7 @@ class ControllerPlugin(ABC):
         host = "rethinkdb"
         if environ["STAGE"] == "TESTING":
             host = "127.0.0.1"
-        self.DBI = rethink_interface.RethinkInterface(self.name,(host, 28015))
+        self.DBI = rethink_interface.RethinkInterface(self.name, (host, 28015))
         self.initialize_queues(self.DBI.plugin_queue)
         self.DBI.start(logger, signal)
         self.start(logger, signal)
@@ -142,17 +144,16 @@ class ControllerPlugin(ABC):
         plugin container. When set to 'True', the mprocess is expected
         to gracefullly tear itself down, or else the Supervisor will
         terminate it after a timeout period.
-
         """
         pass
 
-    def _update_job(self, id):
-        self.DBI.update_job(id)
-    
-    def _update_job_status(self, id, status):
+    def _update_job(self, job_id):
+        self.DBI.update_job(job_id)
+
+    def _update_job_status(self, job_id, status):
         self.DBI._update_job_status(
             {
-                "job": id,
+                "job": job_id,
                 "status": status
             }
         )

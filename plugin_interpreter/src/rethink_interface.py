@@ -7,7 +7,6 @@ TODO:
 """
 
 from multiprocessing import Queue
-from queue import Empty
 from sys import exit as sysexit, stderr
 from time import sleep, time
 import threading
@@ -43,6 +42,18 @@ class RethinkInterface:
         self.feed_connection = self.connect_to_db(self.host, self.port)
 
     def changefeed_thread(self, signal):
+        """Starts a changefeed for jobs and loops
+
+        This function is used as a target for a thread
+        by the plugin interpreter to monitor for jobs
+        and populate a queue when they are pushed
+        from the database.
+
+        Arguments:
+            signal {Value(c_bool)} -- Thread kill signal
+            (if True exit).
+        """
+
         feed = rethinkdb.db("Brain").table("Jobs").filter(
             (rethinkdb.row["Status"] == "Ready") &
             (rethinkdb.row["JobTarget"]["PluginName"] == self.plugin_name)
@@ -79,24 +90,11 @@ class RethinkInterface:
             self._stop()
 
         # get the pluginname with the functionality advertisement
-        #self._handle_response(self.response_queue.get(timeout=3))
         self.job_fetcher = threading.Thread(
             target=self.changefeed_thread,
             args=(signal,)
         )
         self.job_fetcher.start()
-
-        # while not signal.value:
-        #     try:
-        #         sleep(0.1)
-        #         self._handle_response(self.response_queue.get_nowait())
-        #     except Empty:
-        #         continue
-        #     except KeyboardInterrupt:
-        #         continue
-        #     except rethinkdb.ReqlError as err:
-        #         self._log_db_error(err)
-        # self._stop()
 
     @staticmethod
     def connect_to_db(host, port):
@@ -165,8 +163,20 @@ class RethinkInterface:
             job_id {int} -- The job's id from the ID table
         """
         self._update_job_status({"job": job_id, "status": "Error"})
-    
+
     def check_for_plugin(self, plugin_name):
+        """Check if a plugin exists
+
+        Query the Plugins database to see if a plugin
+        table exists already.
+
+        Arguments:
+            plugin_name {str} -- name of the plugin
+            to be queried.
+
+        Returns:
+            {bool} -- True if found else False
+        """
         try:
             rethinkdb.db("Plugins").table(plugin_name).run(
                 self.validate_db(self.rethink_connection)
