@@ -135,7 +135,6 @@ class SupervisorController:
         """
         log_receiver, log_sender = Pipe()
         target = instance.start
-        print(name)
         if name == "loggerprocess":
             log_sender = None
         else:
@@ -204,7 +203,6 @@ class SupervisorController:
             if not self.plugin_process.start():
                 raise RuntimeError
         except RuntimeError as err:
-            print(err)
             self.teardown(99)
 
     def monitor(self):

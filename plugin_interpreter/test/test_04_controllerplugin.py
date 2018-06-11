@@ -108,8 +108,6 @@ def plugin_base():
     """
     plugin = SamplePlugin()
     plugin.initialize_queues(TO_PLUGIN)
-    # Empty the plugin of the _advertise_functionality() data
-    # _ = FROM_PLUGIN.get()
     yield plugin
 
 def test_instantiate():

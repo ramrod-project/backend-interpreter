@@ -59,11 +59,6 @@ def rethink():
     server = ("127.0.0.1", 28015)
     environ["STAGE"] = "DEV"
     environ["PORT"] = "5000"
-    class TestPlugin():
-        def __init__(self):
-            self.name = None
-    plugin = TestPlugin()
-    plugin.name = "test"
     rdb = rethink_interface.RethinkInterface("test", server)
     rdb.logger = mock_logger()
     yield rdb
