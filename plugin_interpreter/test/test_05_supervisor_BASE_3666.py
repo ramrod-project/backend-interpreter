@@ -16,13 +16,10 @@ from src import central_logger, controller_plugin, linked_process, rethink_inter
 @fixture(scope="module")
 def sup():
     environ["LOGLEVEL"] = "DEBUG"
-    environ["STAGE"] = "TESTING"
-    environ["PORT"] = "5000"
-    tag = "latest"
     try:
-        tag = environ["TRAVIS_BRANCH"].replace("master", "latest")
+        tag = environ["TRAVIS_BRANCH"]
     except KeyError:
-        pass
+        tag = "latest"
     CLIENT.containers.run(
         "".join(("ramrodpcp/database-brain:", tag)),
         name="rethinkdb",
@@ -60,15 +57,16 @@ def test_supervisor_setup(sup):
 def test_supervisor_server_creation(sup):
     # Test server creation
     sup.create_servers()
-    for proc in [sup.logger_process, sup.plugin_process]:
+    for proc in [sup.logger_process, sup.db_process, sup.plugin_process]:
         assert isinstance(proc, linked_process.LinkedProcess)
 
     assert isinstance(sup.plugin, controller_plugin.ControllerPlugin)
+    assert isinstance(sup.db_interface, rethink_interface.RethinkInterface)
     assert isinstance(sup.logger_instance, central_logger.CentralLogger)
 
 def test_supervisor_server_spawn(sup):
-    # Test server spawning
+    # Test server supawning
     sup.spawn_servers()
     
-    for proc in [sup.logger_process, sup.plugin_process]:
+    for proc in [sup.logger_process, sup.db_process, sup.plugin_process]:
         assert proc.is_alive()

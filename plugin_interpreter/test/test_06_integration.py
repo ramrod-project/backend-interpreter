@@ -109,10 +109,11 @@ class IntegrationTest(controller_plugin.ControllerPlugin):
 
 @fixture(scope="module")
 def rethink():
+    tag = "latest"
     try:
         tag = environ["TRAVIS_BRANCH"].replace("master", "latest")
     except KeyError:
-        tag = "latest"
+        pass
     CLIENT.containers.run(
         "".join(("ramrodpcp/database-brain:", tag)),
         name="rethinkdb",

@@ -18,11 +18,10 @@ def sup():
     environ["LOGLEVEL"] = "DEBUG"
     environ["STAGE"] = "TESTING"
     environ["PORT"] = "5000"
-    tag = "latest"
     try:
         tag = environ["TRAVIS_BRANCH"].replace("master", "latest")
     except KeyError:
-        pass
+        tag = "latest"
     CLIENT.containers.run(
         "".join(("ramrodpcp/database-brain:", tag)),
         name="rethinkdb",
