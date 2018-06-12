@@ -6,10 +6,6 @@ TODO:
 - Add handler class for SIGTERM event (docker stop is received)
 """
 
-__version__ = "0.2"
-__author__ = "Christopher Manzi"
-
-
 from ctypes import c_bool
 from multiprocessing import Pipe, Value
 from os import environ, path as ospath, name as osname
@@ -20,6 +16,8 @@ from time import sleep
 from src import central_logger, linked_process, rethink_interface
 from plugins import *
 
+__version__ = "0.2"
+__author__ = "Christopher Manzi"
 
 def get_class_instance(plugin_name):
     """Returns class instances from 'plugins' folder.
@@ -27,12 +25,12 @@ def get_class_instance(plugin_name):
     Returns:
         list -- List containing class instances of all plugins.
     """
-    if osname == "nt": # windows
+    if osname == "nt":  # windows
         path = ospath.abspath(ospath.join(
             ospath.dirname(__file__),
             "../"
         )+"/plugins")
-    else: # linux
+    else:  # linux
         path = ospath.join(
             "/" + "".join([
                 d + "/" for d in ospath.dirname(__file__).split("/")[:-1] if d

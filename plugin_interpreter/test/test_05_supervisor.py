@@ -3,7 +3,7 @@
 
 from ctypes import c_bool
 from multiprocessing import connection, Pipe, Value
-from os import environ
+from os import environ, name as osname
 from time import sleep
 
 from pytest import fixture, raises
@@ -12,6 +12,7 @@ CLIENT = docker.from_env()
 
 from src import central_logger, controller_plugin, linked_process, rethink_interface, supervisor
 
+assert osname == 'p'
 
 @fixture(scope="module")
 def sup():
