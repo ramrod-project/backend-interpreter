@@ -14,6 +14,7 @@ LP_SIGNAL = "signal"
 LP_NAME = "name"
 BASE_CONNECTION = connection._ConnectionBase
 
+
 class LinkedProcess:
     """
     The LinkedProcess class is a wrapper for a single mutliprocessing
@@ -45,12 +46,9 @@ class LinkedProcess:
         :return: <bool>
         """
         good_args = False
-        if (kwargs[LOG_PIPE] and isinstance(kwargs[LOG_PIPE],
-                                            BASE_CONNECTION)
-                or not kwargs[LOG_PIPE] ) \
+        if isinstance(kwargs[LOG_PIPE], (type(None), BASE_CONNECTION)) \
                 and callable(kwargs["target"]) \
-                and isinstance(kwargs["signal"],
-                               sharedctypes.Synchronized):
+                and isinstance(kwargs["signal"], sharedctypes.Synchronized):
             good_args = True
         else:
             raise TypeError("Bad LP Args {}".format(kwargs))
