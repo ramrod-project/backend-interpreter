@@ -67,6 +67,10 @@ def test_supervisor_server_creation(sup):
     assert isinstance(sup.plugin, controller_plugin.ControllerPlugin)
     assert isinstance(sup.logger_instance, central_logger.CentralLogger)
 
+def test_supervisor_log_creation(sup):
+    # Test log creation
+    assert sup.logger_process()
+
 def test_supervisor_server_spawn(sup):
     # Test server spawning
     sup.spawn_servers()
