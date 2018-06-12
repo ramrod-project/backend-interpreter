@@ -12,7 +12,7 @@ CLIENT = docker.from_env()
 
 from src import central_logger, controller_plugin, linked_process, rethink_interface, supervisor
 
-assert osname == 'p'
+assert osname == 'posix'
 
 @fixture(scope="module")
 def sup():
