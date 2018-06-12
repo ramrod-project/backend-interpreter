@@ -400,7 +400,7 @@ class RethinkInterface:
                 40
             )
         }
-
+        print("attempting to log")
         self._log(*err_type[str(type(err))])
 
     def _create_table(self, database_name, table_name):
