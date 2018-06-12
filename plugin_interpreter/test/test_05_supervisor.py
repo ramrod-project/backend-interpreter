@@ -77,3 +77,7 @@ def test_supervisor_server_spawn(sup):
     
     for proc in [sup.logger_process, sup.plugin_process]:
         assert proc.is_alive()
+
+def test_linked_process_creation(sup):
+    # Test linked process creation
+    assert sup.logger_instance
