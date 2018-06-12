@@ -3,7 +3,6 @@
 The Supervisor module...
 
 TODO:
-- Add handler class for SIGTERM event (docker stop is received)
 """
 
 from ctypes import c_bool
