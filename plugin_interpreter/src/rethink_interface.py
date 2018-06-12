@@ -189,7 +189,7 @@ class RethinkInterface:
                 self.validate_db(self.rethink_connection)
             )
             return True
-        except rethinkdb.ReqlDriverError:
+        except rethinkdb.ReqlOpFailedError:
             return False
 
     @staticmethod

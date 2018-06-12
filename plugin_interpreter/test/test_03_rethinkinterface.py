@@ -9,7 +9,7 @@ from time import sleep, time
 
 from pytest import fixture, raises
 import docker
-from brain import r as rethinkdb
+from brain import r as rethinkdb, connect
 
 from plugins import *
 from src import rethink_interface, linked_process
@@ -526,3 +526,19 @@ def test_update_job_bad_id(brain, rethink):
         "unable to find job: fake-id",
         20
     ]
+
+def test_check_for_plugin(brain, rethink):
+    """Checks to see if a plugin exists in the db
+
+    Queries the Plugins database for a plugin.
+    
+    Arguments:
+        rethink {RethinkInterface} -- an instance of RethinkInterface
+        for connecting to the test database.
+    """
+
+    assert not rethink.check_for_plugin("TestPlugin")
+    conn = connect()
+    rethinkdb.db("Plugins").table_create("TestPlugin").run(conn)
+    sleep(1)
+    assert rethink.check_for_plugin("TestPlugin")
