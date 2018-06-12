@@ -69,7 +69,7 @@ def test_supervisor_server_creation(sup):
 
 def test_supervisor_log_creation(sup):
     # Test log creation
-    assert sup.logger_process()
+    assert sup.logger_process
 
 def test_supervisor_server_spawn(sup):
     # Test server spawning
