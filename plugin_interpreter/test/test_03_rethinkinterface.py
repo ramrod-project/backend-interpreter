@@ -474,8 +474,8 @@ def test_changefeed(brain, rethink):
         "StartTime" : 0
     }
     rethinkdb.db("Brain").table("Jobs").insert(new_job).run(rethink.rethink_connection)
-    sleep(3)
-    test_job = rethink.plugin_queue.get()
+    sleep(5)
+    test_job = rethink.plugin_queue.get(timeout=4)
     del test_job["id"]
     assert test_job == new_job
     val.value = True
