@@ -22,11 +22,12 @@ class mock_logger():
 
 
     def __init__(self):
-        pass
+        self.last_msg = None
 
     def send(self, msg):
+        self.last_msg = msg
         print(msg)
-        pass
+
 
 # Provide database-brain container for module tests
 @fixture(scope='module')
@@ -450,8 +451,6 @@ def test_update_output(brain, rethink):
 # rethink_interface is no longer a process
 def test_changefeed(brain, rethink):
     # Test the thread that monitors the changefeed
-    # (**THIS KILLS THE CONNECTION**)
-    # Don't run tests after this one that require the connection...
     val = Value(c_bool, False)
     send, _ = Pipe()
     rethink.plugin_name = "updater"
@@ -481,3 +480,49 @@ def test_changefeed(brain, rethink):
     val.value = True
     sleep(7)
     assert not rethink.job_fetcher.is_alive()
+
+def test_changefeed_disconnect(brain, rethink):
+    # Test that changefeed dies on disconnect
+    val = Value(c_bool, False)
+    send, _ = Pipe()
+    rethink.plugin_name = "updater"
+    rethink.start(send, val)
+    assert rethink.job_fetcher.is_alive()
+    #test retrieving a job
+    rethinkdb.db("Brain").table("Jobs").delete().run(rethink.rethink_connection)
+    new_job = {
+        "JobTarget":{
+            "PluginName": "updater",
+            "Location": "8.8.8.8",
+            "Port": "80"
+        },
+        "JobCommand":{
+            "CommandName": "TestJob",
+            "Tooltip": "for testing updates",
+            "Inputs":[]
+        },
+        "Status": "Ready",
+        "StartTime" : 0
+    }
+    rethinkdb.db("Brain").table("Jobs").insert(new_job).run(rethink.rethink_connection)
+    sleep(3)
+    test_job = rethink.plugin_queue.get()
+    del test_job["id"]
+    assert test_job == new_job
+    val.value = True
+    sleep(7)
+    assert not rethink.job_fetcher.is_alive()
+
+def test_update_job_bad_id(brain, rethink):
+    """Tests that a bad id to the update_job function
+    
+    Arguments:
+        rethink {RethinkInterface} -- an instance of RethinkInterface
+        for connecting to the test database.
+    """
+    rethink.update_job("fake-id")
+    assert rethink.logger.last_msg[:-1] == [
+        "dbprocess",
+        "unable to find job: fake-id",
+        20
+    ]

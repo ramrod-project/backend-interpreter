@@ -132,12 +132,16 @@ class RethinkInterface:
         Arguments:
             job_id {int} -- The job's id from the ID table
         """
+        job = None
         try:
             job = rethinkdb.db("Brain").table("Jobs").get(
                 job_id).pluck("Status").run(self.rethink_connection)
-        except rethinkdb.ReqlDriverError:
+        except rethinkdb.ReqlNonExistenceError:
             self._log(
-                "".join(["unable to find job: ", job_id]), 20)
+                "".join(["unable to find job: ", job_id]),
+                20
+            )
+            return
         if job["Status"] not in self.VALID_STATES:
             self._log(
                 "".join([job_id, " has an invalid state, setting to error"]),
