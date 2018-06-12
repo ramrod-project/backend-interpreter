@@ -8,7 +8,11 @@ from multiprocessing import connection, Process, sharedctypes
 from time import sleep, time
 
 LOGGER_NAME = "loggerprocess"
-
+LOG_PIPE = "logger_pipe"
+LP_TARGET = "target"
+LP_SIGNAL = "signal"
+LP_NAME = "name"
+BASE_CONNECTION = connection._ConnectionBase
 
 class LinkedProcess:
     """
@@ -18,26 +22,32 @@ class LinkedProcess:
     an optional Pipe() conection object.
     """
     def __init__(self, **kwargs):
-        self.name = kwargs["name"]
+        self.name = kwargs[LP_NAME]
         if self._verify_init_kwargs(**kwargs):  # might throw TypeError
             self.logger_pipe = None
             if self.name is not LOGGER_NAME:
-                self.logger_pipe = kwargs["logger_pipe"]
+                self.logger_pipe = kwargs[LOG_PIPE]
             self.proc = None
-            self.target = kwargs["target"]
-            self.signal = kwargs["signal"]
+            self.target = kwargs[LP_TARGET]
+            self.signal = kwargs[LP_SIGNAL]
 
-    @staticmethod
-    def _verify_init_kwargs(**kwargs):
+    def _verify_init_kwargs(self, **kwargs):
         """
         May raise typeerror if the params are not correct
+
+        1. kwargs["logger_pipe"], it must be a (c) connection or (n) None
+        2. kwargs["target"] must be a callable function
+        3. kwargs["signal"] must be a Synchronized signal
+
+        any check fails, this raises typeerror
 
         :param kwargs:
         :return: <bool>
         """
         good_args = False
-        if isinstance(kwargs['logger_pipe'],
-                      connection._ConnectionBase) \
+        if (kwargs[LOG_PIPE] and isinstance(kwargs[LOG_PIPE],
+                                            BASE_CONNECTION)
+                or not kwargs[LOG_PIPE] ) \
                 and callable(kwargs["target"]) \
                 and isinstance(kwargs["signal"],
                                sharedctypes.Synchronized):
