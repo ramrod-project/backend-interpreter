@@ -382,26 +382,26 @@ class RethinkInterface:
             ])
 
     def _log_db_error(self, err):
-        if isinstance(err, rethinkdb.ReqlTimeoutError):
-            self._log(
+        err_type = {
+            "<class 'rethinkdb.errors.ReqlDriverError'>": (
+                "".join(("Database driver error: ", str(err))),
+                40
+            ),
+            "<class 'rethinkdb.errors.ReqlTimeoutError'>": (
                 "".join(("Database operation timeout: ", str(err))),
                 40
-            )
-        elif isinstance(err, rethinkdb.ReqlAvailabilityError):
-            self._log(
+            ),
+            "<class 'rethinkdb.errors.ReqlAvailabilityError'>": (
                 "".join(("Database operation failed: ", str(err))),
                 40
-            )
-        elif isinstance(err, rethinkdb.ReqlRuntimeError):
-            self._log(
+            ),
+            "<class 'rethinkdb.errors.ReqlRuntimeError'>": (
                 "".join(("Database runtime error: ", str(err))),
                 40
             )
-        elif isinstance(err, rethinkdb.ReqlDriverError):
-            self._log(
-                "".join(("Database driver error: ", str(err))),
-                40
-            )
+        }
+
+        self._log(*err_type[str(type(err))])
 
     def _create_table(self, database_name, table_name):
         """Create a table in the database
