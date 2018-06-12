@@ -7,6 +7,7 @@ and stores the Pipe() being used by the process.
 from multiprocessing import connection, Process, sharedctypes, Value
 from time import sleep, time
 
+LOGGER_NAME = "loggerprocess"
 
 class LinkedProcess:
     """
@@ -18,10 +19,11 @@ class LinkedProcess:
     def __init__(self, **kwargs):
         self.name = kwargs["name"]
         self.logger_pipe = None
-        if self.name is not "loggerprocess":
+        if self.name is not LOGGER_NAME:
             self.logger_pipe = kwargs["logger_pipe"]
-        if self.logger_pipe and \
-        not isinstance(self.logger_pipe, connection._ConnectionBase):
+        if self.logger_pipe \
+                and not isinstance(self.logger_pipe,
+                                   connection._ConnectionBase):
             raise TypeError
         self.proc = None
         self.target = kwargs["target"]
@@ -45,13 +47,13 @@ class LinkedProcess:
             print(ex)
             exit(99)
 
-        """Validate that the process started successfully"""
+        #  Validate that the process started successfully
         return self._did_start()
 
     def restart(self):
         """Restart (create and start a new instance)
         of the process.
-        
+
         Returns:
             bool -- Process is alive (or not)
         """
@@ -78,11 +80,33 @@ class LinkedProcess:
             self.start()
             return self._did_start()
 
+
+    def check_alive_until(self, done_time, expected):
+        """
+        Checks is_alive until done_time has pased
+        or
+        expected condition is met
+
+        returns if the condition has been met in the given time
+
+        :param done_time: <float> time.time()
+        :param expected:  <bool> expects condition alive or dead
+        :return: <bool> if the expected condition is met in the given time
+
+        """
+        expectation_met = False
+        while not expectation_met and time() < done_time:
+            expectation_met = expected == self.is_alive()
+            if not expectation_met:
+                sleep(0.5)
+        return expectation_met
+
     def is_alive(self):
-        """Check to see if contained process is alive.
-        
+        """
+        Check to see if contained process is alive.
+
         Returns:
-            Boolean -- Return False if process doesn't exist or 
+            Boolean -- Return False if process doesn't exist or
             is dead, othewise True.
         """
         if not self.proc:
@@ -98,8 +122,9 @@ class LinkedProcess:
         return False
 
     def join(self):
-        """Implements the Process.join() function.
-        
+        """
+        Implements the Process.join() function.
+
         Returns:
             Method -- join() process method, blocks until
             process terminates.
@@ -108,32 +133,29 @@ class LinkedProcess:
 
     def get_exitcode(self):
         """Returns the last process exit code.
-        
+
         Returns:
             int -- Process exit code.
         """
         return self.proc.exitcode
 
+
     def terminate(self):
         """Terminate process"""
-        if self.proc and self.is_alive():
-            self.proc.terminate()
-            now = time()
-            while time() - now < 3:
-                if not self.is_alive():
-                    break
-                sleep(0.5)
-            self._log([
-                self.name,
-                "".join([
-                    self.name,
-                    " terminated with exit code ",
-                    str(self.get_exitcode())
-                ]),
-                20,
-                time()
-            ])
-        
+        if self.proc \
+                and self.is_alive() \
+                and self.proc.terminate() \
+                and self.check_alive_until(time() + 3, False):
+            log = "{} terminated with exit code {}".format(self.name,
+                                                           self.get_exitcode())
+            self._log_create(log,
+                             level=20)
+        else:
+            log = "{} failed to terminate".format(self.name)
+            self._log_create(log,
+                             level=20)
+
+
     def _did_start(self):
         begin = time()
         while time() - begin < 5:
@@ -153,6 +175,15 @@ class LinkedProcess:
             time()
         ])
         return False
+
+
+    def _log_create(self, log_str, level=20, timestamp=None):
+        timestamp = timestamp or time()
+        self._log([self.name,
+                   log_str,
+                   level,
+                   timestamp])
+
 
     def _log(self, message):
         if self.logger_pipe:
