@@ -4,7 +4,7 @@ Process class. It allows processes to be restarted if they die
 and stores the Pipe() being used by the process.
 """
 
-from multiprocessing import connection, Process, sharedctypes, Value
+from multiprocessing import connection, Process, sharedctypes
 from time import sleep, time
 
 LOGGER_NAME = "loggerprocess"
@@ -19,7 +19,7 @@ class LinkedProcess:
     """
     def __init__(self, **kwargs):
         self.name = kwargs["name"]
-        if self._verify_init_kwargs(**kwargs): #might throw TypeError
+        if self._verify_init_kwargs(**kwargs):  # might throw TypeError
             self.logger_pipe = None
             if self.name is not LOGGER_NAME:
                 self.logger_pipe = kwargs["logger_pipe"]
@@ -27,8 +27,8 @@ class LinkedProcess:
             self.target = kwargs["target"]
             self.signal = kwargs["signal"]
 
-
-    def _verify_init_kwargs(self, raise_=True, **kwargs):
+    @staticmethod
+    def _verify_init_kwargs(**kwargs):
         """
         May raise typeerror if the params are not correct
 
@@ -36,17 +36,15 @@ class LinkedProcess:
         :return: <bool>
         """
         good_args = False
-        if self.name \
-                and isinstance(kwargs['logger_pipe'],
-                               connection._ConnectionBase) \
+        if isinstance(kwargs['logger_pipe'],
+                      connection._ConnectionBase) \
                 and callable(kwargs["target"]) \
                 and isinstance(kwargs["signal"],
                                sharedctypes.Synchronized):
             good_args = True
-        if not good_args and raise_:
+        else:
             raise TypeError("Bad LP Args {}".format(kwargs))
         return good_args
-
 
     def start(self):
         """Create process and start"""
@@ -64,7 +62,6 @@ class LinkedProcess:
 
         #  Validate that the process started successfully
         return self._did_start()
-
 
     def restart(self):
         """Restart (create and start a new instance)
@@ -84,7 +81,6 @@ class LinkedProcess:
                              level=20)
             self.start()
             return self._did_start()
-
 
     def check_alive_until(self, done_time, expected):
         """
@@ -106,7 +102,6 @@ class LinkedProcess:
                 sleep(0.5)
         return expectation_met
 
-
     def is_alive(self):
         """
         Check to see if contained process is alive.
@@ -123,7 +118,6 @@ class LinkedProcess:
             return True
         return False
 
-
     def join(self):
         """
         Implements the Process.join() function.
@@ -134,7 +128,6 @@ class LinkedProcess:
         """
         return self.proc.join()
 
-
     def get_exitcode(self):
         """Returns the last process exit code.
 
@@ -142,7 +135,6 @@ class LinkedProcess:
             int -- Process exit code.
         """
         return self.proc.exitcode
-
 
     def terminate(self):
         """Terminate process"""
@@ -159,7 +151,6 @@ class LinkedProcess:
             self._log_create(log,
                              level=20)
 
-
     def _did_start(self):
         begin = time()
         while time() - begin < 5:
@@ -172,14 +163,12 @@ class LinkedProcess:
                          level=50)
         return False
 
-
     def _log_create(self, log_str, level=20, timestamp=None):
         timestamp = timestamp or time()
         self._log([self.name,
                    log_str,
                    level,
                    timestamp])
-
 
     def _log(self, message):
         if self.logger_pipe:
