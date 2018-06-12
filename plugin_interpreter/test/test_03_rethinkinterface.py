@@ -33,7 +33,7 @@ class mock_logger():
 def brain():
     # Setup for all module tests
     try:
-        tag = environ["TRAVIS_BRANCH"].replace("master", "latest")
+        tag = environ.get("TRAVIS_BRANCH", "dev").replace("master", "latest")
         environ["STAGE"] = "TESTING"
     except KeyError:
         tag = "latest"

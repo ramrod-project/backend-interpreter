@@ -15,7 +15,7 @@ from src import central_logger, controller_plugin, linked_process, rethink_inter
 def startup_brain():
     environ["LOGLEVEL"] = "DEBUG"
     try:
-        tag = environ["TRAVIS_BRANCH"].replace("master", "latest")
+        tag = environ.get("TRAVIS_BRANCH", "dev").replace("master", "latest")
     except KeyError:
         pass
     CLIENT.containers.run(

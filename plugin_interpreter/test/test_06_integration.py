@@ -111,7 +111,7 @@ class IntegrationTest(controller_plugin.ControllerPlugin):
 def rethink():
     tag = "latest"
     try:
-        tag = environ["TRAVIS_BRANCH"].replace("master", "latest")
+        tag = environ.get("TRAVIS_BRANCH", "dev").replace("master", "latest")
     except KeyError:
         pass
     CLIENT.containers.run(
