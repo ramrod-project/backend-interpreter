@@ -174,7 +174,7 @@ class SupervisorController:
         except RuntimeError:
             self.teardown(99)
 
-    def monitor(self):
+    def monitor(self): # pragma: no cover
         """Monitor loop
 
         This method runs for the duration of the application lifecycle...
