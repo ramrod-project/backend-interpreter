@@ -91,7 +91,6 @@ class RethinkInterface:
         else:
             return False
 
-        # get the pluginname with the functionality advertisement
         self.job_fetcher = threading.Thread(
             target=self.changefeed_thread,
             args=(signal,)
@@ -291,26 +290,6 @@ class RethinkInterface:
             ])
             raise InvalidStatus(err)
 
-    # defunct, changefeed populates queue instead
-    def _get_next_job(self, plugin_name):
-        """
-        Adds the next job to the plugin's queue
-
-        Arguments:
-            plugin_name {string} -- The name of the plugin to filter jobs with
-        """
-
-        # find jobs with the name of the plugin and are Ready to execute
-        self.job_cursor = rethinkdb.db("Brain").table("Jobs").filter(
-            (rethinkdb.row["JobTarget"]["PluginName"] == plugin_name) &
-            (rethinkdb.row["Status"] == "Ready")
-        ).run(self.rethink_connection)
-        try:
-            new_job = self.job_cursor.next()
-            self.plugin_queue.put(new_job)
-        except rethinkdb.ReqlCursorEmpty:
-            self.plugin_queue.put(None)
-
     def send_output(self, output_data):
         """sends the plugin's output message to the Outputs table
 
@@ -349,9 +328,6 @@ class RethinkInterface:
                 "".join(("There is no job with an id of ", output_data[0])),
                 30
             )
-
-    def _update_target(self, target_data):
-        pass
 
     def create_plugin_table(self, plugin_data):
         """
@@ -481,4 +457,3 @@ class RethinkInterface:
             self.job_fetcher.join(timeout=4)
         except RuntimeError:
             pass
-        sysexit(0)
