@@ -12,7 +12,7 @@ from pkgutil import iter_modules
 from sys import exit as sysexit
 from time import sleep
 
-from src import central_logger, linked_process, rethink_interface
+from src import central_logger, linked_process
 from plugins import *
 
 __version__ = "0.2"
@@ -171,7 +171,7 @@ class SupervisorController:
                 raise RuntimeError
             if not self.plugin_process.start():
                 raise RuntimeError
-        except RuntimeError as err:
+        except RuntimeError:
             self.teardown(99)
 
     def monitor(self):
@@ -182,7 +182,7 @@ class SupervisorController:
         processes = [self.plugin_process, self.logger_process]
         while True:
             try:
-                sleep(3)
+                sleep(1)
                 for proc in processes:
                     if not proc.restart():
                         self.teardown(proc.get_exitcode())
