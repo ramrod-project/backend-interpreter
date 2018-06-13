@@ -161,34 +161,6 @@ class SupervisorController:
         )
         return log_receiver
 
-    def _create_rethink_interface(self):
-        """Set up the rethink interface
-
-        Create RethinkInterface instance and process
-
-        Checks if environment variable STAGE is DEV/TESTING/PROD.
-
-        Returns:
-            {Pipe} -- receiving pipe for the logger from the rethink
-            interface.
-        """
-        if environ["STAGE"] == "TESTING":
-            self.db_interface = rethink_interface.RethinkInterface(
-                self.plugin,
-                ("127.0.0.1", 28015)
-            )
-        else:
-            self.db_interface = rethink_interface.RethinkInterface(
-                self.plugin,
-                ("rethinkdb", 28015)
-            )
-
-        self.db_process, log_receiver = self._create_process(
-            self.db_interface,
-            "dbprocess"
-        )
-        return log_receiver
-
     def spawn_servers(self):
         """Spawn server processes
 
