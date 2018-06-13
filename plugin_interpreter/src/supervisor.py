@@ -12,7 +12,7 @@ from pkgutil import iter_modules
 from sys import exit as sysexit
 from time import sleep
 
-from src import central_logger, linked_process, rethink_interface
+from src import central_logger, linked_process
 from plugins import *
 
 __version__ = "0.2"
@@ -161,34 +161,6 @@ class SupervisorController:
         )
         return log_receiver
 
-    def _create_rethink_interface(self):
-        """Set up the rethink interface
-
-        Create RethinkInterface instance and process
-
-        Checks if environment variable STAGE is DEV/TESTING/PROD.
-
-        Returns:
-            {Pipe} -- receiving pipe for the logger from the rethink
-            interface.
-        """
-        if environ["STAGE"] == "TESTING":
-            self.db_interface = rethink_interface.RethinkInterface(
-                self.plugin,
-                ("127.0.0.1", 28015)
-            )
-        else:
-            self.db_interface = rethink_interface.RethinkInterface(
-                self.plugin,
-                ("rethinkdb", 28015)
-            )
-
-        self.db_process, log_receiver = self._create_process(
-            self.db_interface,
-            "dbprocess"
-        )
-        return log_receiver
-
     def spawn_servers(self):
         """Spawn server processes
 
@@ -199,10 +171,10 @@ class SupervisorController:
                 raise RuntimeError
             if not self.plugin_process.start():
                 raise RuntimeError
-        except RuntimeError as err:
+        except RuntimeError:
             self.teardown(99)
 
-    def monitor(self):
+    def monitor(self): # pragma: no cover
         """Monitor loop
 
         This method runs for the duration of the application lifecycle...
@@ -210,7 +182,7 @@ class SupervisorController:
         processes = [self.plugin_process, self.logger_process]
         while True:
             try:
-                sleep(3)
+                sleep(1)
                 for proc in processes:
                     if not proc.restart():
                         self.teardown(proc.get_exitcode())
