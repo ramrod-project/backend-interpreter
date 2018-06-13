@@ -7,7 +7,7 @@ TODO:
 """
 
 from multiprocessing import Queue
-from sys import exit as sysexit, stderr
+from sys import stderr
 from time import sleep, time
 import threading
 
@@ -72,6 +72,7 @@ class RethinkInterface:
             except rethinkdb.ReqlDriverError:
                 self._log("Changefeed Disconnected.", 30)
                 break
+        self._stop()
 
     def start(self, logger, signal):
         """
@@ -126,7 +127,7 @@ class RethinkInterface:
             except rethinkdb.ReqlDriverError:
                 sleep(0.5)
         stderr.write("DB connection timeout!")
-        sysexit(111)
+        exit(111)
 
     def update_job(self, job_id):
         """advances the job's status to the next state
@@ -237,7 +238,7 @@ class RethinkInterface:
                 return connection
 
         stderr.write("DB not available!\n")
-        sysexit(112)
+        exit(112)
 
     def _update_job_status(self, job_data):
         """Update's the specified job's status to the given status
@@ -436,7 +437,7 @@ class RethinkInterface:
         except rethinkdb.ReqlError as err:
             self._log_db_error(err)
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def _stop(self):
         self._log(
             "Kill signal received - stopping DB process \
             and closing connection...",
@@ -450,10 +451,4 @@ class RethinkInterface:
             self.feed_connection.close()
         except rethinkdb.ReqlDriverError:
             pass
-        # after closing connection, join thread. the closed connection
-        # should cause the blocking to end and the thread to terminate
-        # self.stop_signal = True
-        try:
-            self.job_fetcher.join(timeout=4)
-        except RuntimeError:
-            pass
+        exit(0)
