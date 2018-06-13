@@ -2,31 +2,46 @@
 """
 
 from ctypes import c_bool
+import logging
 from multiprocessing import Pipe, Value
 from os import environ
 from threading import Thread
-from time import sleep, time
+from time import asctime, gmtime, sleep, time
 
 from pytest import fixture, raises
 import docker
-from brain import r as rethinkdb
+from brain import r as rethinkdb, connect
 
 from plugins import *
 from src import rethink_interface, linked_process
 
 
 CLIENT = docker.from_env()
+logging.basicConfig(
+    filename="logfile",
+    filemode="a",
+    format='%(date)s %(name)-12s %(levelname)-8s %(message)s'
+)
+LOGGER = logging.getLogger('testlogger')
 
 
 class mock_logger():
 
 
     def __init__(self):
-        pass
+        self.last_msg = None
 
     def send(self, msg):
+        self.last_msg = msg
+        LOGGER.log(
+            50,
+            msg,
+            extra={
+                "date": asctime(gmtime(time()))
+            }
+        )
         print(msg)
-        pass
+
 
 # Provide database-brain container for module tests
 @fixture(scope='module')
@@ -447,17 +462,13 @@ def test_update_output(brain, rethink):
     output_status = output_cursor.next().get("OutputJob",{}).get("Status")
     assert output_status == "Done"
 
-# rethink_interface is no longer a process
 def test_changefeed(brain, rethink):
     # Test the thread that monitors the changefeed
-    # (**THIS KILLS THE CONNECTION**)
-    # Don't run tests after this one that require the connection...
     val = Value(c_bool, False)
     send, _ = Pipe()
     rethink.plugin_name = "updater"
     rethink.start(send, val)
     assert rethink.job_fetcher.is_alive()
-    #test retrieving a job
     rethinkdb.db("Brain").table("Jobs").delete().run(rethink.rethink_connection)
     new_job = {
         "JobTarget":{
@@ -481,3 +492,48 @@ def test_changefeed(brain, rethink):
     val.value = True
     sleep(7)
     assert not rethink.job_fetcher.is_alive()
+
+def test_changefeed_disconnect(brain, rethink):
+    """Tests if changefeed disconnects when connection dies
+    
+    Arguments:
+        rethink {RethinkInterface} -- an instance of RethinkInterface
+        for connecting to the test database.
+    """
+    val = Value(c_bool, False)
+    logger = mock_logger()
+    rethink.start(logger, val)
+    assert rethink.job_fetcher.is_alive()
+    sleep(1)
+    rethink.feed_connection.close()
+    sleep(7)
+    assert not rethink.job_fetcher.is_alive()
+
+def test_update_job_bad_id(brain, rethink):
+    """Tests that a bad id to the update_job function
+    
+    Arguments:
+        rethink {RethinkInterface} -- an instance of RethinkInterface
+        for connecting to the test database.
+    """
+    rethink.update_job("fake-id")
+    assert rethink.logger.last_msg[:-1] == [
+        "dbprocess",
+        "unable to find job: fake-id",
+        20
+    ]
+
+def test_check_for_plugin(brain, rethink):
+    """Checks to see if a plugin exists in the db
+
+    Queries the Plugins database for a plugin.
+    
+    Arguments:
+        rethink {RethinkInterface} -- an instance of RethinkInterface
+        for connecting to the test database.
+    """
+    assert not rethink.check_for_plugin("TestPlugin")
+    conn = connect()
+    rethinkdb.db("Plugins").table_create("TestPlugin").run(conn)
+    sleep(1)
+    assert rethink.check_for_plugin("TestPlugin")

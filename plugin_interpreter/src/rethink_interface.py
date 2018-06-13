@@ -7,7 +7,7 @@ TODO:
 """
 
 from multiprocessing import Queue
-from sys import exit as sysexit, stderr
+from sys import stderr
 from time import sleep, time
 import threading
 
@@ -15,6 +15,9 @@ from brain import r as rethinkdb
 
 
 class InvalidStatus(Exception):
+    """Exception raised when job status
+    is invalid.
+    """
     pass
 
 
@@ -35,7 +38,6 @@ class RethinkInterface:
 
 
     def __init__(self, name, server):
-        self.job_cursor = None
         self.host = server[0]
         self.logger = None
         self.plugin_name = name
@@ -57,7 +59,6 @@ class RethinkInterface:
             signal {Value(c_bool)} -- Thread kill signal
             (if True exit).
         """
-
         feed = rethinkdb.db("Brain").table("Jobs").filter(
             (rethinkdb.row["Status"] == "Ready") &
             (rethinkdb.row["JobTarget"]["PluginName"] == self.plugin_name)
@@ -70,7 +71,7 @@ class RethinkInterface:
             except rethinkdb.ReqlTimeoutError:
                 sleep(0.1)
                 continue
-            except RuntimeError:
+            except rethinkdb.ReqlDriverError:
                 self._log("Changefeed Disconnected.", 30)
                 break
         self._stop()
@@ -91,14 +92,18 @@ class RethinkInterface:
                 20
             )
         else:
-            self._stop()
+            return False
 
-        # get the pluginname with the functionality advertisement
         self.job_fetcher = threading.Thread(
             target=self.changefeed_thread,
             args=(signal,)
         )
         self.job_fetcher.start()
+        self._log(
+            "Succesfully started fetcher",
+            20
+        )
+        return True
 
     @staticmethod
     def connect_to_db(host, port):
@@ -124,7 +129,7 @@ class RethinkInterface:
             except rethinkdb.ReqlDriverError:
                 sleep(0.5)
         stderr.write("DB connection timeout!")
-        sysexit(111)
+        exit(111)
 
     def update_job(self, job_id):
         """advances the job's status to the next state
@@ -132,12 +137,16 @@ class RethinkInterface:
         Arguments:
             job_id {int} -- The job's id from the ID table
         """
+        job = None
         try:
             job = rethinkdb.db("Brain").table("Jobs").get(
                 job_id).pluck("Status").run(self.rethink_connection)
-        except rethinkdb.ReqlDriverError:
+        except rethinkdb.ReqlNonExistenceError:
             self._log(
-                "".join(["unable to find job: ", job_id]), 20)
+                "".join(["unable to find job: ", job_id]),
+                20
+            )
+            return
         if job["Status"] not in self.VALID_STATES:
             self._log(
                 "".join([job_id, " has an invalid state, setting to error"]),
@@ -185,7 +194,7 @@ class RethinkInterface:
                 self.validate_db(self.rethink_connection)
             )
             return True
-        except rethinkdb.ReqlDriverError:
+        except rethinkdb.ReqlOpFailedError:
             return False
 
     @staticmethod
@@ -231,7 +240,7 @@ class RethinkInterface:
                 return connection
 
         stderr.write("DB not available!\n")
-        sysexit(112)
+        exit(112)
 
     def _update_job_status(self, job_data):
         """Update's the specified job's status to the given status
@@ -284,26 +293,6 @@ class RethinkInterface:
             ])
             raise InvalidStatus(err)
 
-    # defunct, changefeed populates queue instead
-    def _get_next_job(self, plugin_name):
-        """
-        Adds the next job to the plugin's queue
-
-        Arguments:
-            plugin_name {string} -- The name of the plugin to filter jobs with
-        """
-
-        # find jobs with the name of the plugin and are Ready to execute
-        self.job_cursor = rethinkdb.db("Brain").table("Jobs").filter(
-            (rethinkdb.row["JobTarget"]["PluginName"] == plugin_name) &
-            (rethinkdb.row["Status"] == "Ready")
-        ).run(self.rethink_connection)
-        try:
-            new_job = self.job_cursor.next()
-            self.plugin_queue.put(new_job)
-        except rethinkdb.ReqlCursorEmpty:
-            self.plugin_queue.put(None)
-
     def send_output(self, output_data):
         """sends the plugin's output message to the Outputs table
 
@@ -342,9 +331,6 @@ class RethinkInterface:
                 "".join(("There is no job with an id of ", output_data[0])),
                 30
             )
-
-    def _update_target(self, target_data):
-        pass
 
     def create_plugin_table(self, plugin_data):
         """
@@ -467,11 +453,4 @@ class RethinkInterface:
             self.feed_connection.close()
         except rethinkdb.ReqlDriverError:
             pass
-        # after closing connection, join thread. the closed connection
-        # should cause the blocking to end and the thread to terminate
-        # self.stop_signal = True
-        try:
-            self.job_fetcher.join(timeout=4)
-        except RuntimeError:
-            pass
-        sysexit(0)
+        exit(0)
