@@ -15,6 +15,9 @@ from brain import r as rethinkdb
 
 
 class InvalidStatus(Exception):
+    """Exception raised when job status
+    is invalid.
+    """
     pass
 
 
@@ -35,7 +38,6 @@ class RethinkInterface:
 
 
     def __init__(self, name, server):
-        self.job_cursor = None
         self.host = server[0]
         self.logger = None
         self.plugin_name = name
