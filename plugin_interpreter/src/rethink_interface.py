@@ -57,7 +57,6 @@ class RethinkInterface:
             signal {Value(c_bool)} -- Thread kill signal
             (if True exit).
         """
-
         feed = rethinkdb.db("Brain").table("Jobs").filter(
             (rethinkdb.row["Status"] == "Ready") &
             (rethinkdb.row["JobTarget"]["PluginName"] == self.plugin_name)
@@ -70,10 +69,9 @@ class RethinkInterface:
             except rethinkdb.ReqlTimeoutError:
                 sleep(0.1)
                 continue
-            except RuntimeError:
+            except rethinkdb.ReqlDriverError:
                 self._log("Changefeed Disconnected.", 30)
                 break
-        self._stop()
 
     def start(self, logger, signal):
         """
@@ -91,7 +89,7 @@ class RethinkInterface:
                 20
             )
         else:
-            self._stop()
+            return False
 
         # get the pluginname with the functionality advertisement
         self.job_fetcher = threading.Thread(
@@ -99,6 +97,11 @@ class RethinkInterface:
             args=(signal,)
         )
         self.job_fetcher.start()
+        self._log(
+            "Succesfully started fetcher",
+            20
+        )
+        return True
 
     @staticmethod
     def connect_to_db(host, port):
@@ -457,7 +460,7 @@ class RethinkInterface:
         except rethinkdb.ReqlError as err:
             self._log_db_error(err)
 
-    def _stop(self):
+    def __exit__(self, exc_type, exc_val, exc_tb):
         self._log(
             "Kill signal received - stopping DB process \
             and closing connection...",
