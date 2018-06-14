@@ -45,7 +45,6 @@ class RethinkInterface:
         self.plugin_queue = Queue()
         self.port = server[1]
         self.rethink_connection = self.connect_to_db(self.host, self.port)
-        # self.feed_connection = self.connect_to_db(self.host, self.port)
 
     def changefeed_thread(self, signal, feed_connection):
         """Starts a changefeed for jobs and loops
@@ -74,7 +73,6 @@ class RethinkInterface:
             except rethinkdb.ReqlDriverError:
                 self._log("Changefeed Disconnected.", 30)
                 break
-        self._stop()
 
     def start(self, logger, signal):
         """
@@ -434,19 +432,3 @@ class RethinkInterface:
             return table_contents
         except rethinkdb.ReqlError as err:
             self._log_db_error(err)
-
-    def _stop(self):
-        self._log(
-            "Kill signal received - stopping DB process \
-            and closing connection...",
-            10
-        )
-        try:
-            self.rethink_connection.close()
-        except rethinkdb.ReqlDriverError:
-            pass
-        try:
-            self.feed_connection.close()
-        except rethinkdb.ReqlDriverError:
-            pass
-        exit(0)
