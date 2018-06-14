@@ -11,7 +11,7 @@ from sys import stderr
 from time import sleep, time
 import threading
 
-from brain import r as rethinkdb
+from brain import connect, r as rethinkdb
 
 
 class InvalidStatus(Exception):
@@ -46,7 +46,7 @@ class RethinkInterface:
         self.port = server[1]
         self.rethink_connection = self.connect_to_db(self.host, self.port)
 
-    def changefeed_thread(self, signal, feed_connection):
+    def changefeed_thread(self, signal):
         """Starts a changefeed for jobs and loops
 
         This function is used as a target for a thread
@@ -58,10 +58,11 @@ class RethinkInterface:
             signal {Value(c_bool)} -- Thread kill signal
             (if True exit).
         """
+        feed_connection = connect(host=self.host)
         feed = rethinkdb.db("Brain").table("Jobs").filter(
             (rethinkdb.row["Status"] == "Ready") &
             (rethinkdb.row["JobTarget"]["PluginName"] == self.plugin_name)
-        ).changes().run(feed_connection)
+        ).changes(include_initial=True).run(feed_connection)
         while not signal.value:
             try:
                 change = feed.next(wait=False)
@@ -94,7 +95,7 @@ class RethinkInterface:
 
         self.job_fetcher = threading.Thread(
             target=self.changefeed_thread,
-            args=(signal, self.connect_to_db(self.host, self.port))
+            args=(signal,)
         )
         self.job_fetcher.start()
         return True
