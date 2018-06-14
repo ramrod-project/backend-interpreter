@@ -45,9 +45,9 @@ class RethinkInterface:
         self.plugin_queue = Queue()
         self.port = server[1]
         self.rethink_connection = self.connect_to_db(self.host, self.port)
-        self.feed_connection = self.connect_to_db(self.host, self.port)
+        # self.feed_connection = self.connect_to_db(self.host, self.port)
 
-    def changefeed_thread(self, signal):
+    def changefeed_thread(self, signal, feed_connection):
         """Starts a changefeed for jobs and loops
 
         This function is used as a target for a thread
@@ -62,7 +62,7 @@ class RethinkInterface:
         feed = rethinkdb.db("Brain").table("Jobs").filter(
             (rethinkdb.row["Status"] == "Ready") &
             (rethinkdb.row["JobTarget"]["PluginName"] == self.plugin_name)
-        ).changes().run(self.feed_connection)
+        ).changes().run(feed_connection)
         while not signal.value:
             try:
                 change = feed.next(wait=False)
@@ -96,13 +96,9 @@ class RethinkInterface:
 
         self.job_fetcher = threading.Thread(
             target=self.changefeed_thread,
-            args=(signal,)
+            args=(signal, self.connect_to_db(self.host, self.port))
         )
         self.job_fetcher.start()
-        self._log(
-            "Succesfully started fetcher",
-            20
-        )
         return True
 
     @staticmethod
