@@ -1,14 +1,16 @@
 """ Plugin Builder Notebook
 
-    This module allows Jupityr Notebook to be used to guide the
+    This module allows Jupyter Notebook to be used to guide the
     Plugin developer in building a PCP compliant Plugin. 
-    After the plugin template is saved as <pluginName>.ipynb,
-    the Plugin Builder (plugin_builder.py) converts the 
-    <pluginName>.ipynb to an importable python module which 
-    will create the plugin that is created.
+    After the Plugin template (Jupyter notebook) is saved as
+    <pluginName>.ipynb, the Plugin Builder (plugin_builder.py)
+    converts the <pluginName>.ipynb to an importable python
+    module which will create the plugin and add it to the list
+    of plugins found by the PCP application.
 
-    The Python notebook, aside from guiding the plugin builder,
-    serves as an interactive presentation of the PCP Plugin API.
+    The Plugin template (Python notebook), aside from guiding
+    the Plugin developer, serves as an interactive presentation
+    of the PCP Plugin API.
 """
 
 import io, os, sys, types
