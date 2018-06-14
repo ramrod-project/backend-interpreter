@@ -82,7 +82,7 @@ def rethink():
         rdb.rethink_connection.close()
     except:
         pass
-    clear_dbs(rethinkdb.connect("127.0.0.1", 28015))
+    clear_dbs(connect("127.0.0.1", 28015))
 
 # Provide empty rethinkdb container for tests that need it
 @fixture(scope='function')
