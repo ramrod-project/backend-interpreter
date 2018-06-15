@@ -320,6 +320,8 @@ def test_database_connection_succeed(rethink):
     assert isinstance(rti.rethink_connection,rethinkdb.Connection)
 
 def test_update_error(sup, rethink, connection):
+    rethinkdb.db("Brain").table("Jobs").delete().run(connection)
+    sleep(3)
     environ["TEST_SELECTION"] = "TEST5"
     environ["STAGE"] = "TESTING"
 
@@ -331,9 +333,7 @@ def test_update_error(sup, rethink, connection):
     except SystemExit as ex:
         assert str(ex) == "0"
 
-    rethinkdb.db("Brain").table("Jobs").delete().run(connection)
     cursor = rethinkdb.db("Brain").table("Jobs").run(connection)
-    sleep(5)
     job = cursor.next()
     assert job["id"] == SAMPLE_JOB["id"]
     assert job["Status"] == "Error"
