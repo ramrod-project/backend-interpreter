@@ -188,6 +188,7 @@ class ControllerPlugin(ABC):
             }
         )
 
+    @staticmethod
     def get_command(job):
         """return's the job's command name
         
@@ -200,6 +201,7 @@ class ControllerPlugin(ABC):
 
         return job["JobCommand"]["CommandName"]
 
+    @staticmethod
     def get_job_id(job):
         """returns the id of the job
         
