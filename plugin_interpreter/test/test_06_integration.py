@@ -333,6 +333,7 @@ def test_update_error(sup, rethink, connection):
 
     rethinkdb.db("Brain").table("Jobs").delete().run(connection)
     cursor = rethinkdb.db("Brain").table("Jobs").run(connection)
+    sleep(5)
     job = cursor.next()
     assert job["id"] == SAMPLE_JOB["id"]
     assert job["Status"] == "Error"
