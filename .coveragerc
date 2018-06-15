@@ -8,3 +8,5 @@ include =
 omit =
     *venv*
     *test*
+    *plugin_interpreter/server.py
+    *__init__.py

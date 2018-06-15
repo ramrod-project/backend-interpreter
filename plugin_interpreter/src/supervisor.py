@@ -12,9 +12,9 @@ __author__ = "Christopher Manzi"
 
 from ctypes import c_bool
 from multiprocessing import Pipe, Value
-from os import environ, getcwd, path as ospath, name as osname
+from os import environ, path as ospath, name as osname
 from pkgutil import iter_modules
-from sys import modules as sysmods, exit as sysexit
+from sys import exit as sysexit
 from time import sleep
 
 from src import central_logger, linked_process, rethink_interface
@@ -27,13 +27,16 @@ def get_class_instance(plugin_name):
     Returns:
         list -- List containing class instances of all plugins.
     """
-    if (osname == "nt"):
-        path = ospath.abspath(ospath.join(ospath.dirname(__file__), "../")+"/plugins")
-    else: #leaving functional linux path generation in place, windows might work on linux too.
+    if osname == "nt": # windows
+        path = ospath.abspath(ospath.join(
+            ospath.dirname(__file__),
+            "../"
+        )+"/plugins")
+    else: # linux
         path = ospath.join(
-            "/" + ''.join([
+            "/" + "".join([
                 d + "/" for d in ospath.dirname(__file__).split("/")[:-1] if d
-                ]),
+            ]),
             "plugins"
         )
     modules = iter_modules(path=[path])
@@ -69,9 +72,8 @@ class SupervisorController:
         self.plugin = get_class_instance(plugin_name)
         if not self.plugin:
             raise FileNotFoundError
-        self.db_interface = None
-        self.db_process = None
         self.logger_instance = None
+        self.logger_pipe = None
         self.logger_process = None
         self.signal = Value(c_bool, False)
 
@@ -82,32 +84,97 @@ class SupervisorController:
         the servers, plugins, and database handler.
         """
         try:
-            if environ["STAGE"] == "DEV" or environ["STAGE"] == "PROD" or environ["STAGE"] == "TESTING":
-                pass
-            else:
-                print("Environment variable STAGE must be set to DEV or PROD!")
+            if environ["STAGE"] not in ["DEV", "TESTING", "PROD"]:
+                print("Environment variable STAGE must \
+                      be set to DEV, TESTING, or PROD!")
                 raise KeyError
         except KeyError:
-            print("Environment variable STAGE must be set to DEV or PROD!")
+            print("Environment variable STAGE must be set \
+                  to DEV, TESTING, or PROD!")
             raise KeyError
 
         logger_pipes = []
 
-        """Create plugin process..."""
-        log_receiver, log_sender = Pipe()
+        logger_pipes.append(self._plugin_setup())
 
-        self.plugin_process = linked_process.LinkedProcess(
-            name=self.plugin.name,
-            target=self.plugin.start,
+        log_receiver, self.logger_pipe = Pipe()
+        logger_pipes.append(log_receiver)
+
+        self._create_logger(logger_pipes)
+
+    def _create_logger(self, logger_pipes):
+        """Set up the logger
+
+        Sets up the central logger instance and process.
+
+        Arguments:
+            logger_pipes {list} -- a list of pipes
+            to receive logs from
+        """
+        self.logger_instance = central_logger.CentralLogger(
+            logger_pipes,
+            environ["LOGLEVEL"]
+        )
+        self.logger_process, _ = self._create_process(
+            self.logger_instance,
+            "loggerprocess"
+        )
+
+    def _create_process(self, instance, name):
+        """Create a LinkedProcess
+
+        This takes an object intsance and creates a
+        LinkedProcess from it.
+
+        Arguments:
+            instance {[type]} -- [description]
+
+        Returns:
+            {tuple}(LinkedProcess, Pipe) -- returns a LinkedProcess
+            and a Pipe for the log receiver
+        """
+        log_receiver, log_sender = Pipe()
+        target = instance.start
+        if name == "loggerprocess":
+            log_sender = None
+        else:
+            target = instance._start
+
+        created_process = linked_process.LinkedProcess(
+            name=name,
+            target=target,
             logger_pipe=log_sender,
             signal=self.signal
         )
-        logger_pipes.append(log_receiver)
+        return (created_process, log_receiver)
 
-        """Create RethinkInterface instance and process
-        Checks if environment variable STAGE is DEV or PROD. This env
-        variable is automatically set to PROD in the application 
-        Dockerfile, but can be overridden."""
+    def _plugin_setup(self):
+        """Set up the plugin
+
+        Create the plugin process and the pipe from the
+        plugin to the logger.
+
+        Returns:
+            {Pipe} -- the receiving pipe from the plugin
+            to the logger.
+        """
+        self.plugin_process, log_receiver = self._create_process(
+            self.plugin,
+            self.plugin.name
+        )
+        return log_receiver
+
+    def _create_rethink_interface(self):
+        """Set up the rethink interface
+
+        Create RethinkInterface instance and process
+
+        Checks if environment variable STAGE is DEV/TESTING/PROD.
+
+        Returns:
+            {Pipe} -- receiving pipe for the logger from the rethink
+            interface.
+        """
         if environ["STAGE"] == "TESTING":
             self.db_interface = rethink_interface.RethinkInterface(
                 self.plugin,
@@ -119,26 +186,11 @@ class SupervisorController:
                 ("rethinkdb", 28015)
             )
 
-        log_receiver, log_sender = Pipe()
-        self.db_process = linked_process.LinkedProcess(
-            name="dbprocess",
-            target=self.db_interface.start,
-            logger_pipe=log_sender,
-            signal=self.signal
+        self.db_process, log_receiver = self._create_process(
+            self.db_interface,
+            "dbprocess"
         )
-        logger_pipes.append(log_receiver)
-
-        """Supervisor pipe for logging"""
-        log_receiver, self.logger_pipe = Pipe()
-        logger_pipes.append(log_receiver)
-
-        """Create CentralLogger instance and process"""
-        self.logger_instance = central_logger.CentralLogger(logger_pipes, environ["LOGLEVEL"])
-        self.logger_process = linked_process.LinkedProcess(
-            name="loggerprocess",
-            target=self.logger_instance.start,
-            signal=self.signal
-        )
+        return log_receiver
 
     def spawn_servers(self):
         """Spawn server processes
@@ -148,31 +200,23 @@ class SupervisorController:
         try:
             if not self.logger_process.start():
                 raise RuntimeError
-            if not self.db_process.start():
-                raise RuntimeError
             if not self.plugin_process.start():
                 raise RuntimeError
         except RuntimeError as err:
-            print(err)
             self.teardown(99)
 
     def monitor(self):
         """Monitor loop
-        
+
         This method runs for the duration of the application lifecycle...
         """
+        processes = [self.plugin_process, self.logger_process]
         while True:
             try:
                 sleep(3)
-                if not self.plugin_process.is_alive():
-                    if not self.plugin_process.restart():
-                        self.teardown(self.plugin_process.get_exitcode())
-                if not self.db_process.is_alive():
-                    if not self.db_process.restart():
-                        self.teardown(self.db_process.get_exitcode())
-                if not self.logger_process.is_alive():
-                    if not self.logger_process.restart():
-                        self.teardown(self.logger_process.get_exitcode())
+                for proc in processes:
+                    if not proc.restart():
+                        self.teardown(proc.get_exitcode())
             except KeyboardInterrupt:
                 self.teardown(0)
 
@@ -180,18 +224,15 @@ class SupervisorController:
         """Teardown all processes
 
         This method gracefully stops all processes...
-        
+
         Arguments:
             code {int} -- The exit code passed through by the
             monitoring loop (0 is normal, other codes can be
             passed by child processes)
         """
-
         self.signal.value = True
         sleep(5)
 
-        if self.db_process.is_alive():
-            self.db_process.terminate()
         if self.plugin_process.is_alive():
             self.plugin_process.terminate()
         if self.logger_process.is_alive():

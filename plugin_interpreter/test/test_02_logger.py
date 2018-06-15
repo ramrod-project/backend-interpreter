@@ -53,7 +53,6 @@ def file_handler():
     file_handler = open("logfile", "r")
     yield file_handler
     file_handler.close()
-    remove("./logfile")
 
 def test_logger_setup():
     """Test the CentralLogger class.
@@ -138,6 +137,8 @@ def test_logger_start_log(log):
         proc.terminate()
     assert logger_proc.is_alive()
     signal.value = True
+    sleep(4)
+    assert not logger_proc.is_alive()
 
 def test_logger_start(log):
     signal = Value(c_bool, False)
