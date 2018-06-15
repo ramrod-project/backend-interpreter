@@ -148,9 +148,37 @@ class ControllerPlugin(ABC):
         pass
 
     def _update_job(self, job_id):
+        """Updates the given job's state to the next state
+        Ready -> Pending, Pending -> Done
+        
+        Arguments:
+            job_id {int} -- The job id to update the state of
+        """
+
         self.DBI.update_job(job_id)
+    
+    def _update_job_error(self, job_id, msg = ""):
+        """updates a job's status to error and outputs an error message
+        to the output table. This indicates that a command has in some way
+        failed to execute correctly.
+        
+        Arguments:
+            job_id {int} -- The job id that errored
+            msg {str|int|byte|float} -- (optional) The error message to display
+        """
+        
+        self._respond_output(job_id, msg)
+        self.DBI.update_job_error(job_id)
 
     def _update_job_status(self, job_id, status):
+        """Updates a job's status to a specified status. _update_job should be
+        used in most cases.
+        
+        Arguments:
+            job_id {[type]} -- [description]
+            status {[type]} -- [description]
+        """
+
         self.DBI._update_job_status(
             {
                 "job": job_id,
