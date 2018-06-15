@@ -175,8 +175,10 @@ class ControllerPlugin(ABC):
         used in most cases.
 
         Arguments:
-            job_id {[type]} -- [description]
-            status {[type]} -- [description]
+            job_id {int} -- The job id to update
+            status {string} -- what the new status will be. The valid states
+            are "Ready", "Pending", "Done", "Error", "Stopped", "Waiting",
+            and "Active"
         """
 
         self.DBI._update_job_status(
