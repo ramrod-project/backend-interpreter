@@ -11,7 +11,7 @@ from sys import stderr
 from time import sleep, time
 import threading
 
-from brain import r as rethinkdb
+from brain import connect, r as rethinkdb
 
 
 class InvalidStatus(Exception):
@@ -45,7 +45,6 @@ class RethinkInterface:
         self.plugin_queue = Queue()
         self.port = server[1]
         self.rethink_connection = self.connect_to_db(self.host, self.port)
-        self.feed_connection = self.connect_to_db(self.host, self.port)
 
     def changefeed_thread(self, signal):
         """Starts a changefeed for jobs and loops
@@ -59,10 +58,11 @@ class RethinkInterface:
             signal {Value(c_bool)} -- Thread kill signal
             (if True exit).
         """
+        feed_connection = connect(host=self.host)
         feed = rethinkdb.db("Brain").table("Jobs").filter(
             (rethinkdb.row["Status"] == "Ready") &
             (rethinkdb.row["JobTarget"]["PluginName"] == self.plugin_name)
-        ).changes().run(self.feed_connection)
+        ).changes(include_initial=True).run(feed_connection)
         while not signal.value:
             try:
                 change = feed.next(wait=False)
@@ -74,7 +74,6 @@ class RethinkInterface:
             except rethinkdb.ReqlDriverError:
                 self._log("Changefeed Disconnected.", 30)
                 break
-        self._stop()
 
     def start(self, logger, signal):
         """
@@ -99,10 +98,6 @@ class RethinkInterface:
             args=(signal,)
         )
         self.job_fetcher.start()
-        self._log(
-            "Succesfully started fetcher",
-            20
-        )
         return True
 
     @staticmethod
@@ -438,19 +433,3 @@ class RethinkInterface:
             return table_contents
         except rethinkdb.ReqlError as err:
             self._log_db_error(err)
-
-    def _stop(self):
-        self._log(
-            "Kill signal received - stopping DB process \
-            and closing connection...",
-            10
-        )
-        try:
-            self.rethink_connection.close()
-        except rethinkdb.ReqlDriverError:
-            pass
-        try:
-            self.feed_connection.close()
-        except rethinkdb.ReqlDriverError:
-            pass
-        exit(0)
