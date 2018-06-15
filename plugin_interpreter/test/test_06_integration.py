@@ -319,7 +319,7 @@ def test_database_connection_succeed(rethink):
     rti = rethink_interface.RethinkInterface(IntegrationTest(), location)
     assert isinstance(rti.rethink_connection,rethinkdb.Connection)
 
-def test_update_error(sup, rethink):
+def test_update_error(sup, rethink, connection):
     environ["TEST_SELECTION"] = "TEST5"
     environ["STAGE"] = "TESTING"
 
