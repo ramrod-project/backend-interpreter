@@ -188,7 +188,7 @@ class ControllerPlugin(ABC):
             }
         )
 
-    def get_command(self, job):
+    def get_command(job):
         """return's the job's command name
         
         Arguments:
@@ -200,7 +200,7 @@ class ControllerPlugin(ABC):
 
         return job["JobCommand"]["CommandName"]
 
-    def get_job_id(self, job):
+    def get_job_id(job):
         """returns the id of the job
         
         Arguments:
