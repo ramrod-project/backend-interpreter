@@ -157,18 +157,18 @@ class ControllerPlugin(ABC):
 
         self.DBI.update_job(job_id)
     
-    def _update_job_error(self, job_id, msg = ""):
+    def _update_job_error(self, job, msg = ""):
         """updates a job's status to error and outputs an error message
         to the output table. This indicates that a command has in some way
         failed to execute correctly.
         
         Arguments:
-            job_id {int} -- The job id that errored
+            job {dict} -- The job that errored
             msg {str|int|byte|float} -- (optional) The error message to display
         """
         
-        self._respond_output(job_id, msg)
-        self.DBI.update_job_error(job_id)
+        self._respond_output(job, msg)
+        self.DBI.update_job_error(job["id"])
 
     def _update_job_status(self, job_id, status):
         """Updates a job's status to a specified status. _update_job should be

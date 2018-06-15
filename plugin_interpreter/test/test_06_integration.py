@@ -98,7 +98,7 @@ class IntegrationTest(controller_plugin.ControllerPlugin):
                 NOW
             ])
         elif environ["TEST_SELECTION"] == "TEST5":
-            self._update_job_error(SAMPLE_JOB["id"], "Testing Error")
+            self._update_job_error(SAMPLE_JOB, "Testing Error")
 
         while signal.value is not True:
             sleep(1)
