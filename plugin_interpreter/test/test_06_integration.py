@@ -321,6 +321,7 @@ def test_database_connection_succeed(rethink):
 
 def test_update_error(sup, rethink, connection):
     rethinkdb.db("Brain").table("Jobs").delete().run(connection)
+    rethinkdb.db("Brain").table("Outputs").delete().run(connection)
     sleep(5)
     rethinkdb.db("Brain").table("Jobs").insert(SAMPLE_JOB).run(connection)
     sleep(3)
