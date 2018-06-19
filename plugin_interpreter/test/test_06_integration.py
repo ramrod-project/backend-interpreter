@@ -97,6 +97,8 @@ class IntegrationTest(controller_plugin.ControllerPlugin):
                 50,
                 NOW
             ])
+        elif environ["TEST_SELECTION"] == "TEST5":
+            self._update_job_error(SAMPLE_JOB, "Testing Error")
 
         while signal.value is not True:
             sleep(1)
@@ -316,3 +318,29 @@ def test_database_connection_succeed(rethink):
     location = ("localhost", 28015)
     rti = rethink_interface.RethinkInterface(IntegrationTest(), location)
     assert isinstance(rti.rethink_connection,rethinkdb.Connection)
+
+def test_update_error(sup, rethink, connection):
+    rethinkdb.db("Brain").table("Jobs").delete().run(connection)
+    rethinkdb.db("Brain").table("Outputs").delete().run(connection)
+    sleep(5)
+    rethinkdb.db("Brain").table("Jobs").insert(SAMPLE_JOB).run(connection)
+    sleep(3)
+    environ["TEST_SELECTION"] = "TEST5"
+    environ["STAGE"] = "TESTING"
+
+    try:
+        sup.create_servers()
+        sup.spawn_servers()
+        sleep(10)
+        sup.teardown(0)
+    except SystemExit as ex:
+        assert str(ex) == "0"
+
+    cursor = rethinkdb.db("Brain").table("Jobs").run(connection)
+    job = cursor.next()
+    assert job["id"] == SAMPLE_JOB["id"]
+    assert job["Status"] == "Error"
+    cursor = rethinkdb.db("Brain").table("Outputs").run(connection)
+    output = cursor.next()
+    assert output["OutputJob"]["id"] == SAMPLE_JOB["id"]
+    assert output["Content"] == "Testing Error"

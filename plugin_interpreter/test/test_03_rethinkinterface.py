@@ -82,11 +82,7 @@ def rethink():
         rdb.rethink_connection.close()
     except:
         pass
-    try:
-        rdb.feed_connection.close()
-    except:
-        pass
-    clear_dbs(rethinkdb.connect("127.0.0.1", 28015))
+    clear_dbs(connect("127.0.0.1", 28015))
 
 # Provide empty rethinkdb container for tests that need it
 @fixture(scope='function')
@@ -501,13 +497,18 @@ def test_changefeed_disconnect(brain, rethink):
         for connecting to the test database.
     """
     val = Value(c_bool, False)
-    logger = mock_logger()
-    rethink.start(logger, val)
-    assert rethink.job_fetcher.is_alive()
+    rethink.logger = mock_logger()
+    feed_conn_test = rethink.connect_to_db(rethink.host, rethink.port)
+    thread_test = Thread(
+        target=rethink.changefeed_thread,
+        args=(val, feed_conn_test)
+    )
+    thread_test.start()
+    assert thread_test.is_alive()
     sleep(1)
-    rethink.feed_connection.close()
+    feed_conn_test.close()
     sleep(7)
-    assert not rethink.job_fetcher.is_alive()
+    assert not thread_test.is_alive()
 
 def test_update_job_bad_id(brain, rethink):
     """Tests that a bad id to the update_job function
