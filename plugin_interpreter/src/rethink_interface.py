@@ -10,6 +10,7 @@ from multiprocessing import Queue
 from sys import stderr
 from time import sleep, time
 import threading
+import logging
 
 from brain import connect, r as rethinkdb
 
@@ -39,7 +40,7 @@ class RethinkInterface:
 
     def __init__(self, name, server):
         self.host = server[0]
-        self.logger = None
+        self.logger = logging.getLogger("dbprocess")
         self.plugin_name = name
         self.job_fetcher = None
         self.plugin_queue = Queue()
@@ -75,7 +76,7 @@ class RethinkInterface:
                 self._log("Changefeed Disconnected.", 30)
                 break
 
-    def start(self, logger, signal):
+    def start(self, signal):
         """
         Start the Rethinkdb interface process. Control loop that handles
         communication with the database.
@@ -84,7 +85,6 @@ class RethinkInterface:
             logger {Pipe} - Pipe to the logger
             signal {c type boolean} - used for cleanup
         """
-        self.logger = logger
         if self.rethink_connection:
             self._log(
                 "Succesfully opened connection to Rethinkdb",
@@ -354,13 +354,7 @@ class RethinkInterface:
             )
 
     def _log(self, log, level):
-        if self.logger:
-            self.logger.send([
-                "dbprocess",
-                log,
-                level,
-                time()
-            ])
+        self.logger.log(level,log)
 
     def _log_db_error(self, err):
         err_type = {
