@@ -75,7 +75,7 @@ def rethink():
     environ["STAGE"] = "DEV"
     environ["PORT"] = "5000"
     rdb = rethink_interface.RethinkInterface("test", server)
-    rdb.logger = mock_logger()
+    # rdb.logger = mock_logger()
     yield rdb
     # Teardown for each test
     try:
