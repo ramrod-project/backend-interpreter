@@ -117,8 +117,8 @@ class ControllerPlugin(ABC):
             host = "127.0.0.1"
         self.DBI = rethink_interface.RethinkInterface(self.name, (host, 28015))
         self.initialize_queues(self.DBI.plugin_queue)
-        self.DBI.start(logger, signal)
-        self.start(signal)
+        self.DBI.start(signal)
+        self.start(logger, signal)
 
     @abstractmethod
     def start(self, logger, signal):
