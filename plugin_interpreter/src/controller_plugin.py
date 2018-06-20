@@ -256,6 +256,8 @@ class ControllerPlugin(ABC):
             self._update_job(job["id"])
         return job
 
+    # TODO: end_job function
+
     def _respond_output(self, job, output):
         """Provide job response output
 
