@@ -463,7 +463,7 @@ def test_changefeed(brain, rethink):
     val = Value(c_bool, False)
     send, _ = Pipe()
     rethink.plugin_name = "updater"
-    rethink.start(send, val)
+    rethink.start(val)
     assert rethink.job_fetcher.is_alive()
     rethinkdb.db("Brain").table("Jobs").delete().run(rethink.rethink_connection)
     new_job = {
@@ -497,7 +497,7 @@ def test_changefeed_disconnect(brain, rethink):
         for connecting to the test database.
     """
     val = Value(c_bool, False)
-    rethink.logger = mock_logger()
+    # rethink.logger = mock_logger()
     feed_conn_test = rethink.connect_to_db(rethink.host, rethink.port)
     thread_test = Thread(
         target=rethink.changefeed_thread,
