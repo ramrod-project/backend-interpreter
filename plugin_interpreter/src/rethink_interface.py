@@ -355,7 +355,7 @@ class RethinkInterface:
 
     def _log(self, log, level):
         date = asctime(gmtime(time()))
-        self.logger.log(level, log, extra={ 'date': date})
+        self.logger.log(level, log, extra={'date': date})
 
     def _log_db_error(self, err):
         err_type = {
