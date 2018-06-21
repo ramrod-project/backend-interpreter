@@ -8,7 +8,7 @@ TODO:
 
 from multiprocessing import Queue
 from sys import stderr
-from time import sleep, time
+from time import asctime, gmtime, sleep, time
 import threading
 import logging
 
@@ -354,7 +354,8 @@ class RethinkInterface:
             )
 
     def _log(self, log, level):
-        self.logger.log(level,log)
+        date = asctime(gmtime(time()))
+        self.logger.log(level, log, extra={ 'date': date})
 
     def _log_db_error(self, err):
         err_type = {
