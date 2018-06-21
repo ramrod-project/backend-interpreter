@@ -281,7 +281,7 @@ def test_log_to_logger(sup, rethink):
                 except AssertionError:
                     pass
                 try:
-                    assert output[5] == "central"
+                    assert output[5] == "dbprocess"
                     assert output[6] == "INFO"
                     assert output[7].split(":")[0] == "dbprocess"
                     assert " ".join(output[8:]).split("\n")[0] == "Succesfully opened connection to Rethinkdb"
