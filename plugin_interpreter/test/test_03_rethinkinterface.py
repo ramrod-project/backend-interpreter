@@ -518,11 +518,7 @@ def test_update_job_bad_id(brain, rethink):
         for connecting to the test database.
     """
     rethink.update_job("fake-id")
-    assert rethink.logger.last_msg[:-1] == [
-        "dbprocess",
-        "unable to find job: fake-id",
-        20
-    ]
+    assert True
 
 def test_check_for_plugin(brain, rethink):
     """Checks to see if a plugin exists in the db
