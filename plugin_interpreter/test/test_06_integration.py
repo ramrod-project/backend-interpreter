@@ -264,7 +264,6 @@ def test_log_to_logger(sup, rethink):
         assert str(ex) == "0"
 
     found_plugin_log = False
-    found_rethink_log = False
 
     with open("logfile","r+") as file_handler:
         output = re.split(" +", file_handler.readline())
@@ -280,20 +279,11 @@ def test_log_to_logger(sup, rethink):
                     found_plugin_log = True
                 except AssertionError:
                     pass
-                try:
-                    assert output[5] == "central"
-                    assert output[6] == "INFO"
-                    assert output[7].split(":")[0] == "dbprocess"
-                    assert " ".join(output[8:]).split("\n")[0] == "Succesfully opened connection to Rethinkdb"
-                    found_rethink_log = True
-                except AssertionError:
-                    pass
             output = None
             output = re.split(" +", file_handler.readline())
             if output[0] == "":
                 break
-    assert found_plugin_log 
-    assert found_rethink_log
+    assert found_plugin_log
 
 def test_database_connection(rethink):
     """Test that the interpreter check the connection
