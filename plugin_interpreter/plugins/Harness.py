@@ -166,6 +166,7 @@ class Harness(cp.ControllerPlugin):
                     job = output['OutputJob']
                     output_content = output['Content']
                     self._respond_output(job, output_content)
+                    self._update_job_status(job['id'], "Done")
 
     def _provide_status_update(self, job_id, status):  # pragma: no cover
         """
@@ -254,6 +255,7 @@ class Harness(cp.ControllerPlugin):
         if not self._output[client] and self._work[client]:
             cmd = self._work[client].pop(0)
             self._output[client].append(cmd)
+            self._update_job_status(cmd['id'], "Active")
             if not cmd['JobCommand']['Output']: #FireandForget goes straight to complete
                 self._job_is_complete(client, "")
             args = [x["Value"] for x in cmd['JobCommand']['Inputs']]
