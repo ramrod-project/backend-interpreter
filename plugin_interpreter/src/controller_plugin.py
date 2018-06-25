@@ -256,7 +256,17 @@ class ControllerPlugin(ABC):
             self._update_job(job["id"])
         return job
 
-    # TODO: end_job function
+    def _end_job(self, job, output):
+        """this method allows a plugin to send output to the database
+        and set the status of the job to "Done"
+        
+        Arguments:
+            job {dict} -- the dictionary object for the job received from
+            the database
+            output {str} -- the data to send to the database
+        """
+        self._respond_output(job, output)
+        self._update_job_status(job["id"], "Done")
 
     def _respond_output(self, job, output):
         """Provide job response output
@@ -274,7 +284,7 @@ class ControllerPlugin(ABC):
         Arguments:
             job {dict} -- the dictionary object for
             the job received from the database/frontend.
-            output {} -- [description]
+            output {str} -- The data to send to the database
         """
         if not isinstance(output, (bytes, str, int, float)):
             raise TypeError
