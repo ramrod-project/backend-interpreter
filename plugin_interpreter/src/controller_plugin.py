@@ -198,10 +198,8 @@ class ControllerPlugin(ABC):
         Returns:
             string -- the name of the command for that job
         """
-        try:
-            return job["JobCommand"]["CommandName"]
-        except KeyError:
-            return None
+
+        return job["JobCommand"]["CommandName"]
 
     @staticmethod
     def get_job_id(job):
@@ -214,10 +212,7 @@ class ControllerPlugin(ABC):
             string -- the id of the job
         """
 
-        try:
-            return job["id"]
-        except KeyError:
-            return None
+        return job["id"]
 
     def _advertise_functionality(self):
         """Advertises functionality to database
