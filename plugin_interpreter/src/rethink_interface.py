@@ -7,14 +7,18 @@ TODO:
 """
 
 from multiprocessing import Queue
-from sys import exit as sysexit, stderr
-from time import sleep, time
+from sys import stderr
+from time import asctime, gmtime, sleep, time
 import threading
+import logging
 
-from brain import r as rethinkdb
+from brain import connect, r as rethinkdb
 
 
 class InvalidStatus(Exception):
+    """Exception raised when job status
+    is invalid.
+    """
     pass
 
 
@@ -35,15 +39,13 @@ class RethinkInterface:
 
 
     def __init__(self, name, server):
-        self.job_cursor = None
         self.host = server[0]
-        self.logger = None
+        self.logger = logging.getLogger("dbprocess")
         self.plugin_name = name
         self.job_fetcher = None
         self.plugin_queue = Queue()
         self.port = server[1]
         self.rethink_connection = self.connect_to_db(self.host, self.port)
-        self.feed_connection = self.connect_to_db(self.host, self.port)
 
     def changefeed_thread(self, signal):
         """Starts a changefeed for jobs and loops
@@ -57,11 +59,11 @@ class RethinkInterface:
             signal {Value(c_bool)} -- Thread kill signal
             (if True exit).
         """
-
+        feed_connection = connect(host=self.host)
         feed = rethinkdb.db("Brain").table("Jobs").filter(
             (rethinkdb.row["Status"] == "Ready") &
             (rethinkdb.row["JobTarget"]["PluginName"] == self.plugin_name)
-        ).changes().run(self.feed_connection)
+        ).changes(include_initial=True).run(feed_connection)
         while not signal.value:
             try:
                 change = feed.next(wait=False)
@@ -70,12 +72,11 @@ class RethinkInterface:
             except rethinkdb.ReqlTimeoutError:
                 sleep(0.1)
                 continue
-            except RuntimeError:
+            except rethinkdb.ReqlDriverError:
                 self._log("Changefeed Disconnected.", 30)
                 break
-        self._stop()
 
-    def start(self, logger, signal):
+    def start(self, signal):
         """
         Start the Rethinkdb interface process. Control loop that handles
         communication with the database.
@@ -84,21 +85,20 @@ class RethinkInterface:
             logger {Pipe} - Pipe to the logger
             signal {c type boolean} - used for cleanup
         """
-        self.logger = logger
         if self.rethink_connection:
             self._log(
                 "Succesfully opened connection to Rethinkdb",
                 20
             )
         else:
-            self._stop()
+            return False
 
-        # get the pluginname with the functionality advertisement
         self.job_fetcher = threading.Thread(
             target=self.changefeed_thread,
             args=(signal,)
         )
         self.job_fetcher.start()
+        return True
 
     @staticmethod
     def connect_to_db(host, port):
@@ -124,7 +124,7 @@ class RethinkInterface:
             except rethinkdb.ReqlDriverError:
                 sleep(0.5)
         stderr.write("DB connection timeout!")
-        sysexit(111)
+        exit(111)
 
     def update_job(self, job_id):
         """advances the job's status to the next state
@@ -132,12 +132,16 @@ class RethinkInterface:
         Arguments:
             job_id {int} -- The job's id from the ID table
         """
+        job = None
         try:
             job = rethinkdb.db("Brain").table("Jobs").get(
                 job_id).pluck("Status").run(self.rethink_connection)
-        except rethinkdb.ReqlDriverError:
+        except rethinkdb.ReqlNonExistenceError:
             self._log(
-                "".join(["unable to find job: ", job_id]), 20)
+                "".join(["unable to find job: ", job_id]),
+                20
+            )
+            return
         if job["Status"] not in self.VALID_STATES:
             self._log(
                 "".join([job_id, " has an invalid state, setting to error"]),
@@ -185,7 +189,7 @@ class RethinkInterface:
                 self.validate_db(self.rethink_connection)
             )
             return True
-        except rethinkdb.ReqlDriverError:
+        except rethinkdb.ReqlOpFailedError:
             return False
 
     @staticmethod
@@ -231,7 +235,7 @@ class RethinkInterface:
                 return connection
 
         stderr.write("DB not available!\n")
-        sysexit(112)
+        exit(112)
 
     def _update_job_status(self, job_data):
         """Update's the specified job's status to the given status
@@ -284,26 +288,6 @@ class RethinkInterface:
             ])
             raise InvalidStatus(err)
 
-    # defunct, changefeed populates queue instead
-    def _get_next_job(self, plugin_name):
-        """
-        Adds the next job to the plugin's queue
-
-        Arguments:
-            plugin_name {string} -- The name of the plugin to filter jobs with
-        """
-
-        # find jobs with the name of the plugin and are Ready to execute
-        self.job_cursor = rethinkdb.db("Brain").table("Jobs").filter(
-            (rethinkdb.row["JobTarget"]["PluginName"] == plugin_name) &
-            (rethinkdb.row["Status"] == "Ready")
-        ).run(self.rethink_connection)
-        try:
-            new_job = self.job_cursor.next()
-            self.plugin_queue.put(new_job)
-        except rethinkdb.ReqlCursorEmpty:
-            self.plugin_queue.put(None)
-
     def send_output(self, output_data):
         """sends the plugin's output message to the Outputs table
 
@@ -343,9 +327,6 @@ class RethinkInterface:
                 30
             )
 
-    def _update_target(self, target_data):
-        pass
-
     def create_plugin_table(self, plugin_data):
         """
         Adds a new plugin to the Plugins Database
@@ -373,35 +354,30 @@ class RethinkInterface:
             )
 
     def _log(self, log, level):
-        if self.logger:
-            self.logger.send([
-                "dbprocess",
-                log,
-                level,
-                time()
-            ])
+        date = asctime(gmtime(time()))
+        self.logger.log(level, log, extra={'date': date})
 
     def _log_db_error(self, err):
-        if isinstance(err, rethinkdb.ReqlTimeoutError):
-            self._log(
+        err_type = {
+            "<class 'rethinkdb.errors.ReqlDriverError'>": (
+                "".join(("Database driver error: ", str(err))),
+                40
+            ),
+            "<class 'rethinkdb.errors.ReqlTimeoutError'>": (
                 "".join(("Database operation timeout: ", str(err))),
                 40
-            )
-        elif isinstance(err, rethinkdb.ReqlAvailabilityError):
-            self._log(
+            ),
+            "<class 'rethinkdb.errors.ReqlAvailabilityError'>": (
                 "".join(("Database operation failed: ", str(err))),
                 40
-            )
-        elif isinstance(err, rethinkdb.ReqlRuntimeError):
-            self._log(
+            ),
+            "<class 'rethinkdb.errors.ReqlRuntimeError'>": (
                 "".join(("Database runtime error: ", str(err))),
                 40
             )
-        elif isinstance(err, rethinkdb.ReqlDriverError):
-            self._log(
-                "".join(("Database driver error: ", str(err))),
-                40
-            )
+        }
+
+        self._log(*err_type[str(type(err))])
 
     def _create_table(self, database_name, table_name):
         """Create a table in the database
@@ -452,26 +428,3 @@ class RethinkInterface:
             return table_contents
         except rethinkdb.ReqlError as err:
             self._log_db_error(err)
-
-    def _stop(self):
-        self._log(
-            "Kill signal received - stopping DB process \
-            and closing connection...",
-            10
-        )
-        try:
-            self.rethink_connection.close()
-        except rethinkdb.ReqlDriverError:
-            pass
-        try:
-            self.feed_connection.close()
-        except rethinkdb.ReqlDriverError:
-            pass
-        # after closing connection, join thread. the closed connection
-        # should cause the blocking to end and the thread to terminate
-        # self.stop_signal = True
-        try:
-            self.job_fetcher.join(timeout=4)
-        except RuntimeError:
-            pass
-        sysexit(0)

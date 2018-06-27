@@ -3,7 +3,7 @@
 
 from ctypes import c_bool
 from multiprocessing import connection, Pipe, Value
-from os import environ
+from os import environ, name as osname
 from time import sleep
 
 from pytest import fixture, raises
@@ -12,6 +12,7 @@ CLIENT = docker.from_env()
 
 from src import central_logger, controller_plugin, linked_process, rethink_interface, supervisor
 
+assert osname == 'posix'
 
 @fixture(scope="module")
 def sup():
@@ -66,9 +67,17 @@ def test_supervisor_server_creation(sup):
     assert isinstance(sup.plugin, controller_plugin.ControllerPlugin)
     assert isinstance(sup.logger_instance, central_logger.CentralLogger)
 
+def test_supervisor_log_creation(sup):
+    # Test log creation
+    assert sup.logger_process
+
 def test_supervisor_server_spawn(sup):
     # Test server spawning
     sup.spawn_servers()
     
     for proc in [sup.logger_process, sup.plugin_process]:
         assert proc.is_alive()
+
+def test_linked_process_creation(sup):
+    # Test linked process creation
+    assert sup.logger_instance
