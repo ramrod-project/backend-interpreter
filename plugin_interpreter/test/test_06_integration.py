@@ -97,6 +97,8 @@ class IntegrationTest(controller_plugin.ControllerPlugin):
                 50,
                 NOW
             ])
+        elif environ["TEST_SELECTION"] == "TEST5":
+            self._update_job_error(SAMPLE_JOB, "Testing Error")
 
         while signal.value is not True:
             sleep(1)
@@ -111,7 +113,7 @@ class IntegrationTest(controller_plugin.ControllerPlugin):
 def rethink():
     tag = "latest"
     try:
-        tag = environ["TRAVIS_BRANCH"].replace("master", "latest")
+        tag = environ.get("TRAVIS_BRANCH", "dev").replace("master", "latest")
     except KeyError:
         pass
     CLIENT.containers.run(
@@ -262,7 +264,6 @@ def test_log_to_logger(sup, rethink):
         assert str(ex) == "0"
 
     found_plugin_log = False
-    found_rethink_log = False
 
     with open("logfile","r+") as file_handler:
         output = re.split(" +", file_handler.readline())
@@ -278,20 +279,11 @@ def test_log_to_logger(sup, rethink):
                     found_plugin_log = True
                 except AssertionError:
                     pass
-                try:
-                    assert output[5] == "central"
-                    assert output[6] == "INFO"
-                    assert output[7].split(":")[0] == "dbprocess"
-                    assert " ".join(output[8:]).split("\n")[0] == "Succesfully opened connection to Rethinkdb"
-                    found_rethink_log = True
-                except AssertionError:
-                    pass
             output = None
             output = re.split(" +", file_handler.readline())
             if output[0] == "":
                 break
-    assert found_plugin_log 
-    assert found_rethink_log
+    assert found_plugin_log
 
 def test_database_connection(rethink):
     """Test that the interpreter check the connection
@@ -316,3 +308,29 @@ def test_database_connection_succeed(rethink):
     location = ("localhost", 28015)
     rti = rethink_interface.RethinkInterface(IntegrationTest(), location)
     assert isinstance(rti.rethink_connection,rethinkdb.Connection)
+
+def test_update_error(sup, rethink, connection):
+    rethinkdb.db("Brain").table("Jobs").delete().run(connection)
+    rethinkdb.db("Brain").table("Outputs").delete().run(connection)
+    sleep(5)
+    rethinkdb.db("Brain").table("Jobs").insert(SAMPLE_JOB).run(connection)
+    sleep(3)
+    environ["TEST_SELECTION"] = "TEST5"
+    environ["STAGE"] = "TESTING"
+
+    try:
+        sup.create_servers()
+        sup.spawn_servers()
+        sleep(10)
+        sup.teardown(0)
+    except SystemExit as ex:
+        assert str(ex) == "0"
+
+    cursor = rethinkdb.db("Brain").table("Jobs").run(connection)
+    job = cursor.next()
+    assert job["id"] == SAMPLE_JOB["id"]
+    assert job["Status"] == "Error"
+    cursor = rethinkdb.db("Brain").table("Outputs").run(connection)
+    output = cursor.next()
+    assert output["OutputJob"]["id"] == SAMPLE_JOB["id"]
+    assert output["Content"] == "Testing Error"

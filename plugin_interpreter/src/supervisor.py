@@ -3,12 +3,7 @@
 The Supervisor module...
 
 TODO:
-- Add handler class for SIGTERM event (docker stop is received)
 """
-
-__version__ = "0.2"
-__author__ = "Christopher Manzi"
-
 
 from ctypes import c_bool
 from multiprocessing import Pipe, Value
@@ -17,9 +12,11 @@ from pkgutil import iter_modules
 from sys import exit as sysexit
 from time import sleep
 
-from src import central_logger, linked_process, rethink_interface
+from src import central_logger, linked_process
 from plugins import *
 
+__version__ = "0.2"
+__author__ = "Christopher Manzi"
 
 def get_class_instance(plugin_name):
     """Returns class instances from 'plugins' folder.
@@ -27,12 +24,12 @@ def get_class_instance(plugin_name):
     Returns:
         list -- List containing class instances of all plugins.
     """
-    if osname == "nt": # windows
+    if osname == "nt":  # windows
         path = ospath.abspath(ospath.join(
             ospath.dirname(__file__),
             "../"
         )+"/plugins")
-    else: # linux
+    else:  # linux
         path = ospath.join(
             "/" + "".join([
                 d + "/" for d in ospath.dirname(__file__).split("/")[:-1] if d
@@ -164,34 +161,6 @@ class SupervisorController:
         )
         return log_receiver
 
-    def _create_rethink_interface(self):
-        """Set up the rethink interface
-
-        Create RethinkInterface instance and process
-
-        Checks if environment variable STAGE is DEV/TESTING/PROD.
-
-        Returns:
-            {Pipe} -- receiving pipe for the logger from the rethink
-            interface.
-        """
-        if environ["STAGE"] == "TESTING":
-            self.db_interface = rethink_interface.RethinkInterface(
-                self.plugin,
-                ("127.0.0.1", 28015)
-            )
-        else:
-            self.db_interface = rethink_interface.RethinkInterface(
-                self.plugin,
-                ("rethinkdb", 28015)
-            )
-
-        self.db_process, log_receiver = self._create_process(
-            self.db_interface,
-            "dbprocess"
-        )
-        return log_receiver
-
     def spawn_servers(self):
         """Spawn server processes
 
@@ -202,10 +171,10 @@ class SupervisorController:
                 raise RuntimeError
             if not self.plugin_process.start():
                 raise RuntimeError
-        except RuntimeError as err:
+        except RuntimeError:
             self.teardown(99)
 
-    def monitor(self):
+    def monitor(self): # pragma: no cover
         """Monitor loop
 
         This method runs for the duration of the application lifecycle...
@@ -213,7 +182,7 @@ class SupervisorController:
         processes = [self.plugin_process, self.logger_process]
         while True:
             try:
-                sleep(3)
+                sleep(1)
                 for proc in processes:
                     if not proc.restart():
                         self.teardown(proc.get_exitcode())

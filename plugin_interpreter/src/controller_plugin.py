@@ -117,7 +117,7 @@ class ControllerPlugin(ABC):
             host = "127.0.0.1"
         self.DBI = rethink_interface.RethinkInterface(self.name, (host, 28015))
         self.initialize_queues(self.DBI.plugin_queue)
-        self.DBI.start(logger, signal)
+        self.DBI.start(signal)
         self.start(logger, signal)
 
     @abstractmethod
@@ -148,9 +148,39 @@ class ControllerPlugin(ABC):
         pass
 
     def _update_job(self, job_id):
+        """Updates the given job's state to the next state
+        Ready -> Pending, Pending -> Done
+
+        Arguments:
+            job_id {int} -- The job id to update the state of
+        """
+
         self.DBI.update_job(job_id)
 
+    def _update_job_error(self, job, msg=""):
+        """updates a job's status to error and outputs an error message
+        to the output table. This indicates that a command has in some way
+        failed to execute correctly.
+
+        Arguments:
+            job {dict} -- The job that errored
+            msg {str|int|byte|float} -- (optional) The error message to display
+        """
+
+        self._respond_output(job, msg)
+        self.DBI.update_job_error(job["id"])
+
     def _update_job_status(self, job_id, status):
+        """Updates a job's status to a specified status. _update_job should be
+        used in most cases.
+
+        Arguments:
+            job_id {int} -- The job id to update
+            status {string} -- what the new status will be. The valid states
+            are "Ready", "Pending", "Done", "Error", "Stopped", "Waiting",
+            and "Active"
+        """
+
         self.DBI._update_job_status(
             {
                 "job": job_id,
