@@ -230,7 +230,8 @@ class ControllerPlugin(ABC):
         This first checks the receive queue to see if there is
         a job waiting, then if the queue is empty, it sends a
         request to the database handler to reply with the next
-        new job whose start time is in the past.
+        new job whose start time is in the past. If a job is
+        found that job's status is updated to Pending
 
         Returns:
             {dict} -- a dictionary describing the job containing

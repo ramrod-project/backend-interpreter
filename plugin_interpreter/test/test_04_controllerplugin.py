@@ -173,6 +173,8 @@ def test_respond_to_job(plugin_base):
     plugin_base._respond_output(SAMPLE_JOB, "Sample Job Response")
     assert plugin_base.DBI.result["job"] == SAMPLE_JOB
     assert plugin_base.DBI.result["output"] == "Sample Job Response"
+    assert plugin_base.get_job_id(SAMPLE_JOB) == SAMPLE_JOB["id"]
+    assert plugin_base.get_command(SAMPLE_JOB) == "Do stuff"
 
     plugin_base._respond_output(SAMPLE_JOB, bytes("Sample Job Response", "utf-8"))
     assert plugin_base.DBI.result["job"] == SAMPLE_JOB
