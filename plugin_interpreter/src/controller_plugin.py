@@ -96,7 +96,7 @@ class ControllerPlugin(ABC):
         super().__init__()
 
     def _read_functionality(self):
-        curr_dir = ospath.dirname(__file__)
+        curr_dir = ospath.dirname(ospath.dirname(__file__))
         filename = curr_dir + "/plugins/__" + self.name + "/" + self.name + ".json"
         with open(filename) as f:
             self.functionality = json.load(f)
