@@ -49,6 +49,9 @@ class DummyDBInterface():
 
     def send_output(self, output_data):
         self.result = output_data
+    
+    def update_job_error(self, data):
+        self.result = data
 
 
 class SamplePlugin(controller_plugin.ControllerPlugin):
