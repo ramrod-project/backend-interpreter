@@ -237,7 +237,7 @@ class ControllerPlugin(ABC):
         stderr.write(
             "_respond_output is deprecated, use respond_output instead\n"
         )
-        self._respond_output(job, output)
+        self.respond_output(job, output)
 
     def respond_output(self, job, output):
         """Provide job response output
