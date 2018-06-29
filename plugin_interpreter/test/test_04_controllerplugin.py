@@ -71,25 +71,7 @@ class SamplePlugin(controller_plugin.ControllerPlugin):
 
     def __init__(self):
         super().__init__(
-            "SamplePlugin",
-            [
-                {
-                    "name": "read_file",
-                    "input": ["string"],
-                    "family": "filesystem",
-                    "tooltip": "Provided a full directory path, this function \
-                    reads a file.",
-                    "reference": "http://reference.url"
-                },
-                {
-                    "name": "send_file",
-                    "input": ["string", "binary"],
-                    "family": "filesystem",
-                    "tooltip": "Provided a file and destination directory, \
-                    this function sends a file.",
-                    "reference": "http://reference.url"
-                }
-            ]
+            "SamplePlugin"
         )
         self.DBI = DummyDBInterface()
 
@@ -135,8 +117,27 @@ def test_advertise(plugin_base):
     """
     plugin_base._advertise_functionality()
     result = plugin_base.DBI.result
+    functionality = [
+                        {
+                            "name": "read_file",
+                            "input": ["string"],
+                            "family": "filesystem",
+                            "tooltip": "Provided a full directory path, this function \
+                            reads a file.",
+                            "reference": "http://reference.url"
+                        },
+                        {
+                            "name": "send_file",
+                            "input": ["string", "binary"],
+                            "family": "filesystem",
+                            "tooltip": "Provided a file and destination directory, \
+                            this function sends a file.",
+                            "reference": "http://reference.url"
+                        }
+                    ]
     assert result[0] == "SamplePlugin"
-    assert result[1] == plugin_base.functionality
+    assert result[1] == functionality
+    assert plugin_base.functionality == functionality
 
 def test_request_job(plugin_base):
     """Test requesting a job

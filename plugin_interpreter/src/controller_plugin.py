@@ -7,6 +7,8 @@ TODO:
 from abc import ABC, abstractmethod
 from os import environ
 from queue import Empty
+import json
+from pprint import pprint
 
 from src import rethink_interface
 
@@ -42,12 +44,15 @@ class ControllerPlugin(ABC):
     exported plugin controller class.
     """
 
-    def __init__(self, name, functionality):
+    def __init__(self, name, functionality = {}):
         self.db_recv = None
         self.signal = None
         self.DBI = None
         self.port = int(environ["PORT"])
-        self.functionality = functionality
+        if functionality:
+            self.functionality = functionality
+        else:
+            self._read_functionality()
         """
         List of dictionaries which advertises functionality of the plugin.
         Example:
@@ -87,6 +92,14 @@ class ControllerPlugin(ABC):
         """Define server port/proto requirement (TCP/UDP) so docker can be run
         properly."""
         super().__init__()
+
+    def _read_functionality(self):
+        filename = "plugins/__" + self.name + "/" + self.name + ".txt"
+        with open(filename) as f:
+            self.functionality = json.load(f)
+
+        pprint(self.functionality)
+
 
     def initialize_queues(self, recv_queue):
         """Initialize command/response queues
