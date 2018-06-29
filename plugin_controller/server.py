@@ -4,10 +4,8 @@ This is the main server file for the docker
 interpreter controller.
 
 TODO:
-- handle multiple plugins/containers
-- read config for plugin from file
-- dynamic ip assignment
-- *unit and integration tests*
+- update all functions to use new brain functions
+- check database instead of local mem
 """
 import logging
 from os import environ, path as ospath
@@ -17,6 +15,7 @@ from sys import stderr
 from time import asctime, gmtime, sleep, time
 
 import docker
+import brain
 
 
 logging.basicConfig(
@@ -69,6 +68,33 @@ def set_logging(logger):
     except KeyError:
         stderr.write("Invalid LOGLEVEL setting!\n")
         exit(1)
+
+
+def create_plugin(plugin_data):
+    """Creates a plugin in the 'Plugins' table of
+    the 'Controller' database.
+    
+    Arguments:
+        plugin_data {[type]} -- [description]
+    """
+    # brain.create_plugin_controller
+    pass
+
+
+def update_plugin_state(plugin_name, state):
+    """Updates the plugin state to match the current
+    state of its container.
+
+    Takes a pluginn ame and current state.
+    
+    Arguments:
+        plugin_name {string} -- plugin name.
+        state {string} -- the current state of the
+        plugin container ("Active", "Restarting",
+        "Stopped").
+    """
+    # brain.update_plugin_state
+    pass
 
 
 def dev_db(ports):
@@ -136,7 +162,7 @@ def log(level, message):
     )
 
 
-def launch_container(plugin, port, host_port, host_proto):
+def launch_plugin(plugin, port, host_port, host_proto):
     """Launch a plugin container
 
     Arguments:
@@ -150,15 +176,14 @@ def launch_container(plugin, port, host_port, host_proto):
         {Container} -- a Container object corresponding
         to the launched container.
     """
-    assert host_proto == "TCP" or host_proto == "UDP"
-    assert host_port <= 65535
+    if host_proto != "TCP" and host_proto != "UDP":
+        raise TypeError
+    if host_port > 65535:
+        raise ValueError
 
     return CLIENT.containers.run(
         "".join(("ramrodpcp/interpreter-plugin:", TAG)),
-        name="".join((
-            plugin,
-            "-{}_{}".format(host_port, host_proto)
-        )),
+        name=plugin,
         environment={
             "STAGE": environ["STAGE"],
             "LOGLEVEL": environ["LOGLEVEL"],
@@ -177,7 +202,42 @@ def launch_container(plugin, port, host_port, host_proto):
     )
 
 
-def stop_containers(containers):
+def restart_plugin(plugin_name):
+    """Restart a plugin by name.
+    
+    Arguments:
+        plugin_name {str} -- name of a plugin.
+    """
+    # get docker container and restart
+    # update state in db
+    # wait for timeout until restarted
+    # return True if restarted else False
+    pass
+
+
+def stop_plugin(plugin_name):
+    """Stop a plugin by name.
+    
+    Arguments:
+        plugin_name {str} -- name of a plugin.
+    """
+    # get docker container and stop
+    pass
+
+
+def plugin_status(plugin_name):
+    """Return the status of a plugin container
+    
+    Arguments:
+        plugin_name {str} -- name of a plugin
+    
+    Returns:
+        status {str} -- "Active", "Restarting", or "Stopped"
+    """
+    return status
+
+
+def stop_all_containers(containers):
     """Clean up containers and network
 
     Stops all running containers and prunes
@@ -208,6 +268,19 @@ def stop_containers(containers):
         CLIENT.networks.prune()
 
 
+def get_container_from_name(plugin_name):
+    """Return a container object given a plugin name.
+    
+    Arguments:
+        plugin_name {str} -- name of a plugin.
+
+    Returns:
+        con {container} -- a docker.container object corresponding
+        to the plugin name.
+    """
+    return con
+
+
 if __name__ == "__main__":  # pragma: no cover
 
     port_mapping = {}
@@ -217,7 +290,7 @@ if __name__ == "__main__":  # pragma: no cover
     def sigterm_handler(_signo, _stack_frame):
         """Handles SIGTERM signal
         """
-        stop_containers(port_mapping.values())
+        stop_all_containers(port_mapping.values())
         exit(0)
 
     signal(SIGTERM, sigterm_handler)
@@ -230,7 +303,13 @@ if __name__ == "__main__":  # pragma: no cover
         )
         exit(1)
 
-    plugin_container = launch_container(
+    # Main control loop to be inserted below
+    # Check state of running plugins (maintain map in local mem)
+    # Update status of plugin in db
+    # Check desired state in db
+    # if current status =/= desired state, handle it
+
+    plugin_container = launch_plugin(
         PLUGIN,
         generate_port(port_mapping),
         HOST_PORT,
@@ -246,5 +325,5 @@ if __name__ == "__main__":  # pragma: no cover
         try:
             sleep(1)
         except KeyboardInterrupt:
-            stop_containers(port_mapping.values())
+            stop_all_containers(port_mapping.values())
             exit(0)
