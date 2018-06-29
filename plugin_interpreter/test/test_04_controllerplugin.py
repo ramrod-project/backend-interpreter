@@ -119,18 +119,18 @@ def test_advertise(plugin_base):
     result = plugin_base.DBI.result
     functionality = [
                         {
-                            "name": "read_file",
-                            "input": ["string"],
-                            "family": "filesystem",
-                            "tooltip": "Provided a full directory path, this function reads a file.",
-                            "reference": "http://reference.url"
+                            "CommandName": "read_file",
+                            "Tooltip": "Provided a full directory path, this function reads a file.",
+                            "Output": False,
+                            "Inputs": [],
+                            "OptionalInputs": []
                         },
                         {
-                            "name": "send_file",
-                            "input": ["string", "binary"],
-                            "family": "filesystem",
-                            "tooltip": "Provided a file and destination directory, this function sends a file.",
-                            "reference": "http://reference.url"
+                            "CommandName": "send_file",
+                            "Tooltip": "Provided a file and destination directory, this function sends a file.",
+                            "Output": False,
+                            "Inputs": [],
+                            "OptionalInputs": []
                         }
                     ]
     assert result[0] == "SamplePlugin"

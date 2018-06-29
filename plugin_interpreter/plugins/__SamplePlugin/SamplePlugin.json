@@ -1,16 +1,16 @@
 [
 	{
-		"name": "read_file",
-		"input": ["string"],
-		"family": "filesystem",
-		"tooltip": "Provided a full directory path, this function reads a file.",
-		"reference": "http://reference.url"
+		"CommandName": "read_file",
+		"Tooltip": "Provided a full directory path, this function reads a file.",
+		"Output": false,
+		"Inputs": [],
+		"OptionalInputs": []
 	},
 	{
-		"name": "send_file",
-		"input": ["string", "binary"],
-		"family": "filesystem",
-		"tooltip": "Provided a file and destination directory, this function sends a file.",
-		"reference": "http://reference.url"
+		"CommandName": "send_file",
+		"Tooltip": "Provided a file and destination directory, this function sends a file.",
+		"Output": false,
+		"Inputs": [],
+		"OptionalInputs": []
 	}
 ]

@@ -56,43 +56,6 @@ class ControllerPlugin(ABC):
             self.functionality = functionality
         else:
             self._read_functionality()
-        """
-        List of dictionaries which advertises functionality of the plugin.
-        Example:
-        [
-            {
-                "name": "read_file",
-                "input": ["string"],
-                "family": "filesystem",
-                "tooltip": "Provided a full directory path, \
-                this function reads a file.",
-                "reference": "<reference url>"
-            },
-            {
-                "name": "send_file",
-                "input": ["string", "binary"],
-                "family": "filesystem",
-                "tooltip": "Provided a file and destination \
-                directory, this function sends a file.",
-                "reference": "<reference url>"
-            }
-        ]
-        The 'name' key is the unique identifier used to refer to the
-        function in communication between the front end interface and
-        the back end. This exact identifier will be sent back with
-        corresponding commands to let the plugin know which funcion
-        should be called.
-
-        The 'input' key is a list of required input types to properly
-        call the function. Possible input types include: string,
-        int, binary.
-
-        The 'tooltip' key is a human readable explanation of the
-        function usage. It will be displayed to the user through
-        the interface.
-        """
-        """Define server port/proto requirement (TCP/UDP) so docker can be run
-        properly."""
         super().__init__()
 
     def _read_functionality(self):
@@ -105,9 +68,13 @@ class ControllerPlugin(ABC):
             with open(filename) as f:
                 self.functionality = json.load(f)
         except (IOError, json.JSONDecodeError):
-            self.functionality = [{"name": "Functionality Error"}]
-
-        pprint(self.functionality)
+            self.functionality = [{
+                "CommandName": "Functionality Error",
+                "Tooltip": "There was an error loading plugin functionality",
+                "Output": False,
+                "Inputs": [],
+                "OptionalInputs": []
+            }]
 
     def initialize_queues(self, recv_queue):
         """Initialize command/response queues
@@ -124,8 +91,6 @@ class ControllerPlugin(ABC):
         formats are defined below above their respective methods.
 
         Arguments:
-            send_queue {Queue} -- The queue used to send responses back to the
-            database interface.
             recv_queue {Queue} -- The queue used to receive commands from the
             frontend through the database.
         """
@@ -232,6 +197,11 @@ class ControllerPlugin(ABC):
         """
         self.DBI.create_plugin_table((self.name, self.functionality))
 
+    def _request_job(self):
+        """ DEPRECATED"""
+        print("_request_job() is deprecated. use request_job() instead")
+        self.request_job()
+
     def request_job(self):
         """Request next job
 
@@ -260,6 +230,11 @@ class ControllerPlugin(ABC):
             self._update_job(job["id"])
         return job
 
+    def _respond_output(self, job, output):
+        """DEPRECATED"""
+        print("_respond_output is deprecated, use respond_output instead")
+        self._respond_output(job, output)
+
     def respond_output(self, job, output):
         """Provide job response output
 
@@ -285,6 +260,11 @@ class ControllerPlugin(ABC):
             "output": output
         })
         self._update_job(job["id"])
+
+    def _update_job_error(self, job, msg=""):
+        """DEPRECATED"""
+        print("_update_job_error is deprecated, use respond_error instead")
+        self.respond_error(job, msg)
 
     def respond_error(self, job, msg=""):
         """updates a job's status to error and outputs an error message
