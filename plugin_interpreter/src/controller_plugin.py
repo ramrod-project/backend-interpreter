@@ -45,7 +45,7 @@ class ControllerPlugin(ABC):
     exported plugin controller class.
     """
 
-    def __init__(self, name, functionality = None):
+    def __init__(self, name, functionality=None):
         self.db_recv = None
         self.signal = None
         self.DBI = None
@@ -97,16 +97,17 @@ class ControllerPlugin(ABC):
 
     def _read_functionality(self):
         curr_dir = ospath.dirname(ospath.dirname(__file__))
-        # filename = curr_dir + "/plugins/__" + self.name + "/" + self.name + ".json"
-        filename = "{}/plugins/__{name}/{name}.json".format(curr_dir, name = self.name)
+        filename = "{}/plugins/__{name}/{name}.json".format(
+            curr_dir,
+            name=self.name
+        )
         try:
             with open(filename) as f:
                 self.functionality = json.load(f)
         except (IOError, json.JSONDecodeError):
-            self.functionality = [{"name": "Functionality Error",}]
+            self.functionality = [{"name": "Functionality Error"}]
 
         pprint(self.functionality)
-
 
     def initialize_queues(self, recv_queue):
         """Initialize command/response queues
@@ -284,7 +285,7 @@ class ControllerPlugin(ABC):
             "output": output
         })
         self._update_job(job["id"])
-    
+
     def respond_error(self, job, msg=""):
         """updates a job's status to error and outputs an error message
         to the output table. This indicates that a command has in some way
