@@ -9,6 +9,7 @@ from os import environ
 from queue import Empty
 import json
 from pprint import pprint
+from os import environ, path as ospath, name as osname
 
 from src import rethink_interface
 
@@ -94,7 +95,7 @@ class ControllerPlugin(ABC):
         super().__init__()
 
     def _read_functionality(self):
-        filename = "plugins/__" + self.name + "/" + self.name + ".txt"
+        filename = "plugins/__" + self.name + "/" + self.name + ".json"
         with open(filename) as f:
             self.functionality = json.load(f)
 
