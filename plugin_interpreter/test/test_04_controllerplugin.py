@@ -122,16 +122,14 @@ def test_advertise(plugin_base):
                             "name": "read_file",
                             "input": ["string"],
                             "family": "filesystem",
-                            "tooltip": "Provided a full directory path, this function \
-                            reads a file.",
+                            "tooltip": "Provided a full directory path, this function reads a file.",
                             "reference": "http://reference.url"
                         },
                         {
                             "name": "send_file",
                             "input": ["string", "binary"],
                             "family": "filesystem",
-                            "tooltip": "Provided a file and destination directory, \
-                            this function sends a file.",
+                            "tooltip": "Provided a file and destination directory, this function sends a file.",
                             "reference": "http://reference.url"
                         }
                     ]
