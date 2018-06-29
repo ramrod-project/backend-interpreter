@@ -51,7 +51,7 @@ class DummyDBInterface():
         self.result = output_data
     
     def update_job_error(self, data):
-        self.result["job"]["Status"] = data
+        self.result["job"]["Status"] = "Error"
 
 
 class SamplePlugin(controller_plugin.ControllerPlugin):
