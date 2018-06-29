@@ -124,9 +124,9 @@ class RethinkInterface:
             )
 
         if job["Status"] == "Ready":
-            self._update_job_status({"job": job_id, "status": "Pending"})
+            self.update_job_status({"job": job_id, "status": "Pending"})
         elif job["Status"] == "Pending":
-            self._update_job_status({"job": job_id, "status": "Done"})
+            self.update_job_status({"job": job_id, "status": "Done"})
         else:
             self._log(
                 "".join([
@@ -144,7 +144,7 @@ class RethinkInterface:
         Arguments:
             job_id {int} -- The job's id from the ID table
         """
-        self._update_job_status({"job": job_id, "status": "Error"})
+        self.update_job_status({"job": job_id, "status": "Error"})
 
     def check_for_plugin(self, plugin_name):
         """Check if a plugin exists
@@ -168,7 +168,7 @@ class RethinkInterface:
             return False
 
 
-    def _update_job_status(self, job_data):
+    def update_job_status(self, job_data):
         """Update's the specified job's status to the given status
 
 
@@ -214,8 +214,7 @@ class RethinkInterface:
         else:
             err = "".join([
                 job_data["status"],
-                " is not in ",
-                self.VALID_STATES
+                " is not a valid state."
             ])
             raise InvalidStatus(err)
 
