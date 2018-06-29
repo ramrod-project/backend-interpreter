@@ -180,43 +180,34 @@ class RethinkInterface:
             Interpreter should in most cases be setting "Ready" status to
             "Pending" or the "Pending" status to either "Done" or "Error"
         """
-
-        if job_data["status"] in self.VALID_STATES:
-            try:
-                rethinkdb.db("Brain").table("Jobs").get(
-                    job_data["job"]
-                ).update({"Status": job_data["status"]}).run(
-                    self.rethink_connection
-                )
-
-                outputref = rethinkdb.db("Brain").table("Outputs").filter(
-                    rethinkdb.row["OutputJob"]["id"] == job_data["job"]
-                ).run(self.rethink_connection)
-
-                if outputref != None:
-                    rethinkdb.db("Brain").table("Outputs").filter(
-                        rethinkdb.row["OutputJob"]["id"] == job_data["job"]
-                    ).update({
-                        "OutputJob": {
-                            "Status": job_data["status"]
-                        }
-                    }).run(self.rethink_connection)
-            except rethinkdb.ReqlDriverError:
-                self._log(
-                    "".join([
-                        "Unable to update job '",
-                        job_data["job"],
-                        "' to ",
-                        job_data["status"]
-                    ]),
-                    20
-                )
-        else:
-            err = "".join([
+        if job_data["status"] not in self.VALID_STATES:
+            raise InvalidStatus("".join([
                 job_data["status"],
                 " is not a valid state."
-            ])
-            raise InvalidStatus(err)
+            ]))
+        try:
+            rethinkdb.db("Brain").table("Jobs").get(
+                job_data["job"]
+            ).update({
+                "Status": job_data["status"]
+            }).run(self.rethink_connection)
+            rethinkdb.db("Brain").table("Outputs").filter(
+                rethinkdb.row["OutputJob"]["id"] == job_data["job"]
+            ).update({
+                "OutputJob": {
+                    "Status": job_data["status"]
+                }
+            }).run(self.rethink_connection)
+        except rethinkdb.ReqlDriverError:
+            self._log(
+                "".join([
+                    "Unable to update job '",
+                    job_data["job"],
+                    "' to ",
+                    job_data["status"]
+                ]),
+                20
+            )
 
     def send_output(self, output_data):
         """sends the plugin's output message to the Outputs table
