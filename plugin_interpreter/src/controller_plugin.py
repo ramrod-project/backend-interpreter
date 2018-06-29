@@ -191,10 +191,10 @@ class ControllerPlugin(ABC):
     @staticmethod
     def get_command(job):
         """return's the job's command name
-        
+
         Arguments:
             job {dict} -- the job whose command to get
-        
+
         Returns:
             string -- the name of the command for that job
         """
@@ -204,10 +204,10 @@ class ControllerPlugin(ABC):
     @staticmethod
     def get_job_id(job):
         """returns the id of the job
-        
+
         Arguments:
             job {dict} -- the job which id to go
-        
+
         Returns:
             string -- the id of the job
         """
