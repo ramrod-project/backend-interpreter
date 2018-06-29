@@ -51,7 +51,7 @@ class DummyDBInterface():
         self.result = output_data
     
     def update_job_error(self, data):
-        self.result["status"] = data
+        self.result["job"]["Status"] = data
 
 
 class SamplePlugin(controller_plugin.ControllerPlugin):
@@ -194,4 +194,4 @@ def test_respond_to_job(plugin_base):
     plugin_base.respond_error(SAMPLE_JOB, "error")
     assert plugin_base.DBI.result["job"] == SAMPLE_JOB
     assert plugin_base.DBI.result["output"] == "error"
-    assert plugin_base.DBI.result["status"] == "Error"
+    assert plugin_base.DBI.result["job"]["Status"] == "Error"
