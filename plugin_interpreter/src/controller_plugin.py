@@ -157,19 +157,6 @@ class ControllerPlugin(ABC):
 
         self.DBI.update_job(job_id)
 
-    def _update_job_error(self, job, msg=""):
-        """updates a job's status to error and outputs an error message
-        to the output table. This indicates that a command has in some way
-        failed to execute correctly.
-
-        Arguments:
-            job {dict} -- The job that errored
-            msg {str|int|byte|float} -- (optional) The error message to display
-        """
-
-        self._respond_output(job, msg)
-        self.DBI.update_job_error(job["id"])
-
     def _update_job_status(self, job_id, status):
         """Updates a job's status to a specified status. _update_job should be
         used in most cases.
@@ -224,7 +211,7 @@ class ControllerPlugin(ABC):
         """
         self.DBI.create_plugin_table((self.name, self.functionality))
 
-    def _request_job(self):
+    def request_job(self):
         """Request next job
 
         This first checks the receive queue to see if there is
@@ -252,13 +239,13 @@ class ControllerPlugin(ABC):
             self._update_job(job["id"])
         return job
 
-    def _respond_output(self, job, output):
+    def respond_output(self, job, output):
         """Provide job response output
 
         This method is a helper method for the plugin
         which is inheriting this base class. The plugin
         must pass this function the job object it
-        received from the _request_job helper function
+        received from the request_job helper function
         and the corresponding output from the
         command.
 
@@ -277,6 +264,19 @@ class ControllerPlugin(ABC):
             "output": output
         })
         self._update_job(job["id"])
+    
+    def respond_error(self, job, msg=""):
+        """updates a job's status to error and outputs an error message
+        to the output table. This indicates that a command has in some way
+        failed to execute correctly.
+
+        Arguments:
+            job {dict} -- The job that errored
+            msg {str|int|byte|float} -- (optional) The error message to display
+        """
+
+        self.respond_output(job, msg)
+        self.DBI.update_job_error(job["id"])
 
     @abstractmethod
     def _stop(self, **kwargs):

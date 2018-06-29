@@ -76,7 +76,7 @@ class IntegrationTest(controller_plugin.ControllerPlugin):
             """Pull a job"""
             now = time()
             while time() - now < 3:
-                new_job = self._request_job()
+                new_job = self.request_job()
                 if new_job is not None:
                     break
                 sleep(0.1)
@@ -85,7 +85,7 @@ class IntegrationTest(controller_plugin.ControllerPlugin):
         elif environ["TEST_SELECTION"] == "TEST2":
             """Send output"""
             output = "test output"
-            self._respond_output(SAMPLE_JOB, output)
+            self.respond_output(SAMPLE_JOB, output)
         elif environ["TEST_SELECTION"] == "TEST3":
             """Update job status"""
             self._update_job_status(SAMPLE_JOB["id"],"Pending")

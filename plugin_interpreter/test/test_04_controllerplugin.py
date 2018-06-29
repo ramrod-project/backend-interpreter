@@ -148,7 +148,7 @@ def test_request_job(plugin_base):
     TO_PLUGIN.put(SAMPLE_JOB)
     now = time()
     while time() - now < 3:
-        result = plugin_base._request_job()
+        result = plugin_base.request_job()
         if result is not None:
             break
         sleep(0.1)
@@ -166,24 +166,28 @@ def test_respond_to_job(plugin_base):
         instance needed for testing.
     """
     with raises(TypeError):
-        plugin_base._respond_output(SAMPLE_JOB, None)
+        plugin_base.respond_output(SAMPLE_JOB, None)
     with raises(TypeError):
-        plugin_base._respond_output(SAMPLE_JOB, DummyDBInterface)
+        plugin_base.respond_output(SAMPLE_JOB, DummyDBInterface)
 
-    plugin_base._respond_output(SAMPLE_JOB, "Sample Job Response")
+    plugin_base.respond_output(SAMPLE_JOB, "Sample Job Response")
     assert plugin_base.DBI.result["job"] == SAMPLE_JOB
     assert plugin_base.DBI.result["output"] == "Sample Job Response"
     assert plugin_base.get_job_id(SAMPLE_JOB) == SAMPLE_JOB["id"]
     assert plugin_base.get_command(SAMPLE_JOB) == SAMPLE_JOB["JobCommand"]
 
-    plugin_base._respond_output(SAMPLE_JOB, bytes("Sample Job Response", "utf-8"))
+    plugin_base.respond_output(SAMPLE_JOB, bytes("Sample Job Response", "utf-8"))
     assert plugin_base.DBI.result["job"] == SAMPLE_JOB
     assert plugin_base.DBI.result["output"] == bytes("Sample Job Response", "utf-8")
 
-    plugin_base._respond_output(SAMPLE_JOB, 666)
+    plugin_base.respond_output(SAMPLE_JOB, 666)
     assert plugin_base.DBI.result["job"] == SAMPLE_JOB
     assert plugin_base.DBI.result["output"] == 666
 
-    plugin_base._respond_output(SAMPLE_JOB, 42.42)
+    plugin_base.respond_output(SAMPLE_JOB, 42.42)
     assert plugin_base.DBI.result["job"] == SAMPLE_JOB
     assert plugin_base.DBI.result["output"] == 42.42
+
+    plugin_base.respond_error(SAMPLE_JOB, "error")
+    assert plugin_base.DBI.result["job"] == SAMPLE_JOB
+    assert plugin_base.DBI.result["output"] == "error"
