@@ -188,6 +188,32 @@ class ControllerPlugin(ABC):
             }
         )
 
+    @staticmethod
+    def get_command(job):
+        """return's the job's command name
+
+        Arguments:
+            job {dict} -- the job whose command to get
+
+        Returns:
+            string -- the name of the command for that job
+        """
+
+        return job["JobCommand"]
+
+    @staticmethod
+    def get_job_id(job):
+        """returns the id of the job
+
+        Arguments:
+            job {dict} -- the job which id to go
+
+        Returns:
+            string -- the id of the job
+        """
+
+        return job["id"]
+
     def _advertise_functionality(self):
         """Advertises functionality to database
 
@@ -204,7 +230,8 @@ class ControllerPlugin(ABC):
         This first checks the receive queue to see if there is
         a job waiting, then if the queue is empty, it sends a
         request to the database handler to reply with the next
-        new job whose start time is in the past.
+        new job whose start time is in the past. If a job is
+        found that job's status is updated to Pending
 
         Returns:
             {dict} -- a dictionary describing the job containing
@@ -241,7 +268,7 @@ class ControllerPlugin(ABC):
         Arguments:
             job {dict} -- the dictionary object for
             the job received from the database/frontend.
-            output {} -- [description]
+            output {str} -- The data to send to the database
         """
         if not isinstance(output, (bytes, str, int, float)):
             raise TypeError
