@@ -99,8 +99,11 @@ class ControllerPlugin(ABC):
         curr_dir = ospath.dirname(ospath.dirname(__file__))
         # filename = curr_dir + "/plugins/__" + self.name + "/" + self.name + ".json"
         filename = "{}/plugins/__{name}/{name}.json".format(curr_dir, name = self.name)
-        with open(filename) as f:
-            self.functionality = json.load(f)
+        try:
+            with open(filename) as f:
+                self.functionality = json.load(f)
+        except (IOError, json.JSONDecodeError):
+            self.functionality = [{"name": "Functionality Error",}]
 
         pprint(self.functionality)
 
