@@ -8,7 +8,7 @@ from abc import ABC, abstractmethod
 from os import environ
 from queue import Empty
 import json
-from pprint import pprint
+from sys import stderr
 from os import environ, path as ospath, name as osname
 
 from src import rethink_interface
@@ -199,7 +199,9 @@ class ControllerPlugin(ABC):
 
     def _request_job(self):
         """ DEPRECATED"""
-        print("_request_job() is deprecated. use request_job() instead")
+        stderr.write(
+            "_request_job() is deprecated. use request_job() instead\n"
+        )
         self.request_job()
 
     def request_job(self):
@@ -232,7 +234,9 @@ class ControllerPlugin(ABC):
 
     def _respond_output(self, job, output):
         """DEPRECATED"""
-        print("_respond_output is deprecated, use respond_output instead")
+        stderr.write(
+            "_respond_output is deprecated, use respond_output instead\n"
+        )
         self._respond_output(job, output)
 
     def respond_output(self, job, output):
@@ -263,7 +267,9 @@ class ControllerPlugin(ABC):
 
     def _update_job_error(self, job, msg=""):
         """DEPRECATED"""
-        print("_update_job_error is deprecated, use respond_error instead")
+        stderr.write(
+            "_update_job_error is deprecated, use respond_error instead\n"
+        )
         self.respond_error(job, msg)
 
     def respond_error(self, job, msg=""):
