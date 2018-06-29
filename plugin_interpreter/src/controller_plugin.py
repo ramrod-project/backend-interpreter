@@ -48,6 +48,7 @@ class ControllerPlugin(ABC):
         self.db_recv = None
         self.signal = None
         self.DBI = None
+        self.name = name
         self.port = int(environ["PORT"])
         if functionality:
             self.functionality = functionality
@@ -88,7 +89,6 @@ class ControllerPlugin(ABC):
         function usage. It will be displayed to the user through
         the interface.
         """
-        self.name = name
         """Define server port/proto requirement (TCP/UDP) so docker can be run
         properly."""
         super().__init__()
