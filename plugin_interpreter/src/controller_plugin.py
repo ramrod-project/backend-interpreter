@@ -45,12 +45,13 @@ class ControllerPlugin(ABC):
     exported plugin controller class.
     """
 
-    def __init__(self, name, functionality = {}):
+    def __init__(self, name, functionality = None):
         self.db_recv = None
         self.signal = None
         self.DBI = None
         self.name = name
         self.port = int(environ["PORT"])
+        self.functionality = {}
         if functionality:
             self.functionality = functionality
         else:
@@ -95,7 +96,8 @@ class ControllerPlugin(ABC):
         super().__init__()
 
     def _read_functionality(self):
-        filename = "plugins/__" + self.name + "/" + self.name + ".json"
+        curr_dir = ospath.dirname(__file__)
+        filename = curr_dir + "/plugins/__" + self.name + "/" + self.name + ".json"
         with open(filename) as f:
             self.functionality = json.load(f)
 
