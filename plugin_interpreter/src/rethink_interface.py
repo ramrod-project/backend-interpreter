@@ -17,6 +17,7 @@ from brain.brain_pb2 import Commands
 from brain.checks import verify
 from brain.queries import plugin_exists, create_plugin
 
+
 class InvalidStatus(Exception):
     """Exception raised when job status
     is invalid.
@@ -165,7 +166,7 @@ class RethinkInterface:
             return plugin_exists(plugin_name, self.rethink_connection)
         except ValueError:
             return False
- 
+
     def update_job_status(self, job_data):
         """Update's the specified job's status to the given status
 
