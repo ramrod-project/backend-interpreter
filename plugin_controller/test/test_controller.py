@@ -13,7 +13,7 @@ CLIENT = docker.from_env()
 
 syspath.append(CONTROLLER_PATH)
 
-from server import *
+from ..controller import *
 
 @fixture(scope="module")
 def env():
@@ -31,88 +31,66 @@ def env():
     environ["LOGLEVEL"] = ""
 
 @fixture(scope="function")
-def logger():
-    """Give a test logger
-    """
-    yield logging.getLogger('test')
-
-@fixture(scope="function")
 def container():
     """Give a container to a test
     """
     CLIENT.networks.create("test")
-    yield CLIENT.containers.run(
+    con = CLIENT.containers.run(
         "alpine:3.7",
         name="testcontainer",
         command="sleep 30",
         detach=True,
         network="test"
     )
+    yield con
+    try:
+        con.stop()
+    except:
+        pass
+    try:
+        con.remove()
+    except:
+        pass
 
-def test_set_logging(env, logger):
-    """Tests the set_logging function
+@fixture(scope="function")
+def controller():
+    """Give a Controller
     """
-    set_logging(logger)
-    assert logger.getEffectiveLevel() == logging.DEBUG, "Logging level should be DEBUG!"
-    environ["LOGLEVEL"] = "INFO"
-    set_logging(logger)
-    assert logger.getEffectiveLevel() == logging.INFO, "Logging level should be INFO!"
-    environ["LOGLEVEL"] = "WARNING"
-    set_logging(logger)
-    assert logger.getEffectiveLevel() == logging.WARNING, "Logging level should be WARNING!"
-    environ["LOGLEVEL"] = "ERROR"
-    set_logging(logger)
-    assert logger.getEffectiveLevel() == logging.ERROR, "Logging level should be ERROR!"
-    environ["LOGLEVEL"] = "CRITICAL"
-    set_logging(logger)
-    assert logger.getEffectiveLevel() == logging.CRITICAL, "Logging level should be CRITICAL!"
-    environ["LOGLEVEL"] = ""
-    with raises(SystemExit):
-        set_logging(logger)
+    return Controller("test", "dev")
 
-def test_dev_db(env):
+def test_dev_db(env, controller):
     """Test the dev_db function
     """
-    result = dev_db({28015: None})
-    assert not result, "Should return False when port is already allocated!"
-    port_mapping = {}
-    result = dev_db(port_mapping)
+    result = controller.dev_db()
     assert result, "Should return True on succesful creation of db"
-    assert isinstance(port_mapping[28015], docker.models.containers.Container), "dev_db should set 28015 key to Container object!"
-    assert port_mapping[28015].name == "rethinkdb", "Rethink container name should be rethinkdb!"
-    assert CLIENT.containers.get("rethinkdb").status == "running", "Rethinkdb container should be running!"
+    con = CLIENT.containers.get("rethinkdb")
+    assert con.status == "running", "Rethinkdb container should be running!"
     assert "test" in [n.name for n in CLIENT.networks.list()], "dev_db should create 'test' network in DEV environment!"
-    port_mapping[28015].stop()
-    CLIENT.networks.prune()
-
-def test_generate_port(env):
-    port_mapping = {}
-    port = generate_port(port_mapping)
-    assert 1024 < port <= 65535, "Port must be within valid range 1025-65535!"
-
-def test_launch_container(env):
-    """Tests the launch_container function
-    """
-    with raises(AssertionError):
-        launch_container("Harness", 6000, 5005, "RTCP")
-    with raises(AssertionError):
-        launch_container("Harness", 6000, 999999, "TCP")
-    CLIENT.networks.create("test")
-    con = launch_container("Harness", 6000, 5005, "TCP")
-    sleep(3)
-    con = CLIENT.containers.get(con.id)
-    assert con.status == "running"
-    assert con.name == "Harness-5005_TCP"
     con.stop()
     CLIENT.networks.prune()
 
-def test_stop_containers(env, container):
+def test_launch_container(env, controller):
+    """Tests the launch_container function
+    """
+    with raises(TypeError):
+        controller.launch_plugin("Harness", {6000: 5005}, "RTCP")
+    with raises(ValueError):
+        controller.launch_plugin("Harness", {6000: 999999}, "TCP")
+    CLIENT.networks.create("test")
+    con = controller.launch_plugin("Harness", {6000: 5005}, "TCP")
+    sleep(3)
+    con = CLIENT.containers.get(con.id)
+    assert con.status == "running"
+    assert con.name == "Harness"
+    con.stop()
+    CLIENT.networks.prune()
+
+def test_stop_containers(env, container, controller):
     """Tests the teardown function
     """
     assert container
-    stop_containers([container])
+    controller.stop_plugin("testcontainer")
     sleep(1)
     con = CLIENT.containers.get("testcontainer")
     assert con.status == "exited"
     con.remove()
-    stop_containers([container])
