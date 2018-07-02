@@ -49,6 +49,9 @@ class DummyDBInterface():
 
     def send_output(self, output_data):
         self.result = output_data
+    
+    def update_job_error(self, data):
+        self.result["job"]["Status"] = "Error"
 
 
 class SamplePlugin(controller_plugin.ControllerPlugin):
@@ -68,25 +71,7 @@ class SamplePlugin(controller_plugin.ControllerPlugin):
 
     def __init__(self):
         super().__init__(
-            "SamplePlugin",
-            [
-                {
-                    "name": "read_file",
-                    "input": ["string"],
-                    "family": "filesystem",
-                    "tooltip": "Provided a full directory path, this function \
-                    reads a file.",
-                    "reference": "http://reference.url"
-                },
-                {
-                    "name": "send_file",
-                    "input": ["string", "binary"],
-                    "family": "filesystem",
-                    "tooltip": "Provided a file and destination directory, \
-                    this function sends a file.",
-                    "reference": "http://reference.url"
-                }
-            ]
+            "SamplePlugin"
         )
         self.DBI = DummyDBInterface()
 
@@ -132,8 +117,25 @@ def test_advertise(plugin_base):
     """
     plugin_base._advertise_functionality()
     result = plugin_base.DBI.result
+    functionality = [
+                        {
+                            "CommandName": "read_file",
+                            "Tooltip": "Provided a full directory path, this function reads a file.",
+                            "Output": False,
+                            "Inputs": [],
+                            "OptionalInputs": []
+                        },
+                        {
+                            "CommandName": "send_file",
+                            "Tooltip": "Provided a file and destination directory, this function sends a file.",
+                            "Output": False,
+                            "Inputs": [],
+                            "OptionalInputs": []
+                        }
+                    ]
     assert result[0] == "SamplePlugin"
-    assert result[1] == plugin_base.functionality
+    assert result[1] == functionality
+    assert plugin_base.functionality == functionality
 
 def test_request_job(plugin_base):
     """Test requesting a job
@@ -148,7 +150,7 @@ def test_request_job(plugin_base):
     TO_PLUGIN.put(SAMPLE_JOB)
     now = time()
     while time() - now < 3:
-        result = plugin_base._request_job()
+        result = plugin_base.request_job()
         if result is not None:
             break
         sleep(0.1)
@@ -166,24 +168,29 @@ def test_respond_to_job(plugin_base):
         instance needed for testing.
     """
     with raises(TypeError):
-        plugin_base._respond_output(SAMPLE_JOB, None)
+        plugin_base.respond_output(SAMPLE_JOB, None)
     with raises(TypeError):
-        plugin_base._respond_output(SAMPLE_JOB, DummyDBInterface)
+        plugin_base.respond_output(SAMPLE_JOB, DummyDBInterface)
 
-    plugin_base._respond_output(SAMPLE_JOB, "Sample Job Response")
+    plugin_base.respond_output(SAMPLE_JOB, "Sample Job Response")
     assert plugin_base.DBI.result["job"] == SAMPLE_JOB
     assert plugin_base.DBI.result["output"] == "Sample Job Response"
     assert plugin_base.get_job_id(SAMPLE_JOB) == SAMPLE_JOB["id"]
     assert plugin_base.get_command(SAMPLE_JOB) == SAMPLE_JOB["JobCommand"]
 
-    plugin_base._respond_output(SAMPLE_JOB, bytes("Sample Job Response", "utf-8"))
+    plugin_base.respond_output(SAMPLE_JOB, bytes("Sample Job Response", "utf-8"))
     assert plugin_base.DBI.result["job"] == SAMPLE_JOB
     assert plugin_base.DBI.result["output"] == bytes("Sample Job Response", "utf-8")
 
-    plugin_base._respond_output(SAMPLE_JOB, 666)
+    plugin_base.respond_output(SAMPLE_JOB, 666)
     assert plugin_base.DBI.result["job"] == SAMPLE_JOB
     assert plugin_base.DBI.result["output"] == 666
 
-    plugin_base._respond_output(SAMPLE_JOB, 42.42)
+    plugin_base.respond_output(SAMPLE_JOB, 42.42)
     assert plugin_base.DBI.result["job"] == SAMPLE_JOB
     assert plugin_base.DBI.result["output"] == 42.42
+
+    plugin_base.respond_error(SAMPLE_JOB, "error")
+    assert plugin_base.DBI.result["job"] == SAMPLE_JOB
+    assert plugin_base.DBI.result["output"] == "error"
+    assert plugin_base.DBI.result["job"]["Status"] == "Error"
