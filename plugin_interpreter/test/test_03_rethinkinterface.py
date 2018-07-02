@@ -197,8 +197,8 @@ def test_rethink_plugin_create(brain, rethink):
     plugin_data = ("TestTable",command_list)
     # rethink.create_plugin_table(plugin_data)
     tablecheck = rethinkdb.db("Plugins").table("TestTable").run(rethink.rethink_connection)
-    assert compare_to(tablecheck, command_list)
     print(list(tablecheck))
+    assert compare_to(tablecheck, command_list)
     assert any("ExtraTestKey" in command for command in list(tablecheck))
 
 def test_update_job_status(brain, rethink):
