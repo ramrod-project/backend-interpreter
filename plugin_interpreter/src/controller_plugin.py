@@ -154,7 +154,7 @@ class ControllerPlugin(ABC):
             and "Active"
         """
 
-        self.DBI._update_job_status(
+        self.DBI.update_job_status(
             {
                 "job": job_id,
                 "status": status
