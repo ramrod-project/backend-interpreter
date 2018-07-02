@@ -187,7 +187,7 @@ class RethinkInterface:
             {bool} -- True if found else False
         """
         try:
-            return plugin_exists(self.plugin_name, self.rethink_connection)
+            return plugin_exists(plugin_name, self.rethink_connection)
         except ValueError:
             return False
 
