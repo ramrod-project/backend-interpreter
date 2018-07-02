@@ -257,7 +257,6 @@ class RethinkInterface:
         """
 
         self._create_table("Plugins", plugin_data[0])
-        dict_list = {"Commands": plugin_data[1]}
         if verify(plugin_data[1], Commands()):
             try:
                 rethinkdb.db("Plugins").table(plugin_data[0]).insert(
