@@ -256,8 +256,8 @@ class RethinkInterface:
             the plugin and the list of Commands (plguin_name, command_list)
         """
 
-        self._create_table("Plugins", plugin_data[0])
         if verify(plugin_data[1], Commands()):
+            self._create_table("Plugins", plugin_data[0])
             try:
                 rethinkdb.db("Plugins").table(plugin_data[0]).insert(
                     plugin_data[1],

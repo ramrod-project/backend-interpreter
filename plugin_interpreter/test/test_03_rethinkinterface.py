@@ -130,6 +130,8 @@ def compare_to(tablecheck, compare_list):
         boolean -- whether or not items in table check are in compare_list
         if any items in tablecheck are not in compare_list return false
     """
+    if tablecheck.len() is 0:
+        return False
     for i in tablecheck:
         if i not in compare_list:
             return False
@@ -150,15 +152,17 @@ def test_rethink_plugin_create(brain, rethink):
     #test adding a valid table
     command_list = [{
                 "CommandName": "test_func_1",
-                "Input": ["string"],
-                "Output": "string",
-                "Tooltip": "This is a test"
+                "Input": [],
+                "Output": True,
+                "Tooltip": "This is a test",
+                "OptionalInputs": []
             },
             {
                 "CommandName": "test_func_2",
                 "Input": ["string"],
-                "Output": "string",
+                "Output": False,
                 "Tooltip": "This is also a test"
+                "OptionalInputs": []
             }]
     plugin_data = ("TestTable",command_list)
     rethink.create_plugin_table(plugin_data)
@@ -169,21 +173,24 @@ def test_rethink_plugin_create(brain, rethink):
     #test updating a table
     command_list = [{
                 "CommandName": "test_func_1",
-                "Input": ["string"],
-                "Output": "string",
-                "Tooltip": "This is a test"
+                "Input": [],
+                "Output": True,
+                "Tooltip": "This is a test",
+                "OptionalInputs": []
             },
             {
                 "CommandName": "test_func_2",
                 "Input": ["string"],
-                "Output": "string",
+                "Output": False,
                 "Tooltip": "This is also a test"
+                "OptionalInputs": []
             },
             {
                 "CommandName": "test_func_3",
                 "Input": [],
-                "Output": "",
+                "Output": True,
                 "Tooltip": "a bonus command"
+                "OptionalInputs": []
             }]
     plugin_data = ("TestTable",command_list)
     rethink.create_plugin_table(plugin_data)
