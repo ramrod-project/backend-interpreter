@@ -13,8 +13,8 @@ import threading
 import logging
 
 from brain import connect, r as rethinkdb
-from brain.checks import verify
 from brain.brain_pb2 import Commands
+from brain.checks import verify
 from brain.queries import plugin_exists, create_plugin
 
 class InvalidStatus(Exception):
