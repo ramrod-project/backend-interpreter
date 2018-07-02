@@ -182,14 +182,14 @@ def test_rethink_plugin_create(brain, rethink):
                 "CommandName": "test_func_2",
                 "Input": ["string"],
                 "Output": False,
-                "Tooltip": "This is also a test"
+                "Tooltip": "This is also a test",
                 "OptionalInputs": []
             },
             {
                 "CommandName": "test_func_3",
                 "Input": [],
                 "Output": True,
-                "Tooltip": "a bonus command"
+                "Tooltip": "a bonus command",
                 "OptionalInputs": []
             }]
     plugin_data = ("TestTable",command_list)
