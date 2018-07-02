@@ -138,23 +138,6 @@ def compare_to(tablecheck, compare_list):
 def test_rethink_setup(brain, rethink):
     assert isinstance(rethink, rethink_interface.RethinkInterface)
 
-def test_validate_db(brain, rethink, rethink_empty):
-    """Tests that the rethink interface can validate that the database
-    has all of the requisite databases and tables pre populated, and
-    can return a connection to the database.
-    
-    Arguments:
-        rethink {Fixture} -- An instance of rethink interface
-    """
-    result = rethink_interface.RethinkInterface.validate_db(rethink.rethink_connection)
-    assert isinstance(result, rethinkdb.net.DefaultConnection)
-    assert rethinkdb.db_list().run(result)
-    with raises(SystemExit):
-        _ = rethink_interface.RethinkInterface.validate_db(rethink_empty)
-    rethink.rethink_connection.close()
-    with raises(SystemExit):
-        _ = rethink_interface.RethinkInterface.validate_db(rethink.rethink_connection)
-
 def test_rethink_plugin_create(brain, rethink):
     """Tests if the create_plugin_table() function can successfully add a table to
     the plugin database and fill it with Commands. it then tests if the table
@@ -498,7 +481,7 @@ def test_changefeed_disconnect(brain, rethink):
     """
     val = Value(c_bool, False)
     # rethink.logger = mock_logger()
-    feed_conn_test = rethink.connect_to_db(rethink.host, rethink.port)
+    feed_conn_test = connect(host=rethink.host, port=rethink.port)
     thread_test = Thread(
         target=rethink.changefeed_thread,
         args=(val, feed_conn_test)
