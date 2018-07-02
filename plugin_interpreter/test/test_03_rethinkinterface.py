@@ -130,9 +130,10 @@ def compare_to(tablecheck, compare_list):
         boolean -- whether or not items in table check are in compare_list
         if any items in tablecheck are not in compare_list return false
     """
-    if tablecheck.len() is 0:
+    table_list = list(tablecheck)
+    if len(table_list) is 0:
         return False
-    for i in tablecheck:
+    for i in table_list:
         if i not in compare_list:
             return False
     return True
