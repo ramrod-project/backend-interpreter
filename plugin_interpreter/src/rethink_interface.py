@@ -13,7 +13,9 @@ import threading
 import logging
 
 from brain import connect, r as rethinkdb
-
+from brain.queries import plugin_exists, create_plugin
+from brain.checks import verify
+from brain.brain_pb2 import Commands
 
 class InvalidStatus(Exception):
     """Exception raised when job status
@@ -185,11 +187,8 @@ class RethinkInterface:
             {bool} -- True if found else False
         """
         try:
-            rethinkdb.db("Plugins").table(plugin_name).run(
-                self.validate_db(self.rethink_connection)
-            )
-            return True
-        except rethinkdb.ReqlOpFailedError:
+            return plugin_exists(self.plugin_name, self.rethink_connection)
+        except ValueError:
             return False
 
     @staticmethod
@@ -337,21 +336,21 @@ class RethinkInterface:
         """
 
         self._create_table("Plugins", plugin_data[0])
-
-        try:
-            rethinkdb.db("Plugins").table(plugin_data[0]).insert(
-                plugin_data[1],
-                conflict="update"
-            ).run(self.rethink_connection)
-        except rethinkdb.ReqlDriverError:
-            self._log(
-                "".join([
-                    "Unable to add command to table '",
-                    plugin_data[0],
-                    "'"
-                ]),
-                20
-            )
+        if verify(plugin_data[1], Commands()):
+            try:
+                rethinkdb.db("Plugins").table(plugin_data[0]).insert(
+                    plugin_data[1],
+                    conflict="update"
+                ).run(self.rethink_connection)
+            except rethinkdb.ReqlDriverError:
+                self._log(
+                    "".join([
+                        "Unable to add command to table '",
+                        plugin_data[0],
+                        "'"
+                    ]),
+                    20
+                )
 
     def _log(self, log, level):
         date = asctime(gmtime(time()))
@@ -389,10 +388,7 @@ class RethinkInterface:
         """
         try:
             if database_name == "Plugins":
-                rethinkdb.db(database_name).table_create(
-                    table_name,
-                    primary_key="CommandName"
-                ).run(self.rethink_connection)
+                create_plugin(table_name, self.rethink_connection)
             else:
                 rethinkdb.db(database_name).table_create(
                     table_name
