@@ -197,9 +197,10 @@ def test_rethink_plugin_create(brain, rethink):
     plugin_data = ("TestTable",command_list)
     rethink.create_plugin_table(plugin_data)
     tablecheck = rethinkdb.db("Plugins").table("TestTable").run(rethink.rethink_connection)
-    print(list(tablecheck))
+    table_list = list(tablecheck)
+    print(table_list)
     # assert compare_to(list(tablecheck), command_list)
-    assert any("ExtraTestKey" in command for command in list(tablecheck))
+    assert any("ExtraTestKey" in command for command in table_list)
 
 def test_update_job_status(brain, rethink):
     """Tests update_job() by placing a job in the Jobs table and calling 
