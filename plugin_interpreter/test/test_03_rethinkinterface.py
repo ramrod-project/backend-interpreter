@@ -468,8 +468,8 @@ def test_get_job(brain, rethink):
         "StartTime" : 0
     }
     #insert job
-    rethink_name = rethink.name
-    rethink.name = "getter"
+    rethink_name = rethink.plugin_name
+    rethink.plugin_name = "getter"
     rethinkdb.db("Brain").table("Jobs").insert(new_job).run(rethink.rethink_connection)
     #get job
     job_check = rethink.get_job()
@@ -477,7 +477,7 @@ def test_get_job(brain, rethink):
     assert job_check == new_job
     job_check = rethink.get_job()
     assert job_check == None
-    rethink.name = rethink_name
+    rethink.plugin_name = rethink_name
 
 def test_update_job_bad_id(brain, rethink):
     """Tests that a bad id to the update_job function
