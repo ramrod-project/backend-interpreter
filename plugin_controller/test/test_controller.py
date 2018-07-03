@@ -79,7 +79,7 @@ def give_a_container(image="alpine:3.7",
 def env():
     """Set the environment variables for module tests
     """
-    environ["STAGE"] = "DEV"
+    environ["STAGE"] = "TESTING"
     environ["LOGLEVEL"] = "DEBUG"
     try:
         if environ["TRAVIS_BRANCH"] not in ["dev, qa, master"]:
@@ -111,7 +111,6 @@ def rethink():
     docker_net_create()
     try:
         tag = environ.get("TRAVIS_BRANCH", "dev").replace("master", "latest")
-        environ["STAGE"] = "TESTING"
     except KeyError:
         tag = "latest"
     con = give_a_container(
@@ -159,12 +158,15 @@ def brain_conn():
     return brain.connect()
 
 def test_dev_db(env, controller):
-    result = controller.dev_db()
-    assert result, "Should return True on succesful creation of db"
+    CLIENT.networks.create("test")
+    controller.dev_db()
+    assert controller.container_mapping["rethinkdb"], "Should contain test db"
     con = CLIENT.containers.get("rethinkdb")
     assert con.status == "running", "Rethinkdb container should be running!"
     assert "test" in [n.name for n in CLIENT.networks.list()], "dev_db should create 'test' network in DEV environment!"
     con.stop()
+    con.wait(timeout=5)
+    con.remove()
     CLIENT.networks.prune()
 
 def test_create_plugin(env, controller, rethink, brain_conn, clear_dbs):

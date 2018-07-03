@@ -58,6 +58,8 @@ class Controller():
         self.network_name = network_name
         self.tag = tag
         self.rethink_host = "rethinkdb"
+        if environ["STAGE"] == "TESTING":
+            self.rethink_host = "localhost"
 
     def _check_db_errors(self, response):
         if response["errors"] > 0:
