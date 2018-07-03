@@ -1,11 +1,10 @@
-"""Controller server
+"""Controller
 
-This is the main server file for the docker
-interpreter controller.
+This is the controller module.
 
 TODO:
-- update all functions to use new brain functions
-- check database instead of local mem
+- Maintain local mapping of plugin names to containers.
+- Use local mapping as cache and update as needed
 """
 import logging
 from os import environ, path as ospath
@@ -79,7 +78,12 @@ class Controller():
         Arguments:
             plugin_data {dict} -- data for plugin
         """
-        result = brain.create_plugin_controller(plugin_data)
+        if plugin_data["Name"] == "":
+            return self._check_db_errors({
+                "errors": 1,
+                "first_error": "Plugin must be given a valid name!"
+            })
+        result = brain.queries.create_plugin_controller(plugin_data)
         return self._check_db_errors(result)
 
     def _create_port(self, port_data):
@@ -97,7 +101,7 @@ class Controller():
         Arguments:
             port_data {dict} -- data for port
         """
-        result = brain.create_port_controller(port_data)
+        result = brain.queries.create_port_controller(port_data)
         return self._check_db_errors(result)
 
     def update_plugin(self, plugin_data):
@@ -109,7 +113,7 @@ class Controller():
         Arguments:
             plugin_data {dict} -- data for plugin.
         """
-        result = brain.update_plugin_controller(plugin_data)
+        result = brain.queries.update_plugin_controller(plugin_data)
         return self._check_db_errors(result)
 
     def dev_db(self):
@@ -199,21 +203,25 @@ class Controller():
             else:
                 port_data["UDPPorts"].append(str(host_port))
 
-        existing = self.get_container_from_name(plugin)
-        if existing:
-            return self.restart_plugin(plugin)
-
-        self.create_plugin({
+        plugin_data = {
             "Name": plugin,
             "State": "Available",
             "DesiredState": "",
             "Interface": "",
             "ExternalPorts": external_ports,
             "InternalPorts": internal_ports
-        })
+        }
+
+        existing = self.get_container_from_name(plugin)
+        if self.restart_plugin(plugin_data):
+            return existing
+
+        self.create_plugin(plugin_data)
 
         self._create_port(port_data)
 
+        # ---Right now only one port mapping per plugin is supported---
+        # ---hence the internal_ports[0].                           ---
         con = CLIENT.containers.run(
             "".join(("ramrodpcp/interpreter-plugin:", self.tag)),
             name=plugin,
@@ -227,9 +235,11 @@ class Controller():
             network=self.network_name,
             ports=ports_config
         )
-        return self.wait_for_container(plugin)
+        if self.wait_for_plugin(plugin_data):
+            return con
+        return None
 
-    def wait_for_container(self, plugin_data):
+    def wait_for_plugin(self, plugin_data):
         """Wait for container to start
         
         Arguments:
@@ -275,7 +285,7 @@ class Controller():
         con.restart()
         plugin_data["State"] = "Restarting"
         self.update_plugin(plugin_data)
-        return self.wait_for_container(plugin_data)
+        return self.wait_for_plugin(plugin_data)
 
     def stop_plugin(self, plugin_data):
         """Stop a plugin by name.
@@ -291,7 +301,7 @@ class Controller():
             con.stop()
             try:
                 con.wait(timeout=5)
-                plugin_data["State"]
+                plugin_data["State"] = "Stopped"
                 self.update_plugin(plugin_data)
                 return True
             except ReadTimeout as ex:
@@ -310,7 +320,7 @@ class Controller():
         Returns:
             {str} -- "Active", "Restarting", or "Stopped"
         """
-        result = brain.get_plugin_by_name_controller(
+        result = brain.queries.get_plugin_by_name_controller(
             plugin_data["Name"]
         )
         if len(result) == 1:

@@ -4,8 +4,6 @@ This is the main server file for the docker
 interpreter controller.
 
 TODO:
-- update all functions to use new brain functions
-- check database instead of local mem
 """
 import logging
 from os import environ, path as ospath
@@ -68,22 +66,23 @@ def main():
     # Check desired state in db
     # if current status =/= desired state, handle it
 
-    plugin_controller.launch_plugin(
+    plugin = plugin_controller.launch_plugin(
         PLUGIN,
         {HOST_PORT: HOST_PORT},
         HOST_PROTO
     )
-    port_mapping[HOST_PORT] = plugin_container
+    # Controller should do this automatically at some point.
+    plugin_controller.container_mapping[PLUGIN] = plugin
 
-    log(
+    plugin_controller.log(
         20,
-        "Containers started, press <CTRL-C> to stop..."
+        "".join((PLUGIN, " started, press <CTRL-C> to stop..."))
     )
     while True:
         try:
             sleep(1)
         except KeyboardInterrupt:
-            stop_all_containers()
+            plugin_controller.stop_all_containers()
             exit(0)
 
 
