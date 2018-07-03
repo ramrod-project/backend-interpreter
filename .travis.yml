@@ -43,6 +43,7 @@ script:
     docker build -t ramrodpcp/interpreter-plugin:$TRAVIS_BRANCH ./plugin_interpreter/; 
     else docker build -t ramrodpcp/backend-interpreter:latest ./plugin_controller/ &&
     docker build -t ramrodpcp/interpreter-plugin:latest ./plugin_interpreter/; fi
+  - docekr network create test
   - if [ "$TRAVIS_BRANCH" != "master"  ]; 
     then docker run -d --name controller -e "STAGE=DEV" -e "LOGLEVEL=DEBUG" -e "TRAVIS_BRANCH=$TRAVIS_BRANCH"
     -v /var/run/docker.sock:/var/run/docker.sock ramrodpcp/backend-interpreter:$TRAVIS_BRANCH;
