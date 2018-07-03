@@ -52,6 +52,9 @@ class DummyDBInterface():
     
     def update_job_error(self, data):
         self.result["job"]["Status"] = "Error"
+    
+    def get_job(self):
+        return SAMPLE_JOB
 
 
 class SamplePlugin(controller_plugin.ControllerPlugin):
