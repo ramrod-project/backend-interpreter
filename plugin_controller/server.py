@@ -5,17 +5,9 @@ interpreter controller.
 
 TODO:
 """
-import logging
-from os import environ, path as ospath
-from random import randint
-import re
-from requests import ReadTimeout
+from os import environ
 from signal import signal, SIGTERM
-from sys import stderr
-from time import asctime, gmtime, sleep, time
-
-import docker
-import brain
+from time import sleep
 
 from . import controller
 
@@ -40,7 +32,8 @@ except KeyError:
 
 
 def main():
-
+    """Main server entry point
+    """
     plugin_controller = controller.Controller(NETWORK_NAME, TAG)
 
     def sigterm_handler(_signo, _stack_frame):
