@@ -62,7 +62,11 @@ class RethinkInterface:
             signal {Value(c_bool)} -- Thread kill signal
             (if True exit).
         """
-        feed_connection = connect(host=self.host)
+        try:
+            feed_connection = connect(host=self.host)
+        except rethinkdb.ReqlDriverError:
+            self._log("Unable to connect with changefeed.", 30)
+            pass
         feed = rethinkdb.db("Brain").table("Jobs").filter(
             (rethinkdb.row["Status"] == "Ready") &
             (rethinkdb.row["JobTarget"]["PluginName"] == self.plugin_name)
