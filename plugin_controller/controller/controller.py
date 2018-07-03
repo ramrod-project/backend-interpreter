@@ -239,11 +239,12 @@ class Controller():
             return con
         return None
 
-    def wait_for_plugin(self, plugin_data):
+    def wait_for_plugin(self, plugin_data, timeout=10):
         """Wait for container to start
         
         Arguments:
             plugin_data {dict} -- plugin data
+            timeout {int} -- timeout ot wait for container
         
         Raises:
             docker.errors.ContainerError -- if container
@@ -255,7 +256,7 @@ class Controller():
         """
         now = time()
         status = None
-        while time() - now < 10:
+        while time() - now < timeout:
             con = self.get_container_from_name(plugin_data["Name"])
             if not con:
                 raise docker.errors.ContainerError
@@ -320,11 +321,16 @@ class Controller():
         Returns:
             {str} -- "Active", "Restarting", or "Stopped"
         """
-        result = brain.queries.get_plugin_by_name_controller(
+        cursor = brain.queries.get_plugin_by_name_controller(
             plugin_data["Name"]
         )
-        if len(result) == 1:
-            return result[0]["State"]
+        try:
+            return cursor.next()["State"]
+        except brain.r.ReqlCursorEmpty:
+            self.log(
+                30,
+                "".join((plugin_data["Name"], " not found in database!"))
+            )
         return None
 
 
@@ -339,7 +345,7 @@ class Controller():
             [''.join(['.*?', c, '.*?']) for c in CONTAINERS_EXCEPTED]
         ))
         containers = []
-        for con in CLIENT.containers.list():
+        for con in CLIENT.containers.list(all=True):
             match = pattern.match(con.name)
             if not match:
                 containers.append(con)
@@ -367,7 +373,6 @@ class Controller():
                     20,
                     "".join((container.name, " not found!"))
                 )
-                continue
         if environ["STAGE"] == "DEV":
             self.log(
                 20,

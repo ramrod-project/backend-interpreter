@@ -25,6 +25,7 @@ install:
   - pip install -r plugin_interpreter/requirements.txt
   - pip install -r plugin_controller/requirements.txt
   - pip install pytest-cov
+  - docker pull alpine:3.7
   - if [ "$TRAVIS_BRANCH" == "master"  ]; 
     then travis_wait 10 docker pull ramrodpcp/database-brain:latest; 
     else travis_wait 10 docker pull ramrodpcp/database-brain:$TRAVIS_BRANCH; fi
