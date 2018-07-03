@@ -80,6 +80,13 @@ class RethinkInterface:
                 break
     
     def get_job(self):
+        """Requests a job from the Brain
+
+        Returns:
+            Dict|None -- returns a dictionary containing a job or none if
+            no jobs are ready
+        """
+
         return get_next_job(self.plugin_name, True, self.rethink_connection)
 
     def start(self, signal):
