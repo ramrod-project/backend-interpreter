@@ -467,13 +467,15 @@ def test_get_job(brain, rethink):
         "Status": "Ready",
         "StartTime" : 0
     }
-    #insert job
+    # insert job
     rethink_name = rethink.plugin_name
     rethink.plugin_name = "getter"
     rethinkdb.db("Brain").table("Jobs").insert(new_job).run(rethink.rethink_connection)
-    #get job
+    # get job
     job_check = rethink.get_job()
-    #check
+    # new job did not have an id, id was added
+    new_job["id"] = job_check["id"]
+    # check
     assert job_check == new_job
     job_check = rethink.get_job()
     assert job_check == None
