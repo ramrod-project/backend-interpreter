@@ -7,16 +7,13 @@ TODO:
 - Use local mapping as cache and update as needed
 """
 import logging
-from os import environ, path as ospath
-from random import randint
+from os import environ
 import re
-from requests import ReadTimeout
-from signal import signal, SIGTERM
-from sys import stderr
 from time import asctime, gmtime, sleep, time
 
 import docker
 import brain
+from requests import ReadTimeout
 
 
 logging.basicConfig(
@@ -42,6 +39,16 @@ LOGLEVELS = {
 
 
 class Controller():
+    """This class is used to control plugin containers.
+
+    Raises:
+        TypeError -- if the protocol given for the port mapping
+        is not 'TCP' or 'UDP'.
+        ValueError -- if the port given for the port mapping
+        is not a valid port number.
+        docker.errors.ContainerError -- if a conainer can't be
+        found.
+    """
 
 
     def __init__(self, network_name, tag):
@@ -74,7 +81,7 @@ class Controller():
             ExternalPort<str>,
             InternalPort<str>
         }
-        
+
         Arguments:
             plugin_data {dict} -- data for plugin
         """
@@ -97,7 +104,7 @@ class Controller():
             TCPPorts<list<str> >,
             UDPPorts<list<str> >
         }
-        
+
         Arguments:
             port_data {dict} -- data for port
         """
@@ -109,7 +116,7 @@ class Controller():
         state of its container.
 
         Takes plugin data and current state.
-        
+
         Arguments:
             plugin_data {dict} -- data for plugin.
         """
@@ -241,15 +248,15 @@ class Controller():
 
     def wait_for_plugin(self, plugin_data, timeout=10):
         """Wait for container to start
-        
+
         Arguments:
             plugin_data {dict} -- plugin data
             timeout {int} -- timeout ot wait for container
-        
+
         Raises:
             docker.errors.ContainerError -- if container
             not found, raise error.
-        
+
         Returns:
             {bool} -- True - container running,
             False - container not running after 10 seconds
@@ -271,7 +278,7 @@ class Controller():
 
     def restart_plugin(self, plugin_data):
         """Restart a plugin by name.
-        
+
         Arguments:
             plugin_data {dict} -- plugin data
 
@@ -290,7 +297,7 @@ class Controller():
 
     def stop_plugin(self, plugin_data):
         """Stop a plugin by name.
-        
+
         Arguments:
             plugin_data {dict} -- plugin data
 
@@ -314,10 +321,10 @@ class Controller():
 
     def plugin_status(self, plugin_data):
         """Return the status of a plugin container
-        
+
         Arguments:
             plugin_data {dict} -- plugin data
-        
+
         Returns:
             {str} -- "Active", "Restarting", or "Stopped"
         """
@@ -332,7 +339,6 @@ class Controller():
                 "".join((plugin_data["Name"], " not found in database!"))
             )
         return None
-
 
     def get_all_containers(self):
         """Return all plugin containers
@@ -382,7 +388,7 @@ class Controller():
 
     def get_container_from_name(self, plugin_name):
         """Return a container object given a plugin name.
-        
+
         Arguments:
             plugin_name {str} -- name of a plugin.
 
