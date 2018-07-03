@@ -223,10 +223,7 @@ class ControllerPlugin(ABC):
                 "JobCommand": {dict} -- command to run
             }
         """
-        try:
-            job = self.db_recv.get_nowait()
-        except Empty:
-            job = None
+        job = self.DBI.get_job()
 
         if job:
             self._update_job(job["id"])

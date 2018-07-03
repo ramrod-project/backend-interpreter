@@ -445,57 +445,39 @@ def test_update_output(brain, rethink):
     output_status = output_cursor.next().get("OutputJob",{}).get("Status")
     assert output_status == "Done"
 
-def test_changefeed(brain, rethink):
-    # Test the thread that monitors the changefeed
-    val = Value(c_bool, False)
-    send, _ = Pipe()
-    rethink.plugin_name = "updater"
-    rethink.start(val)
-    assert rethink.job_fetcher.is_alive()
-    rethinkdb.db("Brain").table("Jobs").delete().run(rethink.rethink_connection)
+def test_get_job(brain, rethink):
+    """tests the ability to get a job
+    
+    Arguments:
+        rethink {RethinkInterface} -- an instance of RethinkInterface
+        for connecting to the test database.
+    """
     new_job = {
         "JobTarget":{
-            "PluginName": "updater",
+            "PluginName": "getter",
             "Location": "8.8.8.8",
             "Port": "80"
         },
         "JobCommand":{
             "CommandName": "TestJob",
             "Tooltip": "for testing updates",
+            "Output": False,
             "Inputs":[]
         },
         "Status": "Ready",
         "StartTime" : 0
     }
+    #insert job
+    rethink_name = rethink.name
+    rethink.name = "getter"
     rethinkdb.db("Brain").table("Jobs").insert(new_job).run(rethink.rethink_connection)
-    sleep(3)
-    test_job = rethink.plugin_queue.get()
-    del test_job["id"]
-    assert test_job == new_job
-    val.value = True
-    sleep(7)
-    assert not rethink.job_fetcher.is_alive()
-
-def test_changefeed_disconnect(brain, rethink):
-    """Tests if changefeed disconnects when connection dies
-    
-    Arguments:
-        rethink {RethinkInterface} -- an instance of RethinkInterface
-        for connecting to the test database.
-    """
-    val = Value(c_bool, False)
-    # rethink.logger = mock_logger()
-    feed_conn_test = connect(host=rethink.host, port=rethink.port)
-    thread_test = Thread(
-        target=rethink.changefeed_thread,
-        args=(val, feed_conn_test)
-    )
-    thread_test.start()
-    assert thread_test.is_alive()
-    sleep(1)
-    feed_conn_test.close()
-    sleep(7)
-    assert not thread_test.is_alive()
+    #get job
+    job_check = rethink.get_job()
+    #check
+    assert job_check == new_job
+    job_check = rethink.get_job()
+    assert job_check == None
+    rethink.name = rethink_name
 
 def test_update_job_bad_id(brain, rethink):
     """Tests that a bad id to the update_job function

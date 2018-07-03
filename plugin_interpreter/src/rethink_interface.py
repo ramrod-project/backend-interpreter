@@ -15,7 +15,7 @@ import logging
 from brain import connect, r as rethinkdb
 from brain.brain_pb2 import Commands
 from brain.checks import verify
-from brain.queries import plugin_exists, create_plugin
+from brain.queries import plugin_exists, create_plugin, get_next_job
 
 
 class InvalidStatus(Exception):
@@ -78,6 +78,9 @@ class RethinkInterface:
             except rethinkdb.ReqlDriverError:
                 self._log("Changefeed Disconnected.", 30)
                 break
+    
+    def get_job(self):
+        return get_next_job(self.plugin_name, True, self.rethink_connection)
 
     def start(self, signal):
         """
