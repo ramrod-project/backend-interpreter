@@ -9,7 +9,7 @@ from os import environ
 from signal import signal, SIGTERM
 from time import sleep
 
-from . import controller
+from .controller import Controller
 
 
 HOST_PROTO = "TCP"
@@ -34,7 +34,7 @@ except KeyError:
 def main():
     """Main server entry point
     """
-    plugin_controller = controller.Controller(NETWORK_NAME, TAG)
+    plugin_controller = Controller(NETWORK_NAME, TAG)
 
     def sigterm_handler(_signo, _stack_frame):
         """Handles SIGTERM signal
