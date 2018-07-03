@@ -9,7 +9,7 @@ from os import environ
 from signal import signal, SIGTERM
 from time import sleep
 
-from .controller import Controller
+from controller import Controller
 
 
 HOST_PROTO = "TCP"
@@ -31,7 +31,7 @@ except KeyError:
     TAG = "latest"
 
 
-def main():
+def main(): # pragma: no cover
     """Main server entry point
     """
     plugin_controller = Controller(NETWORK_NAME, TAG)
@@ -45,7 +45,7 @@ def main():
     signal(SIGTERM, sigterm_handler)
 
     if environ["STAGE"] == "DEV" and \
-        not plugin_controller.dev_db():
+       not plugin_controller.dev_db():
         plugin_controller.log(
             40,
             "Port 28015 already allocated, \

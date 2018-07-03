@@ -50,7 +50,6 @@ class Controller():
         found.
     """
 
-
     def __init__(self, network_name, tag):
         self.logger = logging.getLogger("controller")
         self.logger.setLevel(environ.get("LOGLEVEL", "DEBUG"))
@@ -145,7 +144,7 @@ class Controller():
                     detach=True,
                     ports={"28015/tcp": 28015},
                     network=self.network_name,
-                    remove=True
+                    remove=False
                 )
         except brain.r.ReqlError:
             return False
