@@ -57,6 +57,7 @@ class Controller():
         self.container_mapping = {}
         self.network_name = network_name
         self.tag = tag
+        self.rethink_host = "rethinkdb"
 
     def _check_db_errors(self, response):
         if response["errors"] > 0:
@@ -89,7 +90,10 @@ class Controller():
                 "errors": 1,
                 "first_error": "Plugin must be given a valid name!"
             })
-        result = brain.queries.create_plugin_controller(plugin_data)
+        result = brain.queries.create_plugin_controller(
+            plugin_data,
+            conn=brain.connect(host=self.rethink_host)
+        )
         return self._check_db_errors(result)
 
     def _create_port(self, port_data):
@@ -107,7 +111,10 @@ class Controller():
         Arguments:
             port_data {dict} -- data for port
         """
-        result = brain.queries.create_port_controller(port_data)
+        result = brain.queries.create_port_controller(
+            port_data,
+            conn=brain.connect(host=self.rethink_host)
+        )
         return self._check_db_errors(result)
 
     def update_plugin(self, plugin_data):
@@ -119,7 +126,10 @@ class Controller():
         Arguments:
             plugin_data {dict} -- data for plugin.
         """
-        result = brain.queries.update_plugin_controller(plugin_data)
+        result = brain.queries.update_plugin_controller(
+            plugin_data,
+            conn=brain.connect(host=self.rethink_host)
+        )
         return self._check_db_errors(result)
 
     def dev_db(self):
@@ -134,18 +144,15 @@ class Controller():
             combinations.
         """
 
-        CLIENT.networks.prune()
-        CLIENT.networks.create("test")
         try:
-            self.container_mapping["rethinkdb"] = \
-                CLIENT.containers.run(
-                    "".join(("ramrodpcp/database-brain:", self.tag)),
-                    name="rethinkdb",
-                    detach=True,
-                    ports={"28015/tcp": 28015},
-                    network=self.network_name,
-                    remove=False
-                )
+            self.container_mapping["rethinkdb"] = CLIENT.containers.run(
+                "".join(("ramrodpcp/database-brain:", self.tag)),
+                name="rethinkdb",
+                detach=True,
+                ports={"28015/tcp": 28015},
+                network=self.network_name,
+                remove=False
+            )
         except brain.r.ReqlError:
             return False
         sleep(3)
@@ -265,7 +272,8 @@ class Controller():
         while time() - now < timeout:
             con = self.get_container_from_name(plugin_data["Name"])
             if not con:
-                raise docker.errors.ContainerError
+                sleep(0.5)
+                continue
             status = con.status
             if status == "running":
                 plugin_data["State"] = "Active"
@@ -328,7 +336,8 @@ class Controller():
             {str} -- "Active", "Restarting", or "Stopped"
         """
         cursor = brain.queries.get_plugin_by_name_controller(
-            plugin_data["Name"]
+            plugin_data["Name"],
+            conn=brain.connect(host=self.rethink_host)
         )
         try:
             return cursor.next()["State"]

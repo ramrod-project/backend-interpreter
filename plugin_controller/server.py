@@ -44,7 +44,8 @@ def main(): # pragma: no cover
 
     signal(SIGTERM, sigterm_handler)
 
-    if environ["STAGE"] == "DEV" and \
+    if (environ["STAGE"] == "DEV" or \
+        environ["STAGE"] == "QA") and \
        not plugin_controller.dev_db():
         plugin_controller.log(
             40,
