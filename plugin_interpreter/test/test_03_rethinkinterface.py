@@ -496,6 +496,9 @@ def test_changefeed_disconnect(brain, rethink):
     feed_conn_test.close()
     sleep(7)
     assert not thread_test.is_alive()
+    rethink.host = "notarealip"
+    val = True
+    assert not rethink.start(val)
 
 def test_update_job_bad_id(brain, rethink):
     """Tests that a bad id to the update_job function
