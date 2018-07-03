@@ -78,7 +78,7 @@ class RethinkInterface:
             except rethinkdb.ReqlDriverError:
                 self._log("Changefeed Disconnected.", 30)
                 break
-    
+
     def get_job(self):
         """Requests a job from the Brain
 
