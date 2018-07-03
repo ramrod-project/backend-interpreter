@@ -25,7 +25,7 @@ query-string==0.0.28
 request==0.0.26
 requests==2.18.4
 rethinkdb==2.3.0.post6
-ramrodbrain>=0.1.2
+ramrodbrain>=0.1.36
 six==1.11.0
 urllib3==1.22
 websocket-client==0.47.0
