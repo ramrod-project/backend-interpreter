@@ -9,11 +9,11 @@ from os import environ
 from signal import signal, SIGTERM
 from time import sleep
 
+from brain import r, connect, queries
+
 from controller import Controller
 
 
-HOST_PROTO = "TCP"
-PLUGIN = "Harness"
 try:
     if environ["STAGE"] == "PROD":
         NETWORK_NAME = "pcp"
@@ -25,36 +25,100 @@ except KeyError:
     NETWORK_NAME = "test"
     HOST_PORT = 5005
 
+HARNESS_PROTO = "TCP"
+HARNESS_PLUGIN = "Harness"
+
+try:
+    START_HARNESS = environ["START_HARNESS"]
+except:
+    START_HARNESS = "NO"
+
 try:
     TAG = environ["TRAVIS_BRANCH"].replace("master", "latest")
 except KeyError:
     TAG = "latest"
 
 
+PLUGIN_CONTROLLER = Controller(NETWORK_NAME, TAG)
+
+"""Below are the acceptable state mappings for the
+possible states for a plugin.
+"""
+AVAILABLE_MAPPING = {
+    "Activate": PLUGIN_CONTROLLER.launch_plugin
+}
+
+ACTIVE_MAPPING = {
+    "Activate": PLUGIN_CONTROLLER.stop_plugin,
+    "Restart": PLUGIN_CONTROLLER.restart_plugin,
+}
+
+STOPPED_MAPPING = {
+    "Activate": PLUGIN_CONTROLLER.launch_plugin,
+    "Restart": PLUGIN_CONTROLLER.launch_plugin
+}
+
+# Not able to do anything right now, just wait for restart
+RESTARTING_MAPPING = {}
+
+STATE_MAPPING = {
+    "Available": AVAILABLE_MAPPING,
+    "Active": ACTIVE_MAPPING,
+    "Stopped": STOPPED_MAPPING,
+    "Restarting": RESTARTING_MAPPING
+}
+
+
+def handle_state_change(plugin_data):
+    current_state = STATE_MAPPING[plugin_data["State"]]
+    desired_state = plugin_data["DesiredState"]
+    try:
+        current_state[desired_state](plugin_data)
+        return True
+    except KeyError:
+        print("Invalid state transition!")
+        # log
+        plugin_data["DesiredState"] = ""
+        PLUGIN_CONTROLLER.update_plugin(plugin_data)
+
+def check_states(cursor):
+    for plugin_data in cursor:
+        if plugin_data["DesiredState"] == "":
+            continue
+        handle_state_change(plugin_data)
+
+
 def main():  # pragma: no cover
     """Main server entry point
     """
-    plugin_controller = Controller(NETWORK_NAME, TAG)
+    PLUGIN_CONTROLLER = Controller(NETWORK_NAME, TAG)
 
     def sigterm_handler(_signo, _stack_frame):
         """Handles SIGTERM signal
         """
-        plugin_controller.stop_all_containers()
+        PLUGIN_CONTROLLER.stop_all_containers()
         exit(0)
 
     signal(SIGTERM, sigterm_handler)
 
     if (environ["STAGE"] == "DEV" or 
         environ["STAGE"] == "QA") and \
-       not plugin_controller.dev_db():
-        plugin_controller.log(
+       not PLUGIN_CONTROLLER.dev_db():
+        PLUGIN_CONTROLLER.log(
             40,
             "Port 28015 already allocated, \
             cannot launch rethinkdb container!"
         )
         exit(1)
 
-    plugin_controller.load_plugins_from_manifest("./manifest.json")
+    PLUGIN_CONTROLLER.load_plugins_from_manifest("./manifest.json")
+
+    if START_HARNESS == "YES":
+        PLUGIN_CONTROLLER.launch_plugin(
+            HARNESS_PLUGIN,
+            {HOST_PORT: HOST_PORT},
+            HARNESS_PROTO
+        )
 
     # Main control loop to be inserted below
     # Check state of running plugins (maintain map in local mem)
@@ -62,23 +126,13 @@ def main():  # pragma: no cover
     # Check desired state in db
     # if current status =/= desired state, handle it
 
-    plugin = plugin_controller.launch_plugin(
-        PLUGIN,
-        {HOST_PORT: HOST_PORT},
-        HOST_PROTO
-    )
-    # Controller should do this automatically at some point.
-    plugin_controller.container_mapping[PLUGIN] = plugin
-
-    plugin_controller.log(
-        20,
-        "".join((PLUGIN, " started, press <CTRL-C> to stop..."))
-    )
     while True:
         try:
             sleep(1)
+            cursor = queries.RPC.run(connect(host="rethinkdb"))
+
         except KeyboardInterrupt:
-            plugin_controller.stop_all_containers()
+            PLUGIN_CONTROLLER.stop_all_containers()
             exit(0)
 
 

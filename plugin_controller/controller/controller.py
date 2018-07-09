@@ -68,10 +68,10 @@ class Controller():
         Checks responses from rethinkdb for errors and
         logs them as appropriate. Returns True for no
         errors.
-        
+
         Arguments:
             response {dict} -- rethinkdb operation response.
-        
+
         Returns:
             {bool} -- True - no errors, False - errors
         """
@@ -85,10 +85,10 @@ class Controller():
 
     def load_plugins_from_manifest(self, manifest):
         """Load plugins into db from manifest.json
-        
+
         Arguments:
             manifest {str} -- filename for manifest.
-        
+
         Returns:
             {bool} -- True - succeeded, False - failed.
         """
@@ -102,13 +102,13 @@ class Controller():
             })
         for plugin in manifest_loaded:
             if not self.create_plugin({
-                "Name": plugin["Name"],
-                "State": "Available",
-                "DesiredState": "",
-                "Interface": "",
-                "ExternalPort": [],
-                "InternalPort": []
-            }):
+                    "Name": plugin["Name"],
+                    "State": "Available",
+                    "DesiredState": "",
+                    "Interface": "",
+                    "ExternalPort": [],
+                    "InternalPort": []
+                }):
                 return False
         return True
 
@@ -273,7 +273,9 @@ class Controller():
         if self.restart_plugin(plugin_data):
             return existing
 
-        self.create_plugin(plugin_data)
+        # To be deprecated once DB is populating
+        if not self.plugin_status({"Name": plugin}):
+            self.create_plugin(plugin_data)
 
         self._create_port(port_data)
 
@@ -293,6 +295,13 @@ class Controller():
             ports=ports_config
         )
         if self.wait_for_plugin(plugin_data):
+            self.log(
+                20,
+                "".join((
+                    plugin_data["Name"],
+                    " started, press <CTRL-C> to stop..."
+                ))
+            )
             return con
         return None
 
@@ -323,6 +332,7 @@ class Controller():
                 plugin_data["State"] = "Active"
                 plugin_data["DesiredState"] = ""
                 self.update_plugin(plugin_data)
+                self.container_mapping[plugin_data["Name"]] = con
                 return True
             sleep(1)
         return False
@@ -392,7 +402,8 @@ class Controller():
             )
         return None
 
-    def get_all_containers(self):
+    @staticmethod
+    def get_all_containers():
         """Return all plugin containers
 
         Returns:
