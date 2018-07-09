@@ -159,6 +159,25 @@ class ControllerPlugin(ABC):
                 "status": status
             }
         )
+    
+    def get_file(self, file_name, encoding=None):
+        """Get the file specified from the Brain
+
+        Arguments:
+            file_name {str} -- the name of the file
+            encoding {str|None} -- optional method to decode
+
+        Returns:
+            bytes|str -- the contents of the file
+        """
+
+        content = (self.DBI.get_file(file_name))["Content"]
+        try:
+            return content.decode(encoding)
+            # default None will throw a TypeError, return as bytes since
+            # no decode is specified
+        except TypeError:
+            return content["Content"]
 
     @staticmethod
     def get_command(job):
