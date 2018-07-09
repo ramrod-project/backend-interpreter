@@ -23,13 +23,16 @@ logging.basicConfig(
     format='%(date)s %(name)-12s %(levelname)-8s %(message)s'
 )
 
+
 CLIENT = docker.from_env()
+
 CONTAINERS_EXCEPTED = [
     "database",
     "backend",
     "websockets",
     "frontend"
 ]
+
 LOGLEVELS = {
     "DEBUG": logging.DEBUG,
     "INFO": logging.INFO,
@@ -50,6 +53,7 @@ class Controller():
         docker.errors.ContainerError -- if a conainer can't be
         found.
     """
+
 
     def __init__(self, network_name, tag):
         self.logger = logging.getLogger("controller")
@@ -160,6 +164,48 @@ class Controller():
             conn=brain.connect(host=self.rethink_host)
         )
         return self._check_db_errors(result)
+
+    def update_states(self):
+        
+        for name, _ in self.container_mapping:
+            # ---We have to update the container object here    ---
+            # ---because the 'status' attribute is not updated  ---
+            # ---automatically.                                 ---
+            new_con = self.get_container_from_name(name)
+            self.update_plugin({
+                "Name": name,
+                "State": self.STATE_MAPPING[new_con.status]
+            })
+            self.container_mapping[name] = new_con
+
+    def handle_state_change(self, plugin_data):
+
+        current_state = self.STATE_MAPPING[plugin_data["State"]]
+        desired_state = plugin_data["DesiredState"]
+        try:
+            if current_state[desired_state](plugin_data):
+                return True
+        except KeyError:
+            self.log("Invalid state transition!", 40)
+        plugin_data["DesiredState"] = ""
+        self.update_plugin(plugin_data)
+        return False
+
+    def check_states(self, cursor):
+
+        for plugin_data in cursor:
+            actual = plugin_data["State"]
+            desired = plugin_data["DesiredState"]
+            if desired == "":
+                continue
+            if not self.handle_state_change(plugin_data):
+                self.log(
+                    40,
+                    "State transition to {} from {} failed!".format(
+                        desired,
+                        actual
+                    )
+                )
 
     def update_plugin(self, plugin_data):
         """Updates the plugin info to match the current

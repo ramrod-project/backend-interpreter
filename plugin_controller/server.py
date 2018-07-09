@@ -63,6 +63,7 @@ except KeyError:
 
 PLUGIN_CONTROLLER = Controller(NETWORK_NAME, TAG)
 
+
 """Below are the acceptable state mappings for the
 possible states for a plugin.
 """
@@ -99,7 +100,7 @@ STATUS_MAPPING = {
 
 
 def update_states():
-
+        
     for name, _ in PLUGIN_CONTROLLER.container_mapping:
         # ---We have to update the container object here    ---
         # ---because the 'status' attribute is not updated  ---
@@ -110,16 +111,6 @@ def update_states():
             "State": STATE_MAPPING[new_con.status]
         })
         PLUGIN_CONTROLLER.container_mapping[name] = new_con
-
-
-def to_log(log, level):
-    
-    date = asctime(gmtime(time()))
-    LOGGER.log(
-        level,
-        log,
-        extra={ "date": date }
-    )
 
 
 def handle_state_change(plugin_data):
@@ -151,6 +142,16 @@ def check_states(cursor):
                     actual
                 )
             )
+
+
+def to_log(log, level):
+    
+    date = asctime(gmtime(time()))
+    LOGGER.log(
+        level,
+        log,
+        extra={ "date": date }
+    )
 
 
 def main():  # pragma: no cover
