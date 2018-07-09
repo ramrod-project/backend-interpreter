@@ -13,6 +13,9 @@ import threading
 import logging
 
 from brain import connect, r as rethinkdb
+from brain.brain_pb2 import Commands
+from brain.checks import verify
+from brain.queries import plugin_exists, create_plugin, get_next_job
 
 
 class InvalidStatus(Exception):
@@ -75,6 +78,16 @@ class RethinkInterface:
             except rethinkdb.ReqlDriverError:
                 self._log("Changefeed Disconnected.", 30)
                 break
+
+    def get_job(self):
+        """Requests a job from the Brain
+
+        Returns:
+            Dict|None -- returns a dictionary containing a job or none if
+            no jobs are ready
+        """
+
+        return get_next_job(self.plugin_name, True, self.rethink_connection)
 
     def start(self, signal):
         """
@@ -160,13 +173,9 @@ class RethinkInterface:
             {bool} -- True if found else False
         """
         try:
-            rethinkdb.db("Plugins").table(plugin_name).run(
-                connect(host=self.host, port=self.port)
-            )
-            return True
-        except rethinkdb.ReqlOpFailedError:
+            return plugin_exists(plugin_name, self.rethink_connection)
+        except ValueError:
             return False
-
 
     def update_job_status(self, job_data):
         """Update's the specified job's status to the given status
@@ -257,22 +266,22 @@ class RethinkInterface:
             the plugin and the list of Commands (plguin_name, command_list)
         """
 
-        self._create_table("Plugins", plugin_data[0])
-
-        try:
-            rethinkdb.db("Plugins").table(plugin_data[0]).insert(
-                plugin_data[1],
-                conflict="update"
-            ).run(self.rethink_connection)
-        except rethinkdb.ReqlDriverError:
-            self._log(
-                "".join([
-                    "Unable to add command to table '",
-                    plugin_data[0],
-                    "'"
-                ]),
-                20
-            )
+        if verify(plugin_data[1], Commands()):
+            self._create_table("Plugins", plugin_data[0])
+            try:
+                rethinkdb.db("Plugins").table(plugin_data[0]).insert(
+                    plugin_data[1],
+                    conflict="update"
+                ).run(self.rethink_connection)
+            except rethinkdb.ReqlDriverError:
+                self._log(
+                    "".join([
+                        "Unable to add command to table '",
+                        plugin_data[0],
+                        "'"
+                    ]),
+                    20
+                )
 
     def _log(self, log, level):
         date = asctime(gmtime(time()))
@@ -310,10 +319,7 @@ class RethinkInterface:
         """
         try:
             if database_name == "Plugins":
-                rethinkdb.db(database_name).table_create(
-                    table_name,
-                    primary_key="CommandName"
-                ).run(self.rethink_connection)
+                create_plugin(table_name, self.rethink_connection)
             else:
                 rethinkdb.db(database_name).table_create(
                     table_name

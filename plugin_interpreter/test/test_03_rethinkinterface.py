@@ -130,7 +130,10 @@ def compare_to(tablecheck, compare_list):
         boolean -- whether or not items in table check are in compare_list
         if any items in tablecheck are not in compare_list return false
     """
-    for i in tablecheck:
+    table_list = list(tablecheck)
+    if len(table_list) is 0:
+        return False
+    for i in table_list:
         if i not in compare_list:
             return False
     return True
@@ -150,44 +153,53 @@ def test_rethink_plugin_create(brain, rethink):
     #test adding a valid table
     command_list = [{
                 "CommandName": "test_func_1",
-                "Input": ["string"],
-                "Output": "string",
-                "Tooltip": "This is a test"
+                "Input": [],
+                "Output": True,
+                "Tooltip": "This is a test",
+                "OptionalInputs": []
             },
             {
                 "CommandName": "test_func_2",
-                "Input": ["string"],
-                "Output": "string",
-                "Tooltip": "This is also a test"
+                "Input": [],
+                "Output": False,
+                "Tooltip": "This is also a test",
+                "OptionalInputs": []
             }]
     plugin_data = ("TestTable",command_list)
     rethink.create_plugin_table(plugin_data)
+    assert rethink.check_for_plugin("TestTable")
     tablecheck = rethinkdb.db("Plugins").table("TestTable").run(rethink.rethink_connection)
     assert compare_to(tablecheck, command_list)
 
     #test updating a table
     command_list = [{
                 "CommandName": "test_func_1",
-                "Input": ["string"],
-                "Output": "string",
-                "Tooltip": "This is a test"
+                "Input": [],
+                "Output": True,
+                "Tooltip": "This is a test",
+                "OptionalInputs": []
             },
             {
                 "CommandName": "test_func_2",
                 "Input": ["string"],
-                "Output": "string",
-                "Tooltip": "This is also a test"
+                "Output": False,
+                "Tooltip": "This is also a test",
+                "OptionalInputs": []
             },
             {
                 "CommandName": "test_func_3",
                 "Input": [],
-                "Output": "",
-                "Tooltip": "a bonus command"
+                "Output": True,
+                "Tooltip": "a bonus command",
+                "OptionalInputs": [],
+                "ExtraTestKey": "You can add keys to your Command"
             }]
     plugin_data = ("TestTable",command_list)
     rethink.create_plugin_table(plugin_data)
     tablecheck = rethinkdb.db("Plugins").table("TestTable").run(rethink.rethink_connection)
-    assert compare_to(tablecheck, command_list)
+    table_list = list(tablecheck)
+    assert compare_to(table_list, command_list)
+    assert any("ExtraTestKey" in command for command in table_list)
 
 def test_update_job_status(brain, rethink):
     """Tests update_job() by placing a job in the Jobs table and calling 
@@ -433,57 +445,42 @@ def test_update_output(brain, rethink):
     output_status = output_cursor.next().get("OutputJob",{}).get("Status")
     assert output_status == "Done"
 
-def test_changefeed(brain, rethink):
-    # Test the thread that monitors the changefeed
-    val = Value(c_bool, False)
-    send, _ = Pipe()
-    rethink.plugin_name = "updater"
-    rethink.start(val)
-    assert rethink.job_fetcher.is_alive()
-    rethinkdb.db("Brain").table("Jobs").delete().run(rethink.rethink_connection)
+def test_get_job(brain, rethink):
+    """tests the ability to get a job
+    
+    Arguments:
+        rethink {RethinkInterface} -- an instance of RethinkInterface
+        for connecting to the test database.
+    """
     new_job = {
         "JobTarget":{
-            "PluginName": "updater",
+            "PluginName": "getter",
             "Location": "8.8.8.8",
             "Port": "80"
         },
         "JobCommand":{
             "CommandName": "TestJob",
             "Tooltip": "for testing updates",
+            "Output": False,
             "Inputs":[]
         },
         "Status": "Ready",
         "StartTime" : 0
     }
+    # insert job
+    rethink_name = rethink.plugin_name
+    rethink.plugin_name = "getter"
     rethinkdb.db("Brain").table("Jobs").insert(new_job).run(rethink.rethink_connection)
-    sleep(3)
-    test_job = rethink.plugin_queue.get()
-    del test_job["id"]
-    assert test_job == new_job
-    val.value = True
-    sleep(7)
-    assert not rethink.job_fetcher.is_alive()
-
-def test_changefeed_disconnect(brain, rethink):
-    """Tests if changefeed disconnects when connection dies
-    
-    Arguments:
-        rethink {RethinkInterface} -- an instance of RethinkInterface
-        for connecting to the test database.
-    """
-    val = Value(c_bool, False)
-    # rethink.logger = mock_logger()
-    feed_conn_test = connect(host=rethink.host, port=rethink.port)
-    thread_test = Thread(
-        target=rethink.changefeed_thread,
-        args=(val, feed_conn_test)
-    )
-    thread_test.start()
-    assert thread_test.is_alive()
-    sleep(1)
-    feed_conn_test.close()
-    sleep(7)
-    assert not thread_test.is_alive()
+    # get job
+    job_check = rethink.get_job()
+    # new job did not have an id, id was added
+    new_job["id"] = job_check["id"]
+    # check
+    assert job_check == new_job
+    rethink.update_job(job_check["id"])
+    job_check = rethink.get_job()
+    assert job_check == None
+    rethink.plugin_name = rethink_name
 
 def test_update_job_bad_id(brain, rethink):
     """Tests that a bad id to the update_job function

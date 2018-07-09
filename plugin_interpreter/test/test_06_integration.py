@@ -44,17 +44,17 @@ class IntegrationTest(controller_plugin.ControllerPlugin):
         self.functionality = [
             {
                 "CommandName": "read_file",
-                "input": ["string"],
-                "family": "filesystem",
-                "tooltip": "Provided a full directory path, this function reads a file.",
-                "reference": "no reference"
+                "Input": [],
+                "OptionalInputs": [],
+                "Output": True,
+                "Tooltip": "Provided a full directory path, this function reads a file.",
             },
             {
                 "CommandName": "send_file",
-                "input": ["string", "binary"],
-                "family": "filesystem",
-                "tooltip": "Provided a file and destination directory, this function sends a file.",
-                "reference": "no reference"
+                "Input": [],
+                "OptionalInputs": [],
+                "Output": True,
+                "Tooltip": "Provided a file and destination directory, this function sends a file.",
             }
         ]
         super().__init__(self.name, self.functionality)
