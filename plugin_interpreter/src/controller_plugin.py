@@ -171,7 +171,7 @@ class ControllerPlugin(ABC):
             bytes|str -- the contents of the file
         """
 
-        content = (self.DBI.get_file(file_name))["Content"]
+        content = self.DBI.get_file(file_name)["Content"]
         try:
             return content.decode(encoding)
             # default None will throw a TypeError, return as bytes since

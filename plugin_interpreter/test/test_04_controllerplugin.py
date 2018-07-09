@@ -64,7 +64,7 @@ class DummyDBInterface():
     def get_job(self):
         return SAMPLE_JOB
     
-    def get_file(self):
+    def get_file(self, filename):
         return SAMPLE_FILE
 
 
