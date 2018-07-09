@@ -44,17 +44,17 @@ class IntegrationTest(controller_plugin.ControllerPlugin):
         self.functionality = [
             {
                 "CommandName": "read_file",
-                "input": ["string"],
-                "family": "filesystem",
-                "tooltip": "Provided a full directory path, this function reads a file.",
-                "reference": "no reference"
+                "Input": [],
+                "OptionalInputs": [],
+                "Output": True,
+                "Tooltip": "Provided a full directory path, this function reads a file.",
             },
             {
                 "CommandName": "send_file",
-                "input": ["string", "binary"],
-                "family": "filesystem",
-                "tooltip": "Provided a file and destination directory, this function sends a file.",
-                "reference": "no reference"
+                "Input": [],
+                "OptionalInputs": [],
+                "Output": True,
+                "Tooltip": "Provided a file and destination directory, this function sends a file.",
             }
         ]
         super().__init__(self.name, self.functionality)
@@ -76,7 +76,7 @@ class IntegrationTest(controller_plugin.ControllerPlugin):
             """Pull a job"""
             now = time()
             while time() - now < 3:
-                new_job = self._request_job()
+                new_job = self.request_job()
                 if new_job is not None:
                     break
                 sleep(0.1)
@@ -85,7 +85,7 @@ class IntegrationTest(controller_plugin.ControllerPlugin):
         elif environ["TEST_SELECTION"] == "TEST2":
             """Send output"""
             output = "test output"
-            self._respond_output(SAMPLE_JOB, output)
+            self.respond_output(SAMPLE_JOB, output)
         elif environ["TEST_SELECTION"] == "TEST3":
             """Update job status"""
             self._update_job_status(SAMPLE_JOB["id"],"Pending")
@@ -98,7 +98,7 @@ class IntegrationTest(controller_plugin.ControllerPlugin):
                 NOW
             ])
         elif environ["TEST_SELECTION"] == "TEST5":
-            self._update_job_error(SAMPLE_JOB, "Testing Error")
+            self.respond_error(SAMPLE_JOB, "Testing Error")
 
         while signal.value is not True:
             sleep(1)
