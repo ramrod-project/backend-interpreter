@@ -25,6 +25,7 @@ install:
   - pip install -r plugin_interpreter/requirements.txt
   - pip install -r plugin_controller/requirements.txt
   - pip install pytest-cov
+  - docker pull alpine:3.7
   - if [ "$TRAVIS_BRANCH" == "master"  ]; 
     then travis_wait 10 docker pull ramrodpcp/database-brain:latest; 
     else travis_wait 10 docker pull ramrodpcp/database-brain:$TRAVIS_BRANCH; fi
@@ -42,10 +43,11 @@ script:
     docker build -t ramrodpcp/interpreter-plugin:$TRAVIS_BRANCH ./plugin_interpreter/; 
     else docker build -t ramrodpcp/backend-interpreter:latest ./plugin_controller/ &&
     docker build -t ramrodpcp/interpreter-plugin:latest ./plugin_interpreter/; fi
+  - docker network create test
   - if [ "$TRAVIS_BRANCH" != "master"  ]; 
-    then docker run -d --name controller -e "STAGE=DEV" -e "LOGLEVEL=DEBUG" -e "TRAVIS_BRANCH=$TRAVIS_BRANCH"
+    then docker run -d --name controller --network test -e "STAGE=DEV" -e "LOGLEVEL=DEBUG" -e "TRAVIS_BRANCH=$TRAVIS_BRANCH"
     -v /var/run/docker.sock:/var/run/docker.sock ramrodpcp/backend-interpreter:$TRAVIS_BRANCH;
-    else docker run -d --name controller -e "STAGE=DEV" -e "LOGLEVEL=DEBUG" 
+    else docker run -d --name controller --network test -e "STAGE=DEV" -e "LOGLEVEL=DEBUG" 
     -v /var/run/docker.sock:/var/run/docker.sock ramrodpcp/backend-interpreter:latest; fi
   # This will eventually be for more integration testing
   - sleep 30
