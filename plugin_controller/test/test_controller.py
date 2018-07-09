@@ -1,5 +1,6 @@
+from json import dump, load
 import logging
-from os import environ, path
+from os import environ, path, remove
 from sys import path as syspath, stderr
 from threading import Thread
 from time import sleep, time
@@ -49,6 +50,21 @@ TEST_PORT_DATA2 = {
     "TCPPorts": ["6000", "7000"],
     "UDPPorts": ["8000"]
 }
+
+TEST_MANIFEST = [
+    {
+        "Name": "Plugin1"
+    },
+    {
+        "Name": "Plugin2"
+    },
+    {
+        "Name": "Plugin3"
+    },
+    {
+        "Name": "Plugin4"
+    }
+]
 
 
 def docker_net_create():
@@ -180,6 +196,33 @@ def test_create_plugin(env, controller, rethink, brain_conn, clear_dbs):
     del res["id"]
     assert res == TEST_PLUGIN_DATA
     assert not controller.create_plugin(TEST_PLUGIN_DATA)
+
+def test_load_plugins_from_manifest(env, controller, rethink, brain_conn, clear_dbs):
+    with raises(FileNotFoundError):
+        controller.load_plugins_from_manifest("./manifest.json")
+    with open("./manifest.json", "w") as outfile:
+        dump([], outfile)
+    assert not controller.load_plugins_from_manifest("./manifest.json")
+    with open("./manifest.json", "w") as outfile:
+        dump(TEST_MANIFEST, outfile)
+    assert controller.load_plugins_from_manifest("./manifest.json")
+    sleep(1)
+    for plugin in TEST_MANIFEST:
+        cursor = brain.r.db("Controller").table("Plugins").filter(
+            {"Name": plugin["Name"]}
+        ).run(brain_conn)
+        res = cursor.next()
+        del res["id"]
+        assert res == {
+            "Name": plugin["Name"],
+            "State": "Available",
+            "DesiredState": "",
+            "Interface": "",
+            "InternalPort": [],
+            "ExternalPort": []
+        }
+    assert not controller.load_plugins_from_manifest("./manifest.json")
+    remove("./manifest.json")
 
 def test_create_port(env, controller, rethink, clear_dbs, brain_conn):
     assert controller._create_port(TEST_PORT_DATA)
