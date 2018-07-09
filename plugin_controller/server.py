@@ -54,7 +54,7 @@ def main():  # pragma: no cover
         )
         exit(1)
 
-    
+    plugin_controller.load_plugins_from_manifest("./manifest.json")
 
     # Main control loop to be inserted below
     # Check state of running plugins (maintain map in local mem)
