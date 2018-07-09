@@ -68,10 +68,10 @@ class Controller():
         Checks responses from rethinkdb for errors and
         logs them as appropriate. Returns True for no
         errors.
-        
+
         Arguments:
             response {dict} -- rethinkdb operation response.
-        
+
         Returns:
             {bool} -- True - no errors, False - errors
         """
@@ -85,10 +85,10 @@ class Controller():
 
     def load_plugins_from_manifest(self, manifest):
         """Load plugins into db from manifest.json
-        
+
         Arguments:
             manifest {str} -- filename for manifest.
-        
+
         Returns:
             {bool} -- True - succeeded, False - failed.
         """
@@ -102,13 +102,13 @@ class Controller():
             })
         for plugin in manifest_loaded:
             if not self.create_plugin({
-                "Name": plugin["Name"],
-                "State": "Available",
-                "DesiredState": "",
-                "Interface": "",
-                "ExternalPort": [],
-                "InternalPort": []
-            }):
+                    "Name": plugin["Name"],
+                    "State": "Available",
+                    "DesiredState": "",
+                    "Interface": "",
+                    "ExternalPort": [],
+                    "InternalPort": []
+                }):
                 return False
         return True
 
@@ -187,7 +187,6 @@ class Controller():
             track of used {host port: container}
             combinations.
         """
-
         try:
             self.container_mapping["rethinkdb"] = CLIENT.containers.run(
                 "".join(("ramrodpcp/database-brain:", self.tag)),
@@ -392,7 +391,8 @@ class Controller():
             )
         return None
 
-    def get_all_containers(self):
+    @staticmethod
+    def get_all_containers():
         """Return all plugin containers
 
         Returns:
