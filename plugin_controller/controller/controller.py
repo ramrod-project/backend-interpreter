@@ -6,6 +6,7 @@ TODO:
 - Maintain local mapping of plugin names to containers.
 - Use local mapping as cache and update as needed
 """
+from json import load
 import logging
 from os import environ
 import re
@@ -62,12 +63,53 @@ class Controller():
             self.rethink_host = "localhost"
 
     def _check_db_errors(self, response):
+        """Check responses from database for errors
+
+        Checks responses from rethinkdb for errors and
+        logs them as appropriate. Returns True for no
+        errors.
+        
+        Arguments:
+            response {dict} -- rethinkdb operation response.
+        
+        Returns:
+            {bool} -- True - no errors, False - errors
+        """
         if response["errors"] > 0:
             self.log(
                 40,
                 response["first_error"]
             )
             return False
+        return True
+
+    def load_plugins_from_manifest(self, manifest):
+        """Load plugins into db from manifest.json
+        
+        Arguments:
+            manifest {str} -- filename for manifest.
+        
+        Returns:
+            {bool} -- True - succeeded, False - failed.
+        """
+        manifest_loaded = []
+        with open(manifest, "r") as readfile:
+            manifest_loaded = load(readfile)
+        if len(manifest_loaded) == 0:
+            return self._check_db_errors({
+                "errors": 1,
+                "first_error": "No plugins found in manifest!"
+            })
+        for plugin in manifest_loaded:
+            if not self.create_plugin({
+                "Name": plugin["Name"],
+                "State": "Available",
+                "DesiredState": "",
+                "Interface": "",
+                "ExternalPort": [],
+                "InternalPort": []
+            }):
+                return False
         return True
 
     def create_plugin(self, plugin_data):
@@ -79,9 +121,9 @@ class Controller():
             Name<str>,
             State<str> [default: "Available"],
             DesiredState<str> [default: ""],
-            Interface<str(IP) [default: ""],
-            ExternalPort<str>,
-            InternalPort<str>
+            Interface<str>(IP) [default: ""],
+            ExternalPort<list<str> >,
+            InternalPort<list<str> >
         }
 
         Arguments:
