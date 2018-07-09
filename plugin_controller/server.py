@@ -5,13 +5,35 @@ interpreter controller.
 
 TODO:
 """
+import logging
 from os import environ
 from signal import signal, SIGTERM
-from time import sleep
+from time import asctime, gmtime, sleep, time
 
 from brain import r, connect, queries
 
 from controller import Controller
+
+
+logging.basicConfig(
+    filename="logfile",
+    filemode="a",
+    format='%(date)s %(name)-12s %(levelname)-8s %(message)s'
+)
+
+LOGGER = logging.getLogger("controller")
+LOGGER.addHandler(logging.StreamHandler())
+LOGGER.setLevel(logging.DEBUG)
+
+LOGLEVEL = environ["LOGLEVEL"]
+if LOGLEVEL == "INFO":
+    LOGGER.setLevel(logging.INFO)
+elif LOGLEVEL == "WARNING":
+    LOGGER.setLevel(logging.WARNING)
+elif LOGLEVEL == "ERROR":
+    LOGGER.setLevel(logging.ERROR)
+elif LOGLEVEL == "CRITICAL":
+    LOGGER.setLevel(logging.CRITICAL)
 
 
 try:
@@ -49,7 +71,7 @@ AVAILABLE_MAPPING = {
 }
 
 ACTIVE_MAPPING = {
-    "Activate": PLUGIN_CONTROLLER.stop_plugin,
+    "Stop": PLUGIN_CONTROLLER.stop_plugin,
     "Restart": PLUGIN_CONTROLLER.restart_plugin,
 }
 
@@ -68,24 +90,67 @@ STATE_MAPPING = {
     "Restarting": RESTARTING_MAPPING
 }
 
+STATUS_MAPPING = {
+    "restarting": "Restarting",
+    "running": "Active",
+    "paused": "Stopped",
+    "exited": "Stopped"
+}
+
+
+def update_states():
+
+    for name, _ in PLUGIN_CONTROLLER.container_mapping:
+        # ---We have to update the container object here    ---
+        # ---because the 'status' attribute is not updated  ---
+        # ---automatically.                                 ---
+        new_con = PLUGIN_CONTROLLER.get_container_from_name(name)
+        PLUGIN_CONTROLLER.update_plugin({
+            "Name": name,
+            "State": STATE_MAPPING[new_con.status]
+        })
+        PLUGIN_CONTROLLER.container_mapping[name] = new_con
+
+
+def to_log(log, level):
+    
+    date = asctime(gmtime(time()))
+    LOGGER.log(
+        level,
+        log,
+        extra={ 'date': date }
+    )
+
 
 def handle_state_change(plugin_data):
+
     current_state = STATE_MAPPING[plugin_data["State"]]
     desired_state = plugin_data["DesiredState"]
     try:
-        current_state[desired_state](plugin_data)
-        return True
+        if current_state[desired_state](plugin_data):
+            return True
     except KeyError:
-        print("Invalid state transition!")
-        # log
-        plugin_data["DesiredState"] = ""
-        PLUGIN_CONTROLLER.update_plugin(plugin_data)
+        to_log("Invalid state transition!", 40)
+    plugin_data["DesiredState"] = ""
+    PLUGIN_CONTROLLER.update_plugin(plugin_data)
+    return False
+
 
 def check_states(cursor):
+
     for plugin_data in cursor:
-        if plugin_data["DesiredState"] == "":
+        actual = plugin_data["State"]
+        desired = plugin_data["DesiredState"]
+        if desired == "":
             continue
-        handle_state_change(plugin_data)
+        if not handle_state_change(plugin_data):
+            to_log(
+                40,
+                "State transition to {} from {} failed!".format(
+                    desired,
+                    actual
+                )
+            )
 
 
 def main():  # pragma: no cover
@@ -129,8 +194,9 @@ def main():  # pragma: no cover
     while True:
         try:
             sleep(1)
+            update_states()
             cursor = queries.RPC.run(connect(host="rethinkdb"))
-
+            check_states(cursor)
         except KeyboardInterrupt:
             PLUGIN_CONTROLLER.stop_all_containers()
             exit(0)
