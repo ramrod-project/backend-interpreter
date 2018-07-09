@@ -118,7 +118,7 @@ def to_log(log, level):
     LOGGER.log(
         level,
         log,
-        extra={ 'date': date }
+        extra={ "date": date }
     )
 
 
@@ -184,12 +184,6 @@ def main():  # pragma: no cover
             {HOST_PORT: HOST_PORT},
             HARNESS_PROTO
         )
-
-    # Main control loop to be inserted below
-    # Check state of running plugins (maintain map in local mem)
-    # Update status of plugin in db
-    # Check desired state in db
-    # if current status =/= desired state, handle it
 
     while True:
         try:
