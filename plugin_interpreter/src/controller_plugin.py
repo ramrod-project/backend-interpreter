@@ -177,7 +177,7 @@ class ControllerPlugin(ABC):
             # default None will throw a TypeError, return as bytes since
             # no decode is specified
         except TypeError:
-            return content["Content"]
+            return content
 
     @staticmethod
     def get_command(job):
