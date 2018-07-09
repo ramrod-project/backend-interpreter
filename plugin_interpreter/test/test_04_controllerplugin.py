@@ -216,5 +216,5 @@ def test_get_file(plugin_base):
     # check without encoding to get bytes blob
     assert plugin_base.get_file("testfile.txt") == SAMPLE_FILE["Content"]
     # bad codec
-    with raises(UnicodeDecodeError):
+    with raises(LookupError):
         assert plugin_base.get_file("testfile.txt","MYNEWSTANDARD")
