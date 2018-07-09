@@ -3,7 +3,6 @@ certifi==2018.4.16
 chardet==3.0.4
 coverage==4.5.1
 decorator==4.3.0
-dict-to-protobuf==0.0.3.8
 docker==3.2.1
 docker-pycreds==0.2.2
 idna==2.6

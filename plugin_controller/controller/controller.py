@@ -187,7 +187,6 @@ class Controller():
             track of used {host port: container}
             combinations.
         """
-
         try:
             self.container_mapping["rethinkdb"] = CLIENT.containers.run(
                 "".join(("ramrodpcp/database-brain:", self.tag)),
