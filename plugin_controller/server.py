@@ -31,7 +31,7 @@ except KeyError:
     TAG = "latest"
 
 
-def main(): # pragma: no cover
+def main():  # pragma: no cover
     """Main server entry point
     """
     plugin_controller = Controller(NETWORK_NAME, TAG)
@@ -44,7 +44,7 @@ def main(): # pragma: no cover
 
     signal(SIGTERM, sigterm_handler)
 
-    if (environ["STAGE"] == "DEV" or \
+    if (environ["STAGE"] == "DEV" or 
         environ["STAGE"] == "QA") and \
        not plugin_controller.dev_db():
         plugin_controller.log(
