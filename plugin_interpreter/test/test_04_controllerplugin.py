@@ -217,4 +217,4 @@ def test_get_file(plugin_base):
     assert plugin_base.get_file("testfile.txt") == SAMPLE_FILE["Content"]
     # bad codec
     with raises(LookupError):
-        assert plugin_base.get_file("testfile.txt","MYNEWSTANDARD")
+        plugin_base.get_file("testfile.txt","MYNEWSTANDARD")
