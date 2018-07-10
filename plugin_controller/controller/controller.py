@@ -178,6 +178,9 @@ class Controller():
             plugin_data,
             conn=brain.connect(host=self.rethink_host)
         )
+        self.log(10, "plugin_data: {}".format(plugin_data))
+        self.container_mapping[plugin_data["Name"]] = \
+            self.get_container_from_name(plugin_data["Name"])
         return self._check_db_errors(result)
 
     def dev_db(self):
@@ -276,7 +279,7 @@ class Controller():
                 20,
                 "".join((
                     plugin_data["Name"],
-                    " started, press <CTRL-C> to stop..."
+                    " started."
                 ))
             )
             return con

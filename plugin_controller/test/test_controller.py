@@ -401,6 +401,8 @@ def test_handle_state_change(env, controller, rethink, clear_dbs, brain_conn):
     """Test handling a state change of a container.
     """
     server.PLUGIN_CONTROLLER.rethink_host = "localhost"
+    server.PLUGIN_CONTROLLER.network_name = "test"
+    server.PLUGIN_CONTROLLER.tag = environ["TRAVIS_BRANCH"]
     # --- Start a plugin
     result = brain.queries.create_plugin_controller(
         {
@@ -408,8 +410,8 @@ def test_handle_state_change(env, controller, rethink, clear_dbs, brain_conn):
             "State": "Available",
             "DesiredState": "",
             "Interface": "",
-            "ExternalPort": ["".join((str(5000), "/tcp"))],
-            "InternalPort": ["".join((str(5000), "/tcp"))]
+            "ExternalPort": [],
+            "InternalPort": []
         },
         conn=brain_conn
     )
@@ -419,7 +421,10 @@ def test_handle_state_change(env, controller, rethink, clear_dbs, brain_conn):
     server.handle_state_change({
         "Name": "Harness",
         "State": "Available",
-        "DesiredState": "Activate"
+        "DesiredState": "Activate",
+        "Interface": "",
+        "ExternalPort": ["".join((str(5000), "/tcp"))],
+        "InternalPort": ["".join((str(5000), "/tcp"))]
     })
     environ["STAGE"] = old_stage
     sleep(3)
@@ -432,13 +437,18 @@ def test_handle_state_change(env, controller, rethink, clear_dbs, brain_conn):
     server.handle_state_change({
         "Name": "Harness",
         "State": "Active",
-        "DesiredState": "Stop"
+        "DesiredState": "Stop",
+        "Interface": "",
+        "ExternalPort": ["".join((str(5000), "/tcp"))],
+        "InternalPort": ["".join((str(5000), "/tcp"))]
     })
+    sleep(3)
     assert server.PLUGIN_CONTROLLER.container_mapping["Harness"]
     assert server.PLUGIN_CONTROLLER.container_mapping["Harness"].status == "exited"
     result = brain.queries.get_plugin_by_name_controller("Harness", conn=brain_conn).next()
     assert result["State"] == "Stopped"
-    assert result["DesiredState"] == "" 
+    assert result["DesiredState"] == ""
+    server.PLUGIN_CONTROLLER.container_mapping["Harness"].remove()
     server.PLUGIN_CONTROLLER.container_mapping = {}
 
 def test_check_states(env, controller, rethink, clear_dbs, brain_conn):
