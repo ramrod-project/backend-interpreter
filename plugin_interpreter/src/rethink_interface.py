@@ -224,7 +224,7 @@ class RethinkInterface:
         """sends the plugin's output message to the Outputs table
 
         Arguments:
-            output_data {dictionary (Dictionary,str)} -- tuple containing
+            output_data {dictionary (Dictionary,str)} -- dict containing
             the job and the output to add to the table (job, output)
         """
         # get the job corresponding to this output
@@ -271,7 +271,7 @@ class RethinkInterface:
 
         return binary_get(file_name)
 
-    def create_plugin_table(self, plugin_data):
+    def create_plugin_table(self, plugin_name, plugin_data):
         """
         Adds a new plugin to the Plugins Database
 
@@ -280,18 +280,18 @@ class RethinkInterface:
             the plugin and the list of Commands (plguin_name, command_list)
         """
 
-        if verify(plugin_data[1], Commands()):
-            self._create_table("Plugins", plugin_data[0])
+        if verify(plugin_data, Commands()):
+            self._create_table("Plugins", plugin_name)
             try:
-                rethinkdb.db("Plugins").table(plugin_data[0]).insert(
-                    plugin_data[1],
+                rethinkdb.db("Plugins").table(plugin_name).insert(
+                    plugin_data,
                     conflict="update"
                 ).run(self.rethink_connection)
             except rethinkdb.ReqlDriverError:
                 self._log(
                     "".join([
                         "Unable to add command to table '",
-                        plugin_data[0],
+                        plugin_name,
                         "'"
                     ]),
                     20

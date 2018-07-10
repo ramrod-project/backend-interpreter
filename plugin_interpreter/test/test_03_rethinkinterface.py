@@ -175,8 +175,7 @@ def test_rethink_plugin_create(brain, rethink):
                 "Tooltip": "This is also a test",
                 "OptionalInputs": []
             }]
-    plugin_data = ("TestTable",command_list)
-    rethink.create_plugin_table(plugin_data)
+    rethink.create_plugin_table("TestTable",command_list)
     assert rethink.check_for_plugin("TestTable")
     tablecheck = rethinkdb.db("Plugins").table("TestTable").run(rethink.rethink_connection)
     assert compare_to(tablecheck, command_list)
@@ -204,8 +203,7 @@ def test_rethink_plugin_create(brain, rethink):
                 "OptionalInputs": [],
                 "ExtraTestKey": "You can add keys to your Command"
             }]
-    plugin_data = ("TestTable",command_list)
-    rethink.create_plugin_table(plugin_data)
+    rethink.create_plugin_table("TestTable", command_list)
     tablecheck = rethinkdb.db("Plugins").table("TestTable").run(rethink.rethink_connection)
     table_list = list(tablecheck)
     assert compare_to(table_list, command_list)
