@@ -454,4 +454,44 @@ def test_handle_state_change(env, controller, rethink, clear_dbs, brain_conn):
 def test_check_states(env, controller, rethink, clear_dbs, brain_conn):
     """Test checking the states of the various containers
     and updating as necessary"""
-    pass
+    server.PLUGIN_CONTROLLER.rethink_host = "localhost"
+    server.PLUGIN_CONTROLLER.network_name = "test"
+    server.PLUGIN_CONTROLLER.tag = environ["TRAVIS_BRANCH"]
+    result = brain.queries.create_plugin_controller(
+        {
+            "Name": "Harness",
+            "State": "Available",
+            "DesiredState": "Activate",
+            "Interface": "",
+            "ExternalPort": ["".join((str(5000), "/tcp"))],
+            "InternalPort": ["".join((str(5000), "/tcp"))]
+        },
+        conn=brain_conn
+    )
+    assert result["errors"] == 0
+    cursor = brain.queries.RPC.run(brain_conn)
+    server.check_states(cursor)
+    sleep(3)
+    assert server.PLUGIN_CONTROLLER.container_mapping["Harness"]
+    assert server.PLUGIN_CONTROLLER.container_mapping["Harness"].name == "Harness"
+    assert server.PLUGIN_CONTROLLER.container_mapping["Harness"].status == "running"
+    result = brain.queries.get_plugin_by_name_controller("Harness", conn=brain_conn).next()
+    assert result["State"] == "Active"
+    assert result["DesiredState"] == ""
+    result = brain.queries.update_plugin_controller(
+        {
+            "Name": "Harness",
+            "DesiredState": "Stop",
+        },
+        conn=brain_conn
+    )
+    assert result["errors"] == 0
+    cursor = brain.queries.RPC.run(brain_conn)
+    server.check_states(cursor)
+    sleep(3)
+    assert server.PLUGIN_CONTROLLER.container_mapping["Harness"]
+    assert server.PLUGIN_CONTROLLER.container_mapping["Harness"].name == "Harness"
+    assert server.PLUGIN_CONTROLLER.container_mapping["Harness"].status == "exited"
+    result = brain.queries.get_plugin_by_name_controller("Harness", conn=brain_conn).next()
+    assert result["State"] == "Stopped"
+    assert result["DesiredState"] == ""

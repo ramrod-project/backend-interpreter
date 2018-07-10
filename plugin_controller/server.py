@@ -149,7 +149,6 @@ def handle_state_change(plugin_data):
             40
         )
     plugin_data["DesiredState"] = ""
-    to_log("plugin data: {}".format(plugin_data), 10)
     PLUGIN_CONTROLLER.update_plugin(plugin_data)
     return success
 
@@ -169,7 +168,8 @@ def check_states(cursor):
         if not handle_state_change(plugin_data):
             to_log(
                 40,
-                "State transition to {} from {} failed!".format(
+                "{}: transition to {} from {} failed!".format(
+                    plugin_data["Name"],
                     desired,
                     actual
                 )
