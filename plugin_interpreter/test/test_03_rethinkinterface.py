@@ -249,6 +249,8 @@ def test_update_job_status(brain, rethink):
     }
     with raises(rethink_interface.InvalidStatus):
         rethink.update_job_status(job_dict)
+    with raises(rethink_interface.rethinkdb.ReqlDriverError):
+        rethink.update_job_status({"job":"Not_a_real_id","status": "Done"})
 
 def test_update_job(rethink):
     """tests the ability to move through the normal flow of the
@@ -340,6 +342,10 @@ def test_send_output(brain, rethink):
     #output_cursor.next()
     db_output = output_cursor.next().get("Content")
     assert(db_output == content)
+    rethink.send_output({"job": "badjob","output": content})
+
+def test_log_err(brain, rethink):
+    rethink._log_db_error(rethink.rethinkdb.ReqlDriverError)
 
 def test_get_table_contents(brain, rethink):
     """Tests getting an entire table
