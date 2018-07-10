@@ -16,6 +16,7 @@ from brain import connect, r as rethinkdb
 from brain.brain_pb2 import Commands
 from brain.checks import verify
 from brain.queries import plugin_exists, create_plugin, get_next_job
+from brain.binary import get as binary_get
 
 
 class InvalidStatus(Exception):
@@ -50,7 +51,7 @@ class RethinkInterface:
         self.port = server[1]
         self.rethink_connection = connect(host=self.host, port=self.port)
 
-    def changefeed_thread(self, signal):
+    def changefeed_thread(self, signal):  # pragma: no cover
         """Starts a changefeed for jobs and loops
 
         This function is used as a target for a thread
@@ -89,7 +90,7 @@ class RethinkInterface:
 
         return get_next_job(self.plugin_name, True, self.rethink_connection)
 
-    def start(self, signal):
+    def start(self, signal):  # pragma: no cover
         """
         Start the Rethinkdb interface process. Control loop that handles
         communication with the database.
@@ -256,6 +257,18 @@ class RethinkInterface:
                 "".join(("There is no job with an id of ", output_data[0])),
                 30
             )
+
+    def get_file(self, file_name):
+        """Gets a file from the Brain by specifying the file's name
+
+        Arguments:
+            file_name {str} -- the name of the file in the Brain
+
+        Returns:
+            dict -- a dictionary containing the Brain's entry for the file
+        """
+
+        return binary_get(file_name)
 
     def create_plugin_table(self, plugin_data):
         """
