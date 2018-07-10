@@ -6,7 +6,7 @@ interpreter controller.
 TODO:
 """
 import logging
-from os import environ
+from os import environ, getenv
 from signal import signal, SIGTERM
 from time import asctime, gmtime, sleep, time
 
@@ -36,37 +36,31 @@ elif LOGLEVEL == "CRITICAL":
     LOGGER.setLevel(logging.CRITICAL)
 
 
-try:
-    if environ["STAGE"] == "PROD":
-        NETWORK_NAME = "pcp"
-        HOST_PORT = 5000
-    else:
-        NETWORK_NAME = "test"
-        HOST_PORT = 5005
-except KeyError:
+STAGE = getenv("STAGE", default="PROD")
+if environ["STAGE"] == "TESTING":
+    RETHINK_HOST = "localhost"
     NETWORK_NAME = "test"
-    HOST_PORT = 5005
+    HARNESS_PORT = 5005
+else:
+    RETHINK_HOST = "rethinkdb"
+    NETWORK_NAME = "pcp"
+    HARNESS_PORT = 5000
 
 HARNESS_PROTO = "TCP"
 HARNESS_PLUGIN = "Harness"
 
-try:
-    START_HARNESS = environ["START_HARNESS"]
-except:
-    START_HARNESS = "NO"
 
-try:
-    TAG = environ["TRAVIS_BRANCH"].replace("master", "latest")
-except KeyError:
-    TAG = "latest"
+MANIFEST_FILE = getenv("MANIFEST", default="./manifest.json")
+START_HARNESS = getenv("START_HARNESS", default="NO")
+TAG = getenv("TRAVIS_BRANCH", default="latest").replace("master", "latest")
 
 
 PLUGIN_CONTROLLER = Controller(NETWORK_NAME, TAG)
 
-
-"""Below are the acceptable state mappings for the
-possible states for a plugin.
-"""
+# ---------------------------------------------------------
+# --- Below are the acceptable state mappings for the   ---
+# --- possible states for a plugin.                     ---
+# ---------------------------------------------------------
 AVAILABLE_MAPPING = {
     "Activate": PLUGIN_CONTROLLER.launch_plugin
 }
@@ -81,7 +75,8 @@ STOPPED_MAPPING = {
     "Restart": PLUGIN_CONTROLLER.launch_plugin
 }
 
-# Not able to do anything right now, just wait for restart
+# --- Not able to do anything right now, just wait      ---
+# --- for restart.                                      ---
 RESTARTING_MAPPING = {}
 
 STATE_MAPPING = {
@@ -91,20 +86,27 @@ STATE_MAPPING = {
     "Restarting": RESTARTING_MAPPING
 }
 
+# --- Maps docker container states to database entries  ---
 STATUS_MAPPING = {
     "restarting": "Restarting",
     "running": "Active",
     "paused": "Stopped",
     "exited": "Stopped"
 }
+# ---------------------------------------------------------
 
 
 def update_states():
-        
+    """Update the current states of the running
+    containers.
+
+    Queries the docker client to get the current
+    states of the running plugin containers.
+    """
     for name, _ in PLUGIN_CONTROLLER.container_mapping:
-        # ---We have to update the container object here    ---
-        # ---because the 'status' attribute is not updated  ---
-        # ---automatically.                                 ---
+        # --- We have to update the container object here   ---
+        # --- because the 'status' attribute is not updated ---
+        # --- automatically.                                ---
         new_con = PLUGIN_CONTROLLER.get_container_from_name(name)
         PLUGIN_CONTROLLER.update_plugin({
             "Name": name,
@@ -114,7 +116,20 @@ def update_states():
 
 
 def handle_state_change(plugin_data):
+    """Handle a container state change
 
+    When DesiredState and State are out of sync,
+    this function is called on the plugin
+    in question and the docker client attempts
+    to modify the state.
+
+    Arguments:
+        plugin_data {dict} -- the plugin data as
+        pulled from the database.
+
+    Returns:
+        {bool} -- True if success, False if failure.
+    """ 
     current_state = STATE_MAPPING[plugin_data["State"]]
     desired_state = plugin_data["DesiredState"]
     try:
@@ -128,7 +143,12 @@ def handle_state_change(plugin_data):
 
 
 def check_states(cursor):
+    """Check the current states in the database.
 
+    Arguments:
+        cursor {rethinkdb cursor} -- cursor containing
+        the plugins and their statuses.
+    """
     for plugin_data in cursor:
         actual = plugin_data["State"]
         desired = plugin_data["DesiredState"]
@@ -145,7 +165,15 @@ def check_states(cursor):
 
 
 def to_log(log, level):
-    
+    """Send message to log
+
+    Logs a message of a given level
+    to the logger with a timestamp.
+
+    Arguments:
+        log {str} -- log message.
+        level {int[10,20,30,40,50]} -- log level.
+    """
     date = asctime(gmtime(time()))
     LOGGER.log(
         level,
@@ -177,24 +205,31 @@ def main():  # pragma: no cover
         )
         exit(1)
 
-    PLUGIN_CONTROLLER.load_plugins_from_manifest("./manifest.json")
+    PLUGIN_CONTROLLER.load_plugins_from_manifest(MANIFEST_FILE)
 
     if START_HARNESS == "YES":
         PLUGIN_CONTROLLER.launch_plugin(
             HARNESS_PLUGIN,
-            {HOST_PORT: HOST_PORT},
+            {HARNESS_PORT: HARNESS_PORT},
             HARNESS_PROTO
         )
 
     while True:
+        # --- This main control loop monitors the running   ---
+        # --- plugin containers. It takes the following     ---
+        # --- actions:                                      ---
+        # --- 1) Update the running plugin container states ---
+        # --- 2) Query the plugin entries table             ---
+        # --- 3) Check the DesiredState agains the State    ---
+        # --- 3.1) If they differ, take appropriate action  ---
         try:
-            sleep(1)
             update_states()
             cursor = queries.RPC.run(connect(host="rethinkdb"))
             check_states(cursor)
         except KeyboardInterrupt:
             PLUGIN_CONTROLLER.stop_all_containers()
             exit(0)
+        sleep(1)
 
 
 if __name__ == "__main__":  # pragma: no cover

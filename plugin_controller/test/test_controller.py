@@ -17,6 +17,7 @@ CLIENT = docker.from_env()
 syspath.append(CONTROLLER_PATH)
 
 from ..controller import *
+from .. import server
 
 
 TEST_PLUGIN_DATA = {
@@ -354,3 +355,19 @@ def test_stop_all_containers(env, controller):
         assert con
         assert con.status == "exited"
         con.remove()
+
+def test_update_states(env, controller, rethink, clear_dbs, brain_conn):
+    """Test updating the state of a container in
+    the db.
+    """
+    pass
+
+def test_handle_state_change(env, controller, rethink, clear_dbs, brain_conn):
+    """Test handling a state change of a container.
+    """
+    pass
+
+def test_check_states(env, controller, rethink, clear_dbs, brain_conn):
+    """Test checking the states of the various containers
+    and updating as necessary"""
+    pass
