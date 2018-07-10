@@ -51,7 +51,7 @@ class RethinkInterface:
         self.port = server[1]
         self.rethink_connection = connect(host=self.host, port=self.port)
 
-    def changefeed_thread(self, signal):# pragma: no cover
+    def changefeed_thread(self, signal):  # pragma: no cover
         """Starts a changefeed for jobs and loops
 
         This function is used as a target for a thread
@@ -90,7 +90,7 @@ class RethinkInterface:
 
         return get_next_job(self.plugin_name, True, self.rethink_connection)
 
-    def start(self, signal):# pragma: no cover
+    def start(self, signal):  # pragma: no cover
         """
         Start the Rethinkdb interface process. Control loop that handles
         communication with the database.

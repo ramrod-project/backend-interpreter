@@ -159,7 +159,7 @@ class ControllerPlugin(ABC):
                 "status": status
             }
         )
-    
+
     def get_file(self, file_name, encoding=None):
         """Get the file specified from the Brain
 
