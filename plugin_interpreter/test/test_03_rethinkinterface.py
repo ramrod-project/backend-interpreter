@@ -517,4 +517,5 @@ def test_check_for_plugin(brain, rethink):
 
 def test_get_file(brain, rethink):
     bin_put(SAMPLE_FILE)
+    sleep(5)
     assert rethink.get_file("testfile.txt") == SAMPLE_FILE
