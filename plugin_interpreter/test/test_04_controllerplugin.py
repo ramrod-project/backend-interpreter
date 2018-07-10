@@ -31,6 +31,14 @@ SAMPLE_JOB = {
     "JobCommand": "Do stuff"
 }
 
+SAMPLE_FILE = {
+    "id": "testfile.txt",
+    "Name": "testfile.txt",
+    "ContentType": "data",
+    "Timestamp": 123456789,
+    "Content": "This is just a TEST!"
+}
+
 environ["PORT"] = "8080"
 
 
@@ -55,6 +63,9 @@ class DummyDBInterface():
     
     def get_job(self):
         return SAMPLE_JOB
+    
+    def get_file(self, filename):
+        return SAMPLE_FILE
 
 
 class SamplePlugin(controller_plugin.ControllerPlugin):
@@ -197,3 +208,13 @@ def test_respond_to_job(plugin_base):
     assert plugin_base.DBI.result["job"] == SAMPLE_JOB
     assert plugin_base.DBI.result["output"] == "error"
     assert plugin_base.DBI.result["job"]["Status"] == "Error"
+
+def test_get_file(plugin_base):
+    SAMPLE_FILE["Content"] = SAMPLE_FILE["Content"].encode("utf-8")
+    # check with encoding specified
+    assert plugin_base.get_file("testfile.txt", "utf-8") == "This is just a TEST!"
+    # check without encoding to get bytes blob
+    assert plugin_base.get_file("testfile.txt") == SAMPLE_FILE["Content"]
+    # bad codec
+    with raises(LookupError):
+        plugin_base.get_file("testfile.txt","MYNEWSTANDARD")

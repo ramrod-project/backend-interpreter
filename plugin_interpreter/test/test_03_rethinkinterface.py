@@ -11,10 +11,18 @@ from time import asctime, gmtime, sleep, time
 from pytest import fixture, raises
 import docker
 from brain import r as rethinkdb, connect
+from brain.binary import put as bin_put
 
 from plugins import *
 from src import rethink_interface, linked_process
 
+SAMPLE_FILE = {
+    "id": "testfile.txt",
+    "Name": "testfile.txt",
+    "ContentType": "data",
+    "Timestamp": 123456789,
+    "Content": "This is just a TEST!"
+}
 
 CLIENT = docker.from_env()
 logging.basicConfig(
@@ -508,3 +516,8 @@ def test_check_for_plugin(brain, rethink):
     rethinkdb.db("Plugins").table_create("TestPlugin").run(conn)
     sleep(1)
     assert rethink.check_for_plugin("TestPlugin")
+
+def test_get_file(brain, rethink):
+    bin_put(SAMPLE_FILE)
+    sleep(5)
+    assert rethink.get_file("testfile.txt") == SAMPLE_FILE
