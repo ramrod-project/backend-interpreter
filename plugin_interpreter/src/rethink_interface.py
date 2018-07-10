@@ -255,7 +255,9 @@ class RethinkInterface:
                 )
         else:
             self._log(
-                "".join(("There is no job with an id of ", output_data["job"]["id"])),
+                "".join(
+                    ("There is no job with an id of ",
+                    output_data["job"]["id"])),
                 30
             )
 
