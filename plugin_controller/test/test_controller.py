@@ -185,6 +185,34 @@ def test_dev_db(env, controller):
     con.remove()
     CLIENT.networks.prune()
 
+def test_get_all_containers(env, controller):
+    containers = []
+    for i in [1000, 1001, 1002]:
+        containers.append(give_a_container(name=str(i), network=None))
+    for con in containers:
+        assert con
+        assert con.status == "created"
+    got_containers = controller.get_all_containers()
+    for container in containers:
+        assert container in got_containers
+        container.stop()
+        container.wait(timeout=2)
+        container.remove()
+    
+def test_stop_all_containers(env, controller):
+    containers = []
+    for i in [1000, 1001, 1002]:
+        containers.append(give_a_container(name=str(i), network=None))
+    for con in containers:
+        assert con
+        assert con.status == "created"
+    controller.stop_all_containers()
+    for con in containers:
+        con = CLIENT.containers.get(con.id)
+        assert con
+        assert con.status == "exited"
+        con.remove()
+
 def test_create_plugin(env, controller, rethink, brain_conn, clear_dbs):
     assert not controller.create_plugin({"Name": ""})
     controller.create_plugin(TEST_PLUGIN_DATA)
@@ -329,34 +357,6 @@ def test_stop_container(env, container, controller, rethink):
     con = CLIENT.containers.get("testcontainer")
     assert con.status == "exited"
     con.remove()
-
-def test_get_all_containers(env, controller):
-    containers = []
-    for i in [1000, 1001, 1002]:
-        containers.append(give_a_container(name=str(i), network=None))
-    for con in containers:
-        assert con
-        assert con.status == "created"
-    got_containers = controller.get_all_containers()
-    for container in containers:
-        assert container in got_containers
-        container.stop()
-        container.wait(timeout=2)
-        container.remove()
-    
-def test_stop_all_containers(env, controller):
-    containers = []
-    for i in [1000, 1001, 1002]:
-        containers.append(give_a_container(name=str(i), network=None))
-    for con in containers:
-        assert con
-        assert con.status == "created"
-    controller.stop_all_containers()
-    for con in containers:
-        con = CLIENT.containers.get(con.id)
-        assert con
-        assert con.status == "exited"
-        con.remove()
 
 def test_update_states(env, rethink, clear_dbs, brain_conn):
     """Test updating the state of a container in

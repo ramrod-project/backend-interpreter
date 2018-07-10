@@ -133,7 +133,7 @@ def handle_state_change(plugin_data):
 
     Returns:
         {bool} -- True if success, False if failure.
-    """ 
+    """
     current_state = STATE_MAPPING[plugin_data["State"]]
     desired_state = plugin_data["DesiredState"]
     success = False
@@ -167,12 +167,12 @@ def check_states(cursor):
             continue
         if not handle_state_change(plugin_data):
             to_log(
-                40,
                 "{}: transition to {} from {} failed!".format(
                     plugin_data["Name"],
                     desired,
                     actual
-                )
+                ),
+                40
             )
 
 
@@ -207,9 +207,7 @@ def main():  # pragma: no cover
 
     signal(SIGTERM, sigterm_handler)
 
-    if (environ["STAGE"] == "DEV" or 
-        environ["STAGE"] == "QA") and \
-       not PLUGIN_CONTROLLER.dev_db():
+    if environ["STAGE"] == "DEV" and not PLUGIN_CONTROLLER.dev_db():
         PLUGIN_CONTROLLER.log(
             40,
             "Port 28015 already allocated, \
@@ -234,6 +232,8 @@ def main():  # pragma: no cover
             "InternalPort": [port]
         })
 
+    brain_connection = connect(host=RETHINK_HOST)
+
     while True:
         # --- This main control loop monitors the running   ---
         # --- plugin containers. It takes the following     ---
@@ -244,12 +244,12 @@ def main():  # pragma: no cover
         # --- 3.1) If they differ, take appropriate action  ---
         try:
             update_states()
-            cursor = queries.RPC.run(connect(host="rethinkdb"))
+            cursor = queries.RPC.run(brain_connection)
             check_states(cursor)
         except KeyboardInterrupt:
             PLUGIN_CONTROLLER.stop_all_containers()
             exit(0)
-        sleep(1)
+        sleep(0.3)
 
 
 if __name__ == "__main__":  # pragma: no cover

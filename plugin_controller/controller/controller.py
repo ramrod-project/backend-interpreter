@@ -193,6 +193,9 @@ class Controller():
             track of used {host port: container}
             combinations.
         """
+        if self.get_container_from_name("rethinkdb"):
+            self.log(20, "Found rethinkdb container!")
+            return True
         try:
             self.container_mapping["rethinkdb"] = CLIENT.containers.run(
                 "".join(("ramrodpcp/database-brain:", self.tag)),
@@ -202,7 +205,8 @@ class Controller():
                 network=self.network_name,
                 remove=False
             )
-        except brain.r.ReqlError:
+        except brain.r.ReqlError as ex:
+            self.log(50, "Could not start db!: {}".format(ex))
             return False
         sleep(3)
         return True
@@ -253,7 +257,7 @@ class Controller():
                 port_data["UDPPorts"].append(ext_port)
 
         existing = self.get_container_from_name(plugin_data["Name"])
-        if self.restart_plugin(plugin_data):
+        if existing:
             return existing
 
         self._create_port(port_data)
@@ -312,6 +316,10 @@ class Controller():
                 plugin_data["DesiredState"] = ""
                 self.update_plugin(plugin_data)
                 self.container_mapping[plugin_data["Name"]] = con
+                self.log(
+                    20,
+                    "{} is running!".format(plugin_data["Name"])
+                )
                 return True
             sleep(1)
         return False
@@ -328,11 +336,13 @@ class Controller():
         con = self.get_container_from_name(plugin_data["Name"])
         if not con:
             return False
-        if con.status == "running":
-            return True
-        con.restart()
         plugin_data["State"] = "Restarting"
         self.update_plugin(plugin_data)
+        self.log(
+            20,
+            "Restarting {}...".format(plugin_data["Name"])
+        )
+        con.restart(timeout=5)
         return self.wait_for_plugin(plugin_data)
 
     def stop_plugin(self, plugin_data):
@@ -342,21 +352,18 @@ class Controller():
             plugin_data {dict} -- plugin data
 
         Returns:
-            {bool} -- True: stopped False: not stopped
+            {bool} -- True: stopped False: not found
         """
         con = self.get_container_from_name(plugin_data["Name"])
         if con:
-            con.stop()
-            try:
-                con.wait(timeout=5)
-                plugin_data["State"] = "Stopped"
-                self.update_plugin(plugin_data)
-                return True
-            except ReadTimeout as ex:
-                self.log(
-                    40,
-                    str(ex)
-                )
+            self.log(
+                20,
+                "Stopping {}...".format(plugin_data["Name"])
+            )
+            con.stop(timeout=10)
+            plugin_data["State"] = "Stopped"
+            self.update_plugin(plugin_data)
+            return True
         return False
 
     def plugin_status(self, plugin_data):
@@ -438,11 +445,11 @@ class Controller():
             con {container} -- a docker.container object corresponding
             to the plugin name.
         """
-        for container in self.get_all_containers():
-            if container.name == plugin_name:
-                return container
-        self.log(
-            20,
-            "".join((plugin_name, " not found!"))
-        )
+        try:
+            return CLIENT.containers.get(plugin_name)
+        except docker.errors.NotFound:
+            self.log(
+                20,
+                "".join((plugin_name, " not found!"))
+            )
         return None
