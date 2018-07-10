@@ -119,12 +119,14 @@ def rethink_empty():
             break
 
 def clear_dbs(conn):
+    sleep(1)
     rethinkdb.db("Brain").table("Targets").delete().run(conn)
     rethinkdb.db("Brain").table("Outputs").delete().run(conn)
     rethinkdb.db("Brain").table("Jobs").delete().run(conn)
     rethinkdb.db("Audit").table("Jobs").delete().run(conn)
     for table in rethinkdb.db("Plugins").table_list().run(conn):
         rethinkdb.db("Plugins").table(table).delete().run(conn)
+    sleep(1)
 
 def compare_to(tablecheck, compare_list):
     """[summary]
