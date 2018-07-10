@@ -112,11 +112,18 @@ def update_states():
         # --- because the 'status' attribute is not updated ---
         # --- automatically.                                ---
         new_con = PLUGIN_CONTROLLER.get_container_from_name(name)
-        PLUGIN_CONTROLLER.update_plugin({
-            "Name": name,
-            "State": STATUS_MAPPING[new_con.status]
-        })
-        PLUGIN_CONTROLLER.container_mapping[name] = new_con
+        if not new_con:
+            del PLUGIN_CONTROLLER.container_mapping[name]
+            PLUGIN_CONTROLLER.update_plugin({
+                "Name": name,
+                "State": "Available"
+            })
+        else:
+            PLUGIN_CONTROLLER.container_mapping[name] = new_con
+            PLUGIN_CONTROLLER.update_plugin({
+                "Name": name,
+                "State": STATUS_MAPPING[new_con.status]
+            })
 
 
 def handle_state_change(plugin_data):

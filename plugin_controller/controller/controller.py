@@ -30,7 +30,9 @@ CONTAINERS_EXCEPTED = [
     "database",
     "backend",
     "websockets",
-    "frontend"
+    "frontend",
+    "rethinkdb",
+    "controller"
 ]
 
 LOGLEVELS = {
@@ -258,7 +260,10 @@ class Controller():
 
         existing = self.get_container_from_name(plugin_data["Name"])
         if existing:
-            return existing
+            if self.restart_plugin(plugin_data):
+                return existing
+            else:
+                return None
 
         self._create_port(port_data)
 
@@ -278,13 +283,6 @@ class Controller():
             ports=ports_config
         )
         if self.wait_for_plugin(plugin_data):
-            self.log(
-                20,
-                "".join((
-                    plugin_data["Name"],
-                    " started."
-                ))
-            )
             return con
         return None
 
