@@ -212,11 +212,19 @@ def main():  # pragma: no cover
     PLUGIN_CONTROLLER.load_plugins_from_manifest(MANIFEST_FILE)
 
     if START_HARNESS == "YES":
-        PLUGIN_CONTROLLER.launch_plugin(
-            HARNESS_PLUGIN,
-            {HARNESS_PORT: HARNESS_PORT},
-            HARNESS_PROTO
-        )
+        port = "".join([
+            str(HARNESS_PORT),
+            "/",
+            HARNESS_PROTO.lower()
+        ])
+        PLUGIN_CONTROLLER.launch_plugin({
+            "Name": HARNESS_PLUGIN,
+            "State": "Available",
+            "DesiredState": "",
+            "Interface": "",
+            "ExternalPort": [port],
+            "InternalPort": [port]
+        })
 
     while True:
         # --- This main control loop monitors the running   ---

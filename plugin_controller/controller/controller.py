@@ -221,58 +221,36 @@ class Controller():
             }
         )
 
-    def launch_plugin(self, plugin, ports, host_proto):
+    def launch_plugin(self, plugin_data):
         """Launch a plugin container
 
         Arguments:
-            plugin {str} -- name of the plugin to run.
-            port {int} -- internal docker container port.
-            host_port {int} -- port to use on the host.
-            host_proto {str} -- TCP or UDP, the protocol used
-            by the plugin.
+            plugin_data {dict} -- data for plugin.
 
         Returns:
             {Container} -- a Container object corresponding
             to the launched container.
         """
-        if host_proto != "TCP" and host_proto != "UDP":
-            raise TypeError
-
-        external_ports = []
-        internal_ports = []
         ports_config = {}
         port_data = {
             "InterfaceName": "",
-            "Address": "",
+            "Address": plugin_data["Interface"],
             "TCPPorts": [],
             "UDPPorts": []
         }
 
-        for container_port, host_port in ports.items():
-            if container_port > 65535 or host_port > 65535:
-                raise ValueError
-            external_ports.append(str(host_port))
-            internal_ports.append(str(container_port))
-            ports_config["".join([
-                str(container_port),
-                "/",
-                host_proto.lower()
-            ])] = str(host_port)
-            if host_proto == "TCP":
-                port_data["TCPPorts"].append(str(host_port))
+        for i in range(len(plugin_data["ExternalPort"])):
+            proto = plugin_data["ExternalPort"][i].split("/")[-1]
+            ext_port_proto = plugin_data["ExternalPort"][i]
+            ext_port = plugin_data["ExternalPort"][i].split("/")[0]
+            int_port = plugin_data["InternalPort"][i].split("/")[0]
+            ports_config[ext_port_proto] = int_port
+            if proto == "tcp":
+                port_data["TCPPorts"].append(ext_port)
             else:
-                port_data["UDPPorts"].append(str(host_port))
+                port_data["UDPPorts"].append(ext_port)
 
-        plugin_data = {
-            "Name": plugin,
-            "State": "Available",
-            "DesiredState": "",
-            "Interface": "",
-            "ExternalPorts": external_ports,
-            "InternalPorts": internal_ports
-        }
-
-        existing = self.get_container_from_name(plugin)
+        existing = self.get_container_from_name(plugin_data["Name"])
         if self.restart_plugin(plugin_data):
             return existing
 
@@ -282,12 +260,12 @@ class Controller():
         # ---hence the internal_ports[0].                           ---
         con = CLIENT.containers.run(
             "".join(("ramrodpcp/interpreter-plugin:", self.tag)),
-            name=plugin,
+            name=plugin_data["Name"],
             environment={
                 "STAGE": environ["STAGE"],
                 "LOGLEVEL": environ["LOGLEVEL"],
-                "PLUGIN": plugin,
-                "PORT": internal_ports[0]
+                "PLUGIN": plugin_data["Name"],
+                "PORT": plugin_data["InternalPort"][0].split("/")[0]
             },
             detach=True,
             network=self.network_name,

@@ -266,11 +266,14 @@ def test_get_container_from_name(env, container, controller, rethink, clear_dbs)
     assert container.id == con.id
 
 def test_launch_container(env, controller, rethink, clear_dbs):
-    with raises(TypeError):
-        controller.launch_plugin("Harness", {6000: 5005}, "RTCP")
-    with raises(ValueError):
-        controller.launch_plugin("Harness", {6000: 999999}, "TCP")
-    con = controller.launch_plugin("Harness", {6000: 5005}, "TCP")
+    con = controller.launch_plugin({
+        "Name": "Harness",
+        "State": "Available",
+        "DesiredState": "",
+        "Interface": "",
+        "ExternalPort": ["6000/tcp"],
+        "InternalPort": ["5005/tcp"]
+    })
     sleep(3)
     con = CLIENT.containers.get(con.id)
     assert con.status == "running"
@@ -370,8 +373,8 @@ def test_update_states(env, rethink, clear_dbs, brain_conn):
                 "State": "Available",
                 "DesiredState": "",
                 "Interface": "",
-                "ExternalPort": [str(i + 5000)],
-                "InternalPort": [str(i + 10000)]
+                "ExternalPort": ["".join((str(i + 5000), "/tcp"))],
+                "InternalPort": ["".join((str(i + 5000), "/tcp"))]
             },
             conn=brain_conn
         )
@@ -405,8 +408,8 @@ def test_handle_state_change(env, controller, rethink, clear_dbs, brain_conn):
             "State": "Available",
             "DesiredState": "",
             "Interface": "",
-            "ExternalPort": [str(5000)],
-            "InternalPort": [str(10000)]
+            "ExternalPort": ["".join((str(5000), "/tcp"))],
+            "InternalPort": ["".join((str(5000), "/tcp"))]
         },
         conn=brain_conn
     )
