@@ -1,6 +1,6 @@
 from json import dump, load
 import logging
-from os import environ, path, remove
+from os import environ, getenv, path, remove
 from sys import path as syspath, stderr
 from threading import Thread
 from time import sleep, time
@@ -102,7 +102,7 @@ def env():
         if environ["TRAVIS_BRANCH"] not in ["dev, qa, master"]:
             stderr.write("TRAVIS_BRANCH must be set to dev|qa|master!\n")
     except KeyError:
-        environ["TRAVIS_BRANCH"] = "master"
+        environ["TRAVIS_BRANCH"] = "dev"
     yield
     environ["STAGE"] = ""
     environ["LOGLEVEL"] = ""
@@ -126,10 +126,7 @@ def plugin_monitor():
 def rethink():
     # Setup for all module tests
     docker_net_create()
-    try:
-        tag = environ.get("TRAVIS_BRANCH", "dev").replace("master", "latest")
-    except KeyError:
-        tag = "latest"
+    tag = getenv("TRAVIS_BRANCH", "dev").replace("master", "latest")
     con = give_a_container(
         image="".join(("ramrodpcp/database-brain:", tag)),
         name="rethinkdb",
@@ -166,7 +163,9 @@ def container():
 def controller():
     """Give a Controller
     """
-    return Controller("test", "dev")
+    cont = Controller("test", "dev")
+    cont.rethink_host = "localhost"
+    return cont
 
 @fixture(scope="function")
 def brain_conn():
@@ -356,16 +355,88 @@ def test_stop_all_containers(env, controller):
         assert con.status == "exited"
         con.remove()
 
-def test_update_states(env, controller, rethink, clear_dbs, brain_conn):
+def test_update_states(env, rethink, clear_dbs, brain_conn):
     """Test updating the state of a container in
     the db.
     """
-    pass
+    server.PLUGIN_CONTROLLER.rethink_host = "localhost"
+    containers = []
+    for i in [1000, 1001, 1002]:
+        name = str(i)
+        containers.append(give_a_container(name=name))
+        result = brain.queries.create_plugin_controller(
+            {
+                "Name": name,
+                "State": "Available",
+                "DesiredState": "",
+                "Interface": "",
+                "ExternalPort": [str(i + 5000)],
+                "InternalPort": [str(i + 10000)]
+            },
+            conn=brain_conn
+        )
+        assert result["errors"] == 0
+    for con in containers:
+        assert con
+        assert con.status == "created"
+        server.PLUGIN_CONTROLLER.container_mapping[name] = con
+    server.update_states()
+    sleep(1)
+    for plugin_name, plugin_con in server.PLUGIN_CONTROLLER.container_mapping.items():
+        result = brain.queries.get_plugin_by_name_controller(plugin_name, conn=brain_conn).next()
+        assert result["State"] == "Active"
+        plugin_con.stop()
+    server.update_states()
+    sleep(1)
+    for plugin_name, _ in server.PLUGIN_CONTROLLER.container_mapping.items():
+        result = brain.queries.get_plugin_by_name_controller(plugin_name, conn=brain_conn).next()
+        assert result["State"] == "Stopped"
+        con.remove()
+    server.PLUGIN_CONTROLLER.container_mapping = {}
 
 def test_handle_state_change(env, controller, rethink, clear_dbs, brain_conn):
     """Test handling a state change of a container.
     """
-    pass
+    server.PLUGIN_CONTROLLER.rethink_host = "localhost"
+    # --- Start a plugin
+    result = brain.queries.create_plugin_controller(
+        {
+            "Name": "Harness",
+            "State": "Available",
+            "DesiredState": "",
+            "Interface": "",
+            "ExternalPort": [str(5000)],
+            "InternalPort": [str(10000)]
+        },
+        conn=brain_conn
+    )
+    assert result["errors"] == 0
+    old_stage = environ["STAGE"]
+    environ["STAGE"] = "DEV"
+    server.handle_state_change({
+        "Name": "Harness",
+        "State": "Available",
+        "DesiredState": "Activate"
+    })
+    environ["STAGE"] = old_stage
+    sleep(3)
+    assert server.PLUGIN_CONTROLLER.container_mapping["Harness"]
+    assert server.PLUGIN_CONTROLLER.container_mapping["Harness"].name == "Harness"
+    assert server.PLUGIN_CONTROLLER.container_mapping["Harness"].status == "running"
+    result = brain.queries.get_plugin_by_name_controller("Harness", conn=brain_conn).next()
+    assert result["State"] == "Active"
+    assert result["DesiredState"] == ""
+    server.handle_state_change({
+        "Name": "Harness",
+        "State": "Active",
+        "DesiredState": "Stop"
+    })
+    assert server.PLUGIN_CONTROLLER.container_mapping["Harness"]
+    assert server.PLUGIN_CONTROLLER.container_mapping["Harness"].status == "exited"
+    result = brain.queries.get_plugin_by_name_controller("Harness", conn=brain_conn).next()
+    assert result["State"] == "Stopped"
+    assert result["DesiredState"] == "" 
+    server.PLUGIN_CONTROLLER.container_mapping = {}
 
 def test_check_states(env, controller, rethink, clear_dbs, brain_conn):
     """Test checking the states of the various containers

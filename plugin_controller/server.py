@@ -25,7 +25,7 @@ LOGGER = logging.getLogger("controller")
 LOGGER.addHandler(logging.StreamHandler())
 LOGGER.setLevel(logging.DEBUG)
 
-LOGLEVEL = environ["LOGLEVEL"]
+LOGLEVEL = getenv("LOGLEVEL", default="DEBUG")
 if LOGLEVEL == "INFO":
     LOGGER.setLevel(logging.INFO)
 elif LOGLEVEL == "WARNING":
@@ -37,8 +37,12 @@ elif LOGLEVEL == "CRITICAL":
 
 
 STAGE = getenv("STAGE", default="PROD")
-if environ["STAGE"] == "TESTING":
+if STAGE == "TESTING":
     RETHINK_HOST = "localhost"
+    NETWORK_NAME = "test"
+    HARNESS_PORT = 5005
+elif STAGE == "DEV":
+    RETHINK_HOST = "rethinkdb"
     NETWORK_NAME = "test"
     HARNESS_PORT = 5005
 else:
@@ -103,14 +107,14 @@ def update_states():
     Queries the docker client to get the current
     states of the running plugin containers.
     """
-    for name, _ in PLUGIN_CONTROLLER.container_mapping:
+    for name, _ in PLUGIN_CONTROLLER.container_mapping.items():
         # --- We have to update the container object here   ---
         # --- because the 'status' attribute is not updated ---
         # --- automatically.                                ---
         new_con = PLUGIN_CONTROLLER.get_container_from_name(name)
         PLUGIN_CONTROLLER.update_plugin({
             "Name": name,
-            "State": STATE_MAPPING[new_con.status]
+            "State": STATUS_MAPPING[new_con.status]
         })
         PLUGIN_CONTROLLER.container_mapping[name] = new_con
 
