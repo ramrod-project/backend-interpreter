@@ -221,10 +221,8 @@ def test_stop_all_containers(env, controller):
         assert con.status == "created"
     controller.stop_all_containers()
     for con in containers:
-        con = CLIENT.containers.get(con.id)
-        assert con
-        assert con.status == "exited"
-        con.remove()
+        with raises(docker.errors.NotFound):
+            con = CLIENT.containers.get(con.id)
 
 def test_create_plugin(env, controller, rethink, brain_conn, clear_dbs):
     assert not controller.create_plugin({"Name": ""})
