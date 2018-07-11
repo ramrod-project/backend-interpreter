@@ -45,9 +45,9 @@ script:
     docker build -t ramrodpcp/interpreter-plugin:latest ./plugin_interpreter/; fi
   - docker network create test
   - if [ "$TRAVIS_BRANCH" != "master"  ]; 
-    then docker run -ti --name controller --network test -e "START_HARNESS=YES" -e "STAGE=DEV" -e "LOGLEVEL=DEBUG" -e "TRAVIS_BRANCH=$TRAVIS_BRANCH" 
+    then docker run -d --name controller --network test -e "START_HARNESS=YES" -e "STAGE=DEV" -e "LOGLEVEL=DEBUG" -e "TRAVIS_BRANCH=$TRAVIS_BRANCH" 
     -v /var/run/docker.sock:/var/run/docker.sock ramrodpcp/backend-interpreter:$TRAVIS_BRANCH;
-    else docker run -ti --name controller --network test -e "START_HARNESS=YES" -e "STAGE=DEV" -e "LOGLEVEL=DEBUG" -e "TRAVIS_BRANCH=$TRAVIS_BRANCH" 
+    else docker run -d --name controller --network test -e "START_HARNESS=YES" -e "STAGE=DEV" -e "LOGLEVEL=DEBUG" -e "TRAVIS_BRANCH=$TRAVIS_BRANCH" 
     -v /var/run/docker.sock:/var/run/docker.sock ramrodpcp/backend-interpreter:latest; fi
   # This will eventually be for more integration testing
   - sleep 30
