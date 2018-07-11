@@ -49,8 +49,8 @@ class DummyDBInterface():
         self.result = None
         self.update = None
 
-    def create_plugin_table(self, db_data):
-        self.result = db_data
+    def create_plugin_table(self, db_data, db_data2):
+        self.result = (db_data, db_data2)
 
     def update_job(self, job_id):
         self.update = job_id

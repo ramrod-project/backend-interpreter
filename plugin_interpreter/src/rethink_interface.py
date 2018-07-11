@@ -16,6 +16,7 @@ from brain import connect, r as rethinkdb
 from brain.brain_pb2 import Commands
 from brain.checks import verify
 from brain.queries import plugin_exists, create_plugin, get_next_job
+from brain.queries import advertise_plugin_commands, create_plugin
 from brain.binary import get as binary_get
 
 
@@ -136,6 +137,7 @@ class RethinkInterface:
                 "".join([job_id, " has an invalid state, setting to error"]),
                 30
             )
+            self.update_job_error(job_id)
 
         if job["Status"] == "Ready":
             self.update_job_status({"job": job_id, "status": "Pending"})
@@ -223,7 +225,7 @@ class RethinkInterface:
         """sends the plugin's output message to the Outputs table
 
         Arguments:
-            output_data {dictionary (Dictionary,str)} -- tuple containing
+            output_data {dictionary (Dictionary,str)} -- dict containing
             the job and the output to add to the table (job, output)
         """
         # get the job corresponding to this output
@@ -254,7 +256,9 @@ class RethinkInterface:
                 )
         else:
             self._log(
-                "".join(("There is no job with an id of ", output_data[0])),
+                "".join(
+                    ("There is no job with an id of ",
+                        output_data["job"]["id"])),
                 30
             )
 
@@ -270,7 +274,7 @@ class RethinkInterface:
 
         return binary_get(file_name)
 
-    def create_plugin_table(self, plugin_data):
+    def create_plugin_table(self, plugin_name, plugin_data):
         """
         Adds a new plugin to the Plugins Database
 
@@ -279,18 +283,16 @@ class RethinkInterface:
             the plugin and the list of Commands (plguin_name, command_list)
         """
 
-        if verify(plugin_data[1], Commands()):
-            self._create_table("Plugins", plugin_data[0])
+        if verify(plugin_data, Commands()):
             try:
-                rethinkdb.db("Plugins").table(plugin_data[0]).insert(
-                    plugin_data[1],
-                    conflict="update"
-                ).run(self.rethink_connection)
-            except rethinkdb.ReqlDriverError:
+                create_plugin(plugin_name, self.rethink_connection)
+                advertise_plugin_commands(plugin_name, plugin_data,
+                    conn=self.rethink_connection)
+            except ValueError:
                 self._log(
                     "".join([
                         "Unable to add command to table '",
-                        plugin_data[0],
+                        plugin_name,
                         "'"
                     ]),
                     20
@@ -322,7 +324,7 @@ class RethinkInterface:
 
         self._log(*err_type[str(type(err))])
 
-    def _create_table(self, database_name, table_name):
+    def _create_table(self, database_name, table_name):  # pragma: no cover
         """Create a table in the database
 
         Arguments:

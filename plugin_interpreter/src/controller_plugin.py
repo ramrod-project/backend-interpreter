@@ -213,7 +213,7 @@ class ControllerPlugin(ABC):
         the plugin will be named the exact same string as the
         self.name attribute.
         """
-        self.DBI.create_plugin_table((self.name, self.functionality))
+        self.DBI.create_plugin_table(self.name, self.functionality)
 
     def _request_job(self):
         """ DEPRECATED"""
