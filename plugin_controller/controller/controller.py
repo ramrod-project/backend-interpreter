@@ -25,7 +25,7 @@ logging.basicConfig(
 
 CLIENT = docker.from_env()
 
-AUX_SERVICES = "auxiliary-services"
+AUX_SERVICES = "auxiliary-services:"
 CONTAINERS_EXCEPTED = [
     "database",
     "backend",
@@ -110,7 +110,11 @@ class Controller():
                 "first_error": "No plugins found in manifest!"
             })
         try:
-            CLIENT.images.get(AUX_SERVICES)
+            CLIENT.images.get("".join([
+                "ramrodpcp/",
+                AUX_SERVICES,
+                self.tag
+            ]))
             manifest_loaded.append({
                 "Name": "AuxiliaryServices"
             })

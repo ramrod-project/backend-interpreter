@@ -76,6 +76,13 @@ def test_make_available(brain_conn, clear_dbs, env, rethink, server_proc, give_m
     assert result["Interface"] == ""
     assert result["ExternalPort"] == []
     assert result["InternalPort"] == []
+    result = brain.queries.get_plugin_by_name_controller("AuxiliaryServices", conn=brain_conn).next()
+    assert result["Name"] == "AuxiliaryServices"
+    assert result["State"] == "Available"
+    assert result["DesiredState"] == ""
+    assert result["Interface"] == ""
+    assert result["ExternalPort"] == []
+    assert result["InternalPort"] == []
 
 def test_available_to_start(brain_conn, clear_dbs, env, rethink, server_proc, give_manifest, clean_up_containers):
     """Test starting a plugin which is already in
