@@ -10,7 +10,7 @@ from os import environ, getenv
 from signal import signal, SIGTERM
 from time import asctime, gmtime, sleep, time
 
-from brain import r, connect, queries
+from brain import connect, queries
 
 from controller import Controller
 
@@ -92,6 +92,7 @@ STATE_MAPPING = {
 
 # --- Maps docker container states to database entries  ---
 STATUS_MAPPING = {
+    "created": "Available",
     "restarting": "Restarting",
     "running": "Active",
     "paused": "Stopped",
@@ -197,15 +198,13 @@ def to_log(log, level):
     LOGGER.log(
         level,
         log,
-        extra={ "date": date }
+        extra={"date": date}
     )
 
 
 def main():  # pragma: no cover
     """Main server entry point
     """
-    PLUGIN_CONTROLLER = Controller(NETWORK_NAME, TAG)
-
     def sigterm_handler(_signo, _stack_frame):
         """Handles SIGTERM signal
         """

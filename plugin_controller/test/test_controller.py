@@ -92,6 +92,19 @@ def give_a_container(image="alpine:3.7",
         ports=ports
     )
 
+@fixture(scope="function", autouse=True)
+def clean_up_containers():
+    yield
+    for con in server.PLUGIN_CONTROLLER.get_all_containers():
+        try:
+            con.stop(timeout=1)
+        except:
+            pass
+        try:
+            con.remove()
+        except:
+            pass
+
 @fixture(scope="module")
 def env():
     """Set the environment variables for module tests
@@ -99,7 +112,7 @@ def env():
     environ["STAGE"] = "TESTING"
     environ["LOGLEVEL"] = "DEBUG"
     try:
-        if environ["TRAVIS_BRANCH"] not in ["dev, qa, master"]:
+        if environ["TRAVIS_BRANCH"] not in ["dev", "qa", "master"]:
             stderr.write("TRAVIS_BRANCH must be set to dev|qa|master!\n")
     except KeyError:
         environ["TRAVIS_BRANCH"] = "dev"
@@ -163,7 +176,7 @@ def container():
 def controller():
     """Give a Controller
     """
-    cont = Controller("test", "dev")
+    cont = Controller("test", getenv("TRAVIS_BRANCH", "dev").replace("master", "latest"))
     cont.rethink_host = "localhost"
     return cont
 
@@ -451,7 +464,7 @@ def test_handle_state_change(env, controller, rethink, clear_dbs, brain_conn):
     server.PLUGIN_CONTROLLER.container_mapping["Harness"].remove()
     server.PLUGIN_CONTROLLER.container_mapping = {}
 
-def test_check_states(env, controller, rethink, clear_dbs, brain_conn):
+def test_check_states(env, controller, rethink, clear_dbs, brain_conn, clean_up_containers):
     """Test checking the states of the various containers
     and updating as necessary"""
     server.PLUGIN_CONTROLLER.rethink_host = "localhost"

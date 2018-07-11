@@ -9,7 +9,7 @@ from pytest import fixture, raises
 
 from ..controller import *
 from .. import server
-from .test_controller import brain_conn, clear_dbs, controller, env, rethink
+from plugin_controller.test.test_controller import brain_conn, clear_dbs, controller, env, rethink
 
 CLIENT = docker.from_env()
 

@@ -14,7 +14,6 @@ from time import asctime, gmtime, sleep, time
 
 import docker
 import brain
-from requests import ReadTimeout
 
 
 logging.basicConfig(
@@ -262,8 +261,7 @@ class Controller():
         if existing:
             if self.restart_plugin(plugin_data):
                 return existing
-            else:
-                return None
+            return None
 
         self._create_port(port_data)
 
