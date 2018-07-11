@@ -332,6 +332,23 @@ def test_launch_container(env, controller, rethink, clear_dbs):
     con.remove()
     CLIENT.networks.prune()
 
+def test_launch_auxiliary(env, controller, rethink, clear_dbs):
+    con = controller.launch_plugin({
+        "Name": "AuxiliaryServices",
+        "State": "Available",
+        "DesiredState": "",
+        "Interface": "",
+        "ExternalPort": ["20/tcp", "21/tcp", "80/tcp", "53/udp"],
+        "InternalPort": ["20/tcp", "21/tcp", "80/tcp", "53/udp"]
+    })
+    sleep(3)
+    con = CLIENT.containers.get(con.id)
+    assert con.status == "running"
+    assert con.name == "AuxiliaryServices"
+    con.stop()
+    con.remove()
+    CLIENT.networks.prune()
+
 def test_wait_plugin(env, container, controller, rethink, clear_dbs):
     container = CLIENT.containers.get(container.id)
     assert container.status == "running"

@@ -121,8 +121,8 @@ class Controller():
                     "State": "Available",
                     "DesiredState": "",
                     "Interface": "",
-                    "ExternalPort": ["20/tcp, 21/tcp, 80/tcp, 53/udp"],
-                    "InternalPort": ["20/tcp, 21/tcp, 80/tcp, 53/udp"]
+                    "ExternalPort": ["20/tcp", "21/tcp", "80/tcp", "53/udp"],
+                    "InternalPort": ["20/tcp", "21/tcp", "80/tcp", "53/udp"]
                 }):
                 return False
         except docker.errors.ImageNotFound:
@@ -313,6 +313,7 @@ class Controller():
             "LOGLEVEL": environ["LOGLEVEL"]
         }
         ports_config = self._get_ports_config(plugin_data)
+        self.log(10, "ports: {}".format(ports_config))
         # ---Right now only one port mapping per plugin is supported---
         # ---hence the internal_ports[0].                           ---
         if plugin_data["Name"] == AUX_SERVICES_NAME:

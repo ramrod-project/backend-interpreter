@@ -81,8 +81,8 @@ def test_make_available(brain_conn, clear_dbs, env, rethink, server_proc, give_m
     assert result["State"] == "Available"
     assert result["DesiredState"] == ""
     assert result["Interface"] == ""
-    assert result["ExternalPort"] == ["20/tcp, 21/tcp, 80/tcp, 53/udp"]
-    assert result["InternalPort"] == ["20/tcp, 21/tcp, 80/tcp, 53/udp"]
+    assert result["ExternalPort"] == ["20/tcp", "21/tcp", "80/tcp", "53/udp"]
+    assert result["InternalPort"] == ["20/tcp", "21/tcp", "80/tcp", "53/udp"]
 
 def test_available_to_start(brain_conn, clear_dbs, env, rethink, server_proc, give_manifest, clean_up_containers):
     """Test starting a plugin which is already in
@@ -303,5 +303,69 @@ def test_invalid_transitions(brain_conn, clear_dbs, env, rethink, server_proc, g
     sleep(3)
     result = brain.queries.get_plugin_by_name_controller("Harness", conn=brain_conn).next()
     assert result["Name"] == "Harness"
+    assert result["State"] == "Stopped"
+    assert result["DesiredState"] == ""
+
+def test_auxiliary(brain_conn, clear_dbs, env, rethink, server_proc, give_manifest, clean_up_containers):
+    """Test stopping a running plugin.
+    """
+    server_proc.start()
+    sleep(3)
+    result = brain.queries.update_plugin_controller(
+        {
+            "Name": "AuxiliaryServices",
+            "DesiredState": "Activate",
+            "ExternalPort": ["20/tcp", "21/tcp", "80/tcp", "53/udp"],
+            "InternalPort": ["20/tcp", "21/tcp", "80/tcp", "53/udp"]
+        },
+        conn=brain_conn
+    )
+    assert result["errors"] == 0
+    sleep(8)
+    con = server.PLUGIN_CONTROLLER.get_container_from_name("AuxiliaryServices")
+    assert con
+    assert con.status == "running"
+    result = brain.queries.get_plugin_by_name_controller("AuxiliaryServices", conn=brain_conn).next()
+    assert result["Name"] == "AuxiliaryServices"
+    assert result["State"] == "Active"
+    assert result["DesiredState"] == ""
+    result = brain.queries.update_plugin_controller(
+        {
+            "Name": "AuxiliaryServices",
+            "DesiredState": "Restart"
+        },
+        conn=brain_conn
+    )
+    assert result["errors"] == 0
+    sleep(1.5)
+    result = brain.queries.get_plugin_by_name_controller("AuxiliaryServices", conn=brain_conn).next()
+    assert result["Name"] == "AuxiliaryServices"
+    assert result["State"] == "Restarting"
+    assert result["DesiredState"] == "Restart"
+    sleep(10)
+    result = brain.queries.get_plugin_by_name_controller("AuxiliaryServices", conn=brain_conn).next()
+    assert result["Name"] == "AuxiliaryServices"
+    assert result["State"] == "Active"
+    assert result["DesiredState"] == ""
+    result = brain.queries.update_plugin_controller(
+        {
+            "Name": "AuxiliaryServices",
+            "DesiredState": "Stop"
+        },
+        conn=brain_conn
+    )
+    assert result["errors"] == 0
+    exited = False
+    now = time()
+    while time() - now < 20:
+        con = server.PLUGIN_CONTROLLER.get_container_from_name("AuxiliaryServices")
+        if con.status == "exited":
+            exited = True
+            break
+        sleep(1)
+    assert exited
+    sleep(3)
+    result = brain.queries.get_plugin_by_name_controller("AuxiliaryServices", conn=brain_conn).next()
+    assert result["Name"] == "AuxiliaryServices"
     assert result["State"] == "Stopped"
     assert result["DesiredState"] == ""
