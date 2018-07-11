@@ -81,8 +81,8 @@ def test_make_available(brain_conn, clear_dbs, env, rethink, server_proc, give_m
     assert result["State"] == "Available"
     assert result["DesiredState"] == ""
     assert result["Interface"] == ""
-    assert result["ExternalPort"] == []
-    assert result["InternalPort"] == []
+    assert result["ExternalPort"] == ["20/tcp, 21/tcp, 80/tcp, 53/udp"]
+    assert result["InternalPort"] == ["20/tcp, 21/tcp, 80/tcp, 53/udp"]
 
 def test_available_to_start(brain_conn, clear_dbs, env, rethink, server_proc, give_manifest, clean_up_containers):
     """Test starting a plugin which is already in

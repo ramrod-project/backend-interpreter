@@ -25,7 +25,9 @@ logging.basicConfig(
 
 CLIENT = docker.from_env()
 
-AUX_SERVICES = "auxiliary-services:"
+PLUGIN_IMAGE = "ramrodpcp/interpreter-plugin:"
+AUX_SERVICES_IMAGE = "ramrodpcp/auxiliary-services:"
+AUX_SERVICES_NAME = "AuxiliaryServices"
 CONTAINERS_EXCEPTED = [
     "database",
     "backend",
@@ -111,13 +113,18 @@ class Controller():
             })
         try:
             CLIENT.images.get("".join([
-                "ramrodpcp/",
-                AUX_SERVICES,
+                AUX_SERVICES_IMAGE,
                 self.tag
             ]))
-            manifest_loaded.append({
-                "Name": "AuxiliaryServices"
-            })
+            if not self.create_plugin({
+                    "Name": AUX_SERVICES_NAME,
+                    "State": "Available",
+                    "DesiredState": "",
+                    "Interface": "",
+                    "ExternalPort": ["20/tcp, 21/tcp, 80/tcp, 53/udp"],
+                    "InternalPort": ["20/tcp, 21/tcp, 80/tcp, 53/udp"]
+                }):
+                return False
         except docker.errors.ImageNotFound:
             self._check_db_errors({
                 "errors": 1,
@@ -256,7 +263,6 @@ class Controller():
             {Container} -- a Container object corresponding
             to the launched container.
         """
-        ports_config = {}
         port_data = {
             "InterfaceName": "",
             "Address": plugin_data["Interface"],
@@ -266,10 +272,7 @@ class Controller():
 
         for i in range(len(plugin_data["ExternalPort"])):
             proto = plugin_data["ExternalPort"][i].split("/")[-1]
-            ext_port_proto = plugin_data["ExternalPort"][i]
             ext_port = plugin_data["ExternalPort"][i].split("/")[0]
-            int_port = plugin_data["InternalPort"][i].split("/")[0]
-            ports_config[ext_port_proto] = int_port
             if proto == "tcp":
                 port_data["TCPPorts"].append(ext_port)
             else:
@@ -285,15 +288,43 @@ class Controller():
 
         # ---Right now only one port mapping per plugin is supported---
         # ---hence the internal_ports[0].                           ---
+        return self.run_container(plugin_data)
+
+    def _get_ports_config(self, plugin_data):
+        ports_config = {}
+        for i in range(len(plugin_data["ExternalPort"])):
+            ext_port_proto = plugin_data["ExternalPort"][i]
+            int_port = plugin_data["InternalPort"][i].split("/")[0]
+            ports_config[ext_port_proto] = int_port
+        return ports_config
+
+    def run_container(self, plugin_data):
+        """Runs a container given parameters
+        
+        Arguments:
+            plugin_data {dict} -- data for plugin.
+        
+        Returns:
+            {container} -- a docker container object.
+        """
+        image_name = ""
+        environment = {
+            "STAGE": environ["STAGE"],
+            "LOGLEVEL": environ["LOGLEVEL"]
+        }
+        ports_config = self._get_ports_config(plugin_data)
+        # ---Right now only one port mapping per plugin is supported---
+        # ---hence the internal_ports[0].                           ---
+        if plugin_data["Name"] == AUX_SERVICES_NAME:
+            image_name = AUX_SERVICES_IMAGE
+        else:
+            image_name = PLUGIN_IMAGE
+            environment["PLUGIN"] = plugin_data["Name"]
+            environment["PORT"] = plugin_data["InternalPort"][0].split("/")[0]
         con = CLIENT.containers.run(
-            "".join(("ramrodpcp/interpreter-plugin:", self.tag)),
+            "".join((image_name, self.tag)),
             name=plugin_data["Name"],
-            environment={
-                "STAGE": environ["STAGE"],
-                "LOGLEVEL": environ["LOGLEVEL"],
-                "PLUGIN": plugin_data["Name"],
-                "PORT": plugin_data["InternalPort"][0].split("/")[0]
-            },
+            environment=environment,
             detach=True,
             network=self.network_name,
             ports=ports_config
