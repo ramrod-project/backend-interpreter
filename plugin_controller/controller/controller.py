@@ -25,6 +25,7 @@ logging.basicConfig(
 
 CLIENT = docker.from_env()
 
+AUX_SERVICES = "auxiliary-services"
 CONTAINERS_EXCEPTED = [
     "database",
     "backend",
@@ -91,6 +92,9 @@ class Controller():
     def load_plugins_from_manifest(self, manifest):
         """Load plugins into db from manifest.json
 
+        Also loads in the auxiliary services container
+        (if available).
+
         Arguments:
             manifest {str} -- filename for manifest.
 
@@ -104,6 +108,16 @@ class Controller():
             return self._check_db_errors({
                 "errors": 1,
                 "first_error": "No plugins found in manifest!"
+            })
+        try:
+            CLIENT.images.get(AUX_SERVICES)
+            manifest_loaded.append({
+                "Name": "AuxiliaryServices"
+            })
+        except docker.errors.ImageNotFound:
+            self._check_db_errors({
+                "errors": 1,
+                "first_error": "Auxiliary plugin not available!"
             })
         for plugin in manifest_loaded:
             if not self.create_plugin({

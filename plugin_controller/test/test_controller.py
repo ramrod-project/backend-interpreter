@@ -247,10 +247,9 @@ def test_load_plugins_from_manifest(env, controller, rethink, brain_conn, clear_
     assert controller.load_plugins_from_manifest("./manifest.json")
     sleep(1)
     for plugin in TEST_MANIFEST:
-        cursor = brain.r.db("Controller").table("Plugins").filter(
+        res = brain.r.db("Controller").table("Plugins").filter(
             {"Name": plugin["Name"]}
-        ).run(brain_conn)
-        res = cursor.next()
+        ).run(brain_conn).next()
         del res["id"]
         assert res == {
             "Name": plugin["Name"],
@@ -260,6 +259,18 @@ def test_load_plugins_from_manifest(env, controller, rethink, brain_conn, clear_
             "InternalPort": [],
             "ExternalPort": []
         }
+    res = brain.r.db("Controller").table("Plugins").filter(
+        {"Name": "AuxiliaryServices"}
+    ).run(brain_conn).next()
+    del res["id"]
+    assert res == {
+        "Name": "AuxiliaryServices",
+        "State": "Available",
+        "DesiredState": "",
+        "Interface": "",
+        "InternalPort": [],
+        "ExternalPort": []
+    }
     assert not controller.load_plugins_from_manifest("./manifest.json")
     remove("./manifest.json")
 
