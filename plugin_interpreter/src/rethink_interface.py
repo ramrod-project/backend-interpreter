@@ -16,6 +16,7 @@ from brain import connect, r as rethinkdb
 from brain.brain_pb2 import Commands
 from brain.checks import verify
 from brain.queries import plugin_exists, create_plugin, get_next_job
+from brain.queries import advertise_plugin_commands, create_plugin
 from brain.binary import get as binary_get
 
 
@@ -283,13 +284,11 @@ class RethinkInterface:
         """
 
         if verify(plugin_data, Commands()):
-            self._create_table("Plugins", plugin_name)
             try:
-                rethinkdb.db("Plugins").table(plugin_name).insert(
-                    plugin_data,
-                    conflict="update"
-                ).run(self.rethink_connection)
-            except rethinkdb.ReqlDriverError:
+                create_plugin(plugin_name, self.rethink_connection)
+                advertise_plugin_commands(plugin_name, plugin_data,
+                    conn=self.rethink_connection)
+            except ValueError:
                 self._log(
                     "".join([
                         "Unable to add command to table '",
@@ -325,7 +324,7 @@ class RethinkInterface:
 
         self._log(*err_type[str(type(err))])
 
-    def _create_table(self, database_name, table_name):
+    def _create_table(self, database_name, table_name):  # pragma: no cover
         """Create a table in the database
 
         Arguments:
