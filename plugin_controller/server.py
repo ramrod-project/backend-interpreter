@@ -112,6 +112,9 @@ def update_states():
         # --- We have to update the container object here   ---
         # --- because the 'status' attribute is not updated ---
         # --- automatically.                                ---
+        # --- FOR NOW, EXCLUDE RETHINKDB                    ---
+        if name == "rethinkdb":
+            continue
         new_con = PLUGIN_CONTROLLER.get_container_from_name(name)
         if not new_con:
             del PLUGIN_CONTROLLER.container_mapping[name]
@@ -202,7 +205,7 @@ def to_log(log, level):
     )
 
 
-def main():  # pragma: no cover
+def main():
     """Main server entry point
     """
     def sigterm_handler(_signo, _stack_frame):
@@ -249,13 +252,13 @@ def main():  # pragma: no cover
         # --- 3) Check the DesiredState agains the State    ---
         # --- 3.1) If they differ, take appropriate action  ---
         try:
+            sleep(0.3)
             update_states()
             cursor = queries.RPC.run(brain_connection)
             check_states(cursor)
         except KeyboardInterrupt:
             PLUGIN_CONTROLLER.stop_all_containers()
             exit(0)
-        sleep(0.3)
 
 
 if __name__ == "__main__":  # pragma: no cover

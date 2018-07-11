@@ -418,13 +418,23 @@ class Controller():
         )
         for container in self.get_all_containers():
             try:
-                container.stop()
+                container.stop(timeout=5)
+                container.remove()
             except docker.errors.NotFound:
                 self.log(
                     20,
                     "".join((container.name, " not found!"))
                 )
         if environ["STAGE"] == "DEV":
+            try:
+                rdb = CLIENT.containers.get("rethinkdb")
+                rdb.stop(timeout=10)
+                rdb.remove()
+            except docker.errors.NotFound:
+                self.log(
+                    20,
+                    "".join(("rethinkdb not found!"))
+                )
             self.log(
                 20,
                 "Pruning networks..."
