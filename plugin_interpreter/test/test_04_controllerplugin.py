@@ -186,6 +186,7 @@ def test_respond_to_job(plugin_base):
     with raises(TypeError):
         plugin_base.respond_output(SAMPLE_JOB, DummyDBInterface)
 
+    print(SAMPLE_JOB["id"])
     plugin_base.respond_output(SAMPLE_JOB, "Sample Job Response")
     assert plugin_base.DBI.result["job"] == SAMPLE_JOB
     assert plugin_base.DBI.result["output"] == "Sample Job Response"
