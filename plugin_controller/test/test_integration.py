@@ -204,20 +204,15 @@ def test_active_to_restart(brain_conn, clear_dbs, env, rethink, server_proc, giv
         conn=brain_conn
     )
     assert result["errors"] == 0
-    restarting = False
     db_updated = False
     now = time()
     while time() - now < 20:
-        sleep(0.01)
-        con = server.PLUGIN_CONTROLLER.get_container_from_name("Harness")
-        if con.status != "running":
-            restarting = True
+        sleep(0.1)
         result = brain.queries.get_plugin_by_name_controller("Harness", conn=brain_conn).next()
         if result["Name"] == "Harness" and result["State"] == "Restarting":
             db_updated = True
-        if restarting and db_updated:
             break
-    assert restarting and db_updated
+    assert db_updated
     db_updated2 = False
     now = time()
     while time() - now < 12:
@@ -483,20 +478,15 @@ def test_auxiliary(brain_conn, clear_dbs, env, rethink, server_proc, give_manife
             break
         sleep(0.1)
     assert db_updated_desired
-    restarting = False
     db_updated2 = False
     now = time()
     while time() - now < 20:
-        sleep(0.01)
-        con = server.PLUGIN_CONTROLLER.get_container_from_name("AuxiliaryServices")
-        if con.status != "running":
-            restarting = True
+        sleep(0.1)
         result = brain.queries.get_plugin_by_name_controller("AuxiliaryServices", conn=brain_conn).next()
         if result["Name"] == "AuxiliaryServices" and result["State"] == "Restarting":
             db_updated2 = True
-        if restarting and db_updated2:
             break
-    assert restarting and db_updated2
+    assert db_updated2
     db_updated3 = False
     now = time()
     while time() - now < 12:

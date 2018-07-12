@@ -507,8 +507,7 @@ class Controller():
                 return CLIENT.containers.get(plugin_name)
             except docker.errors.NotFound:
                 pass
-            except exceptions.ChunkedEncodingError \
-                   or exceptions.ConnectionError:
+            except:
                 pass
             sleep(0.05)
         return None
