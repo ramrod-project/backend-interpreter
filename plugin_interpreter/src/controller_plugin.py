@@ -270,6 +270,8 @@ class ControllerPlugin(ABC):
         if not isinstance(output, (bytes, str, int, float)):
             raise TypeError
         job_id = self.get_job_id(job)
+        print(job_id)
+        print(output)
         self.DBI.send_output(job_id, output)
         self._update_job(job["id"])
 
