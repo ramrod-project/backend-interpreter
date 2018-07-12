@@ -206,8 +206,8 @@ class RethinkInterface:
         """sends the plugin's output message to the Outputs table
 
         Arguments:
-            output_data {dictionary (Dictionary,str)} -- dict containing
-            the job and the output to add to the table (job, output)
+            job_id {str} -- the ID of the job associated with this output
+            output {str} -- the output to send to the database
         """
         # get the job corresponding to this output
         try:
