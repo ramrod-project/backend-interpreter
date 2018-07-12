@@ -116,13 +116,7 @@ def update_states():
         if name == "rethinkdb":
             continue
         new_con = PLUGIN_CONTROLLER.get_container_from_name(name)
-        if not new_con:
-            del PLUGIN_CONTROLLER.container_mapping[name]
-            PLUGIN_CONTROLLER.update_plugin({
-                "Name": name,
-                "State": "Available"
-            })
-        else:
+        if new_con:
             PLUGIN_CONTROLLER.container_mapping[name] = new_con
             PLUGIN_CONTROLLER.update_plugin({
                 "Name": name,
