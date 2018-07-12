@@ -471,10 +471,7 @@ class Controller():
                 container.stop(timeout=5)
                 container.remove()
             except docker.errors.NotFound:
-                self.log(
-                    20,
-                    "".join((container.name, " not found!"))
-                )
+                pass
         if environ["STAGE"] == "DEV":
             try:
                 rdb = CLIENT.containers.get("rethinkdb")
@@ -505,7 +502,7 @@ class Controller():
             return CLIENT.containers.get(plugin_name)
         except docker.errors.NotFound:
             self.log(
-                20,
+                10,
                 "".join((plugin_name, " not found!"))
             )
         return None

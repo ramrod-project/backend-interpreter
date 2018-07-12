@@ -268,8 +268,8 @@ def test_load_plugins_from_manifest(env, controller, rethink, brain_conn, clear_
         "State": "Available",
         "DesiredState": "",
         "Interface": "",
-        "ExternalPort": ["20/tcp, 21/tcp, 80/tcp, 53/udp"],
-        "InternalPort": ["20/tcp, 21/tcp, 80/tcp, 53/udp"]
+        "ExternalPort": ["20/tcp", "21/tcp", "80/tcp", "53/udp"],
+        "InternalPort": ["20/tcp", "21/tcp", "80/tcp", "53/udp"]
     }
     assert not controller.load_plugins_from_manifest("./manifest.json")
     remove("./manifest.json")
