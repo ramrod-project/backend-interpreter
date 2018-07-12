@@ -10,11 +10,11 @@ from json import load
 import logging
 from os import environ, getenv
 import re
-from requests import exceptions
 from time import asctime, gmtime, sleep, time
 
-import docker
 import brain
+import docker
+from requests import exceptions
 
 
 logging.basicConfig(
@@ -29,6 +29,15 @@ CLIENT = docker.from_env()
 PLUGIN_IMAGE = "ramrodpcp/interpreter-plugin:"
 AUX_SERVICES_IMAGE = "ramrodpcp/auxiliary-services:"
 AUX_SERVICES_NAME = "AuxiliaryServices"
+AUX_PLUGIN = {
+    "Name": AUX_SERVICES_NAME,
+    "State": "Available",
+    "DesiredState": "",
+    "Interface": "",
+    "ExternalPort": ["20/tcp", "21/tcp", "80/tcp", "53/udp"],
+    "InternalPort": ["20/tcp", "21/tcp", "80/tcp", "53/udp"]
+}
+
 CONTAINERS_EXCEPTED = [
     "database",
     "backend",
@@ -117,14 +126,7 @@ class Controller():
                 AUX_SERVICES_IMAGE,
                 self.tag
             ]))
-            if not self.create_plugin({
-                    "Name": AUX_SERVICES_NAME,
-                    "State": "Available",
-                    "DesiredState": "",
-                    "Interface": "",
-                    "ExternalPort": ["20/tcp", "21/tcp", "80/tcp", "53/udp"],
-                    "InternalPort": ["20/tcp", "21/tcp", "80/tcp", "53/udp"]
-                }):
+            if not self.create_plugin(AUX_PLUGIN):
                 return False
         except docker.errors.ImageNotFound:
             self._check_db_errors({
@@ -301,10 +303,10 @@ class Controller():
 
     def run_container(self, plugin_data):
         """Runs a container given parameters
-        
+
         Arguments:
             plugin_data {dict} -- data for plugin.
-        
+
         Returns:
             {container} -- a docker container object.
         """
@@ -505,7 +507,8 @@ class Controller():
                 return CLIENT.containers.get(plugin_name)
             except docker.errors.NotFound:
                 pass
-            except exceptions.ChunkedEncodingError or exceptions.ConnectionError:
+            except exceptions.ChunkedEncodingError \
+                   or exceptions.ConnectionError:
                 pass
             sleep(0.05)
         return None
