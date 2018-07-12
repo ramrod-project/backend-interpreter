@@ -337,7 +337,7 @@ def test_send_output(brain, rethink):
     #output_cursor.next()
     db_output = output_cursor.next().get("Content")
     assert(db_output == content)
-    rethink.send_output("badjob", content})
+    rethink.send_output("badjob", content)
 
 def test_get_table_contents(brain, rethink):
     """Tests getting an entire table
