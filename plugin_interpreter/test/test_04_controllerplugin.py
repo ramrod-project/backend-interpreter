@@ -48,6 +48,7 @@ class DummyDBInterface():
     def __init__(self):
         self.result = None
         self.update = None
+        self.status = None
 
     def create_plugin_table(self, db_data, db_data2):
         self.result = (db_data, db_data2)
@@ -59,7 +60,7 @@ class DummyDBInterface():
         self.result = {"job": job_id, "output": output}
     
     def update_job_error(self, data):
-        self.result["job"]["Status"] = "Error"
+        self.status = "Error"
     
     def get_job(self):
         return SAMPLE_JOB
@@ -207,7 +208,7 @@ def test_respond_to_job(plugin_base):
     plugin_base.respond_error(SAMPLE_JOB, "error")
     assert plugin_base.DBI.result["job"] == SAMPLE_JOB["id"]
     assert plugin_base.DBI.result["output"] == "error"
-    assert plugin_base.DBI.result["job"]["Status"] == "Error"
+    assert plugin_base.DBI.status == "Error"
 
 def test_get_file(plugin_base):
     SAMPLE_FILE["Content"] = SAMPLE_FILE["Content"].encode("utf-8")
