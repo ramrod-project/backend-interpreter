@@ -269,7 +269,8 @@ class ControllerPlugin(ABC):
         """
         if not isinstance(output, (bytes, str, int, float)):
             raise TypeError
-        self.DBI.send_output(job["id"], output)
+        job_id = self.get_job_id(job)
+        self.DBI.send_output(job_id, output)
         self._update_job(job["id"])
 
     def _update_job_error(self, job, msg=""):
