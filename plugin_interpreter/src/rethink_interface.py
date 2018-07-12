@@ -124,16 +124,16 @@ class RethinkInterface:
         except ValueError as v:
             self._log(str(v), 20)
             return
-        if job["Status"] not in VALID_STATES:
+        if job not in VALID_STATES:
             self._log(
                 "".join([job_id, " has an invalid state, setting to error"]),
                 30
             )
             self.update_job_error(job_id)
 
-        if job["Status"] == "Ready":
+        if job == "Ready":
             self.update_job_status(job_id, "Pending")
-        elif job["Status"] == "Pending":
+        elif job == "Pending":
             self.update_job_status(job_id, "Done")
         else:
             self._log(
@@ -141,7 +141,7 @@ class RethinkInterface:
                     "Job: ",
                     job_id,
                     " attempted to advance from the invalid state: ",
-                    job["Status"]
+                    job
                 ]),
                 30
             )
