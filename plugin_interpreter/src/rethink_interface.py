@@ -213,7 +213,7 @@ class RethinkInterface:
         try:
             write_output(job_id, output)
         except ValueError:
-            self._log(str(ValueError),30)
+            self._log(str(ValueError), 30)
 
     def get_file(self, file_name):
         """Gets a file from the Brain by specifying the file's name
@@ -240,7 +240,7 @@ class RethinkInterface:
             try:
                 create_plugin(plugin_name, self.rethink_connection)
                 advertise_plugin_commands(plugin_name, plugin_data,
-                    conn=self.rethink_connection)
+                        conn=self.rethink_connection)
             except ValueError:
                 self._log(
                     "".join([
