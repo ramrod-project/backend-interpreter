@@ -6,7 +6,7 @@ chardet==3.0.4
 click==6.7
 coverage==4.5.1
 decorator==4.3.0
-dict-to-protobuf==0.0.3.9
+dict-to-protobuf>=0.0.3.9
 docker==3.3.0
 docker-pycreds==0.2.3
 Flask==1.0.2
@@ -33,7 +33,7 @@ pytest-cov==2.5.1
 python-magic==0.4.15
 PyYAML==3.12
 query-string==0.0.28
-ramrodbrain==0.1.37
+ramrodbrain>=0.1.37
 request==0.0.26
 requests==2.18.4
 rethinkdb==2.3.0.post6
