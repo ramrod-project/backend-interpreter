@@ -40,15 +40,18 @@ def __init__(self):
   super().__init__("ExamplePlugin")
 ```
 
-you **must** also override 2 functions, start() and stop()
+you **must** also override 2 functions, start() and _stop()
 ```python
 def start(self, logger, signal):
 
 def _stop(self):
 ```
 start() is the entrypoint of the plugin. It should have some sort of
-control loop or lead to one. _stop() is used for any cleanup or teardown
-you may need and is called when the plugin ends.
+control loop or lead to one. You will be given a logger to log any issues
+and a ctype boolean `signal` that can be used to know when the plugin is
+being shut down by the controller. `signal` will be true if the plugin is to
+be shut down. _stop() is used for any cleanup or teardown you may need and is
+called when the plugin ends.
 
 A typical plugin will interact with 2 main Controller_Plugin methods:
 ```python
