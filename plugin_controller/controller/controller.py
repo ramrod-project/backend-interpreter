@@ -10,6 +10,7 @@ from json import load
 import logging
 from os import environ, getenv
 import re
+from requests import exceptions
 from time import asctime, gmtime, sleep, time
 
 import docker
@@ -205,7 +206,7 @@ class Controller():
             conn=brain.connect(host=self.rethink_host)
         )
         self.container_mapping[plugin_data["Name"]] = \
-            self.get_container_from_name(plugin_data["Name"])
+            self.get_container_from_name(plugin_data["Name"], timeout=3)
         return self._check_db_errors(result)
 
     def dev_db(self):
@@ -219,7 +220,7 @@ class Controller():
             track of used {host port: container}
             combinations.
         """
-        if self.get_container_from_name("rethinkdb"):
+        if self.get_container_from_name("rethinkdb", timeout=3):
             self.log(20, "Found rethinkdb container!")
             return True
         try:
@@ -278,7 +279,7 @@ class Controller():
             else:
                 port_data["UDPPorts"].append(ext_port)
 
-        existing = self.get_container_from_name(plugin_data["Name"])
+        existing = self.get_container_from_name(plugin_data["Name"], timeout=2)
         if existing:
             if self.restart_plugin(plugin_data):
                 return existing
@@ -313,7 +314,6 @@ class Controller():
             "LOGLEVEL": environ["LOGLEVEL"]
         }
         ports_config = self._get_ports_config(plugin_data)
-        self.log(10, "ports: {}".format(ports_config))
         # ---Right now only one port mapping per plugin is supported---
         # ---hence the internal_ports[0].                           ---
         if plugin_data["Name"] == AUX_SERVICES_NAME:
@@ -379,7 +379,7 @@ class Controller():
         Returns:
             {bool} -- True: restarted False: not restarted
         """
-        con = self.get_container_from_name(plugin_data["Name"])
+        con = self.get_container_from_name(plugin_data["Name"], timeout=3)
         if not con:
             return False
         plugin_data["State"] = "Restarting"
@@ -388,7 +388,7 @@ class Controller():
             20,
             "Restarting {}...".format(plugin_data["Name"])
         )
-        con.restart(timeout=5)
+        con.restart(timeout=10)
         return self.wait_for_plugin(plugin_data)
 
     def stop_plugin(self, plugin_data):
@@ -400,7 +400,7 @@ class Controller():
         Returns:
             {bool} -- True: stopped False: not found
         """
-        con = self.get_container_from_name(plugin_data["Name"])
+        con = self.get_container_from_name(plugin_data["Name"], timeout=3)
         if con:
             self.log(
                 20,
@@ -469,26 +469,23 @@ class Controller():
         for container in self.get_all_containers():
             try:
                 container.stop(timeout=5)
-                container.remove()
+                container.remove(force=True)
             except docker.errors.NotFound:
                 pass
         if environ["STAGE"] == "DEV":
             try:
                 rdb = CLIENT.containers.get("rethinkdb")
                 rdb.stop(timeout=10)
-                rdb.remove()
+                rdb.remove(force=True)
             except docker.errors.NotFound:
-                self.log(
-                    20,
-                    "".join(("rethinkdb not found!"))
-                )
+                pass
             self.log(
                 20,
                 "Pruning networks..."
             )
             CLIENT.networks.prune()
 
-    def get_container_from_name(self, plugin_name):
+    def get_container_from_name(self, plugin_name, timeout=1):
         """Return a container object given a plugin name.
 
         Arguments:
@@ -498,11 +495,17 @@ class Controller():
             con {container} -- a docker.container object corresponding
             to the plugin name.
         """
-        try:
-            return CLIENT.containers.get(plugin_name)
-        except docker.errors.NotFound:
-            self.log(
-                10,
-                "".join((plugin_name, " not found!"))
-            )
+        now = time()
+        # --- *Try* to get a new container...this is very   ---
+        # --- unreliable/unpredictable so if there are any  ---
+        # --- errors, we just return None (and don't update ---
+        # --- the status for now)                           ---
+        while time() - now < timeout:
+            try:
+                return CLIENT.containers.get(plugin_name)
+            except docker.errors.NotFound:
+                pass
+            except exceptions.ChunkedEncodingError or exceptions.ConnectionError:
+                pass
+            sleep(0.05)
         return None

@@ -198,7 +198,7 @@ def test_dev_db(env, controller):
     con.remove()
     CLIENT.networks.prune()
 
-def test_get_all_containers(env, controller):
+def test_get_all_containers(env, controller, clean_up_containers):
     containers = []
     for i in [1000, 1001, 1002]:
         containers.append(give_a_container(name=str(i), network=None))
@@ -212,7 +212,7 @@ def test_get_all_containers(env, controller):
         container.wait(timeout=2)
         container.remove()
     
-def test_stop_all_containers(env, controller):
+def test_stop_all_containers(env, controller, clean_up_containers):
     containers = []
     for i in [1000, 1001, 1002]:
         containers.append(give_a_container(name=str(i), network=None))
@@ -224,7 +224,7 @@ def test_stop_all_containers(env, controller):
         with raises(docker.errors.NotFound):
             con = CLIENT.containers.get(con.id)
 
-def test_create_plugin(env, controller, rethink, brain_conn, clear_dbs):
+def test_create_plugin(env, controller, rethink, brain_conn, clear_dbs, clean_up_containers):
     assert not controller.create_plugin({"Name": ""})
     controller.create_plugin(TEST_PLUGIN_DATA)
     sleep(1)
@@ -236,7 +236,7 @@ def test_create_plugin(env, controller, rethink, brain_conn, clear_dbs):
     assert res == TEST_PLUGIN_DATA
     assert not controller.create_plugin(TEST_PLUGIN_DATA)
 
-def test_load_plugins_from_manifest(env, controller, rethink, brain_conn, clear_dbs):
+def test_load_plugins_from_manifest(env, controller, rethink, brain_conn, clear_dbs, clean_up_containers):
     with raises(FileNotFoundError):
         controller.load_plugins_from_manifest("./manifest.json")
     with open("./manifest.json", "w") as outfile:
@@ -245,36 +245,53 @@ def test_load_plugins_from_manifest(env, controller, rethink, brain_conn, clear_
     with open("./manifest.json", "w") as outfile:
         dump(TEST_MANIFEST, outfile)
     assert controller.load_plugins_from_manifest("./manifest.json")
-    sleep(1)
-    for plugin in TEST_MANIFEST:
+    db_updated = False
+    now = time()
+    while time() - now < 5:
+        for plugin in TEST_MANIFEST:
+            res = brain.r.db("Controller").table("Plugins").filter(
+                {"Name": plugin["Name"]}
+            ).run(brain_conn).next()
+            del res["id"]
+            if res != {
+                "Name": plugin["Name"],
+                "State": "Available",
+                "DesiredState": "",
+                "Interface": "",
+                "InternalPort": [],
+                "ExternalPort": []
+            }:
+                sleep(0.5)
+                db_updated = False
+                break
+            else:
+                db_updated = True
+        if db_updated:
+            break
+    assert db_updated
+    db_updated2 = False
+    now = time()
+    while time() - now < 5:
+        sleep(0.5)
         res = brain.r.db("Controller").table("Plugins").filter(
-            {"Name": plugin["Name"]}
+            {"Name": "AuxiliaryServices"}
         ).run(brain_conn).next()
         del res["id"]
-        assert res == {
-            "Name": plugin["Name"],
+        if res == {
+            "Name": "AuxiliaryServices",
             "State": "Available",
             "DesiredState": "",
             "Interface": "",
-            "InternalPort": [],
-            "ExternalPort": []
-        }
-    res = brain.r.db("Controller").table("Plugins").filter(
-        {"Name": "AuxiliaryServices"}
-    ).run(brain_conn).next()
-    del res["id"]
-    assert res == {
-        "Name": "AuxiliaryServices",
-        "State": "Available",
-        "DesiredState": "",
-        "Interface": "",
-        "ExternalPort": ["20/tcp", "21/tcp", "80/tcp", "53/udp"],
-        "InternalPort": ["20/tcp", "21/tcp", "80/tcp", "53/udp"]
-    }
+            "ExternalPort": ["20/tcp", "21/tcp", "80/tcp", "53/udp"],
+            "InternalPort": ["20/tcp", "21/tcp", "80/tcp", "53/udp"]
+        }:
+            db_updated2 = True
+            break
+    assert db_updated2
     assert not controller.load_plugins_from_manifest("./manifest.json")
     remove("./manifest.json")
 
-def test_create_port(env, controller, rethink, clear_dbs, brain_conn):
+def test_create_port(env, controller, rethink, clear_dbs, brain_conn, clean_up_containers):
     assert controller._create_port(TEST_PORT_DATA)
     sleep(1)
     cursor = brain.r.db("Controller").table("Ports").filter(
@@ -296,7 +313,7 @@ def test_create_port(env, controller, rethink, clear_dbs, brain_conn):
     for tcp_port in tcp_combined:
         assert tcp_port in res["TCPPorts"]
 
-def test_update_plugin(env, controller, rethink, clear_dbs, brain_conn):
+def test_update_plugin(env, controller, rethink, clear_dbs, brain_conn, clean_up_containers):
     res = brain.r.db("Controller").table("Plugins").insert(
         TEST_PLUGIN_DATA
     ).run(brain_conn)
@@ -311,11 +328,11 @@ def test_update_plugin(env, controller, rethink, clear_dbs, brain_conn):
     res = cursor.next()
     assert res["DesiredState"] == "Start"
 
-def test_get_container_from_name(env, container, controller, rethink, clear_dbs):
+def test_get_container_from_name(env, container, controller, rethink, clear_dbs, clean_up_containers):
     con = controller.get_container_from_name("testcontainer")
     assert container.id == con.id
 
-def test_launch_container(env, controller, rethink, clear_dbs):
+def test_launch_container(env, controller, rethink, clear_dbs, clean_up_containers):
     con = controller.launch_plugin({
         "Name": "Harness",
         "State": "Available",
@@ -360,7 +377,7 @@ def test_wait_plugin(env, container, controller, rethink, clear_dbs):
     assert controller.wait_for_plugin({"Name": "testcontainer", "State": "Stopped"})
 
 
-def test_restart_plugin(env, container, controller, rethink, clear_dbs, plugin_monitor):
+def test_restart_plugin(env, container, controller, rethink, clear_dbs, plugin_monitor, clean_up_containers):
     assert not controller.restart_plugin({"Name": "fake"})
     container = CLIENT.containers.get(container.id)
     assert container.status == "running"
@@ -373,7 +390,7 @@ def test_restart_plugin(env, container, controller, rethink, clear_dbs, plugin_m
     assert container.status == "running"
 
 
-def test_plugin_status(env, controller, rethink, clear_dbs, brain_conn):
+def test_plugin_status(env, controller, rethink, clear_dbs, brain_conn, clean_up_containers):
     assert not controller.plugin_status({"Name": "fake"})
     brain.r.db("Controller").table("Plugins").insert(
         TEST_PLUGIN_DATA2
@@ -388,7 +405,7 @@ def test_plugin_status(env, controller, rethink, clear_dbs, brain_conn):
     ).run(brain_conn)
     assert controller.plugin_status(TEST_PLUGIN_DATA2) == "Stopped"
 
-def test_stop_container(env, container, controller, rethink):
+def test_stop_container(env, container, controller, rethink, clean_up_containers):
     container = CLIENT.containers.get(container.id)
     assert container.status == "running"
     controller.stop_plugin({"Name": "testcontainer", "State": "Running"})
@@ -397,7 +414,7 @@ def test_stop_container(env, container, controller, rethink):
     assert con.status == "exited"
     con.remove()
 
-def test_update_states(env, rethink, clear_dbs, brain_conn):
+def test_update_states(env, rethink, clear_dbs, brain_conn, clean_up_containers):
     """Test updating the state of a container in
     the db.
     """
@@ -436,7 +453,7 @@ def test_update_states(env, rethink, clear_dbs, brain_conn):
         con.remove()
     server.PLUGIN_CONTROLLER.container_mapping = {}
 
-def test_handle_state_change(env, controller, rethink, clear_dbs, brain_conn):
+def test_handle_state_change(env, controller, rethink, clear_dbs, brain_conn, clean_up_containers):
     """Test handling a state change of a container.
     """
     server.PLUGIN_CONTROLLER.rethink_host = "localhost"
