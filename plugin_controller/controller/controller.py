@@ -8,13 +8,12 @@ TODO:
 """
 from json import load
 import logging
-from os import environ
+from os import environ, getenv
 import re
 from time import asctime, gmtime, sleep, time
 
 import docker
 import brain
-from requests import ReadTimeout
 
 
 logging.basicConfig(
@@ -23,13 +22,18 @@ logging.basicConfig(
     format='%(date)s %(name)-12s %(levelname)-8s %(message)s'
 )
 
+
 CLIENT = docker.from_env()
+
 CONTAINERS_EXCEPTED = [
     "database",
     "backend",
     "websockets",
-    "frontend"
+    "frontend",
+    "rethinkdb",
+    "controller"
 ]
+
 LOGLEVELS = {
     "DEBUG": logging.DEBUG,
     "INFO": logging.INFO,
@@ -51,6 +55,7 @@ class Controller():
         found.
     """
 
+
     def __init__(self, network_name, tag):
         self.logger = logging.getLogger("controller")
         self.logger.setLevel(environ.get("LOGLEVEL", "DEBUG"))
@@ -59,7 +64,7 @@ class Controller():
         self.network_name = network_name
         self.tag = tag
         self.rethink_host = "rethinkdb"
-        if environ["STAGE"] == "TESTING":
+        if getenv("STAGE", "PROD") == "TESTING":
             self.rethink_host = "localhost"
 
     def _check_db_errors(self, response):
@@ -174,6 +179,8 @@ class Controller():
             plugin_data,
             conn=brain.connect(host=self.rethink_host)
         )
+        self.container_mapping[plugin_data["Name"]] = \
+            self.get_container_from_name(plugin_data["Name"])
         return self._check_db_errors(result)
 
     def dev_db(self):
@@ -187,6 +194,9 @@ class Controller():
             track of used {host port: container}
             combinations.
         """
+        if self.get_container_from_name("rethinkdb"):
+            self.log(20, "Found rethinkdb container!")
+            return True
         try:
             self.container_mapping["rethinkdb"] = CLIENT.containers.run(
                 "".join(("ramrodpcp/database-brain:", self.tag)),
@@ -196,7 +206,8 @@ class Controller():
                 network=self.network_name,
                 remove=False
             )
-        except brain.r.ReqlError:
+        except brain.r.ReqlError as ex:
+            self.log(50, "Could not start db!: {}".format(ex))
             return False
         sleep(3)
         return True
@@ -217,62 +228,40 @@ class Controller():
             }
         )
 
-    def launch_plugin(self, plugin, ports, host_proto):
+    def launch_plugin(self, plugin_data):
         """Launch a plugin container
 
         Arguments:
-            plugin {str} -- name of the plugin to run.
-            port {int} -- internal docker container port.
-            host_port {int} -- port to use on the host.
-            host_proto {str} -- TCP or UDP, the protocol used
-            by the plugin.
+            plugin_data {dict} -- data for plugin.
 
         Returns:
             {Container} -- a Container object corresponding
             to the launched container.
         """
-        if host_proto != "TCP" and host_proto != "UDP":
-            raise TypeError
-
-        external_ports = []
-        internal_ports = []
         ports_config = {}
         port_data = {
             "InterfaceName": "",
-            "Address": "",
+            "Address": plugin_data["Interface"],
             "TCPPorts": [],
             "UDPPorts": []
         }
 
-        for container_port, host_port in ports.items():
-            if container_port > 65535 or host_port > 65535:
-                raise ValueError
-            external_ports.append(str(host_port))
-            internal_ports.append(str(container_port))
-            ports_config["".join([
-                str(container_port),
-                "/",
-                host_proto.lower()
-            ])] = str(host_port)
-            if host_proto == "TCP":
-                port_data["TCPPorts"].append(str(host_port))
+        for i in range(len(plugin_data["ExternalPort"])):
+            proto = plugin_data["ExternalPort"][i].split("/")[-1]
+            ext_port_proto = plugin_data["ExternalPort"][i]
+            ext_port = plugin_data["ExternalPort"][i].split("/")[0]
+            int_port = plugin_data["InternalPort"][i].split("/")[0]
+            ports_config[ext_port_proto] = int_port
+            if proto == "tcp":
+                port_data["TCPPorts"].append(ext_port)
             else:
-                port_data["UDPPorts"].append(str(host_port))
+                port_data["UDPPorts"].append(ext_port)
 
-        plugin_data = {
-            "Name": plugin,
-            "State": "Available",
-            "DesiredState": "",
-            "Interface": "",
-            "ExternalPorts": external_ports,
-            "InternalPorts": internal_ports
-        }
-
-        existing = self.get_container_from_name(plugin)
-        if self.restart_plugin(plugin_data):
-            return existing
-
-        self.create_plugin(plugin_data)
+        existing = self.get_container_from_name(plugin_data["Name"])
+        if existing:
+            if self.restart_plugin(plugin_data):
+                return existing
+            return None
 
         self._create_port(port_data)
 
@@ -280,12 +269,12 @@ class Controller():
         # ---hence the internal_ports[0].                           ---
         con = CLIENT.containers.run(
             "".join(("ramrodpcp/interpreter-plugin:", self.tag)),
-            name=plugin,
+            name=plugin_data["Name"],
             environment={
                 "STAGE": environ["STAGE"],
                 "LOGLEVEL": environ["LOGLEVEL"],
-                "PLUGIN": plugin,
-                "PORT": internal_ports[0]
+                "PLUGIN": plugin_data["Name"],
+                "PORT": plugin_data["InternalPort"][0].split("/")[0]
             },
             detach=True,
             network=self.network_name,
@@ -322,6 +311,11 @@ class Controller():
                 plugin_data["State"] = "Active"
                 plugin_data["DesiredState"] = ""
                 self.update_plugin(plugin_data)
+                self.container_mapping[plugin_data["Name"]] = con
+                self.log(
+                    20,
+                    "{} is running!".format(plugin_data["Name"])
+                )
                 return True
             sleep(1)
         return False
@@ -338,11 +332,13 @@ class Controller():
         con = self.get_container_from_name(plugin_data["Name"])
         if not con:
             return False
-        if con.status == "running":
-            return True
-        con.restart()
         plugin_data["State"] = "Restarting"
         self.update_plugin(plugin_data)
+        self.log(
+            20,
+            "Restarting {}...".format(plugin_data["Name"])
+        )
+        con.restart(timeout=5)
         return self.wait_for_plugin(plugin_data)
 
     def stop_plugin(self, plugin_data):
@@ -352,21 +348,18 @@ class Controller():
             plugin_data {dict} -- plugin data
 
         Returns:
-            {bool} -- True: stopped False: not stopped
+            {bool} -- True: stopped False: not found
         """
         con = self.get_container_from_name(plugin_data["Name"])
         if con:
-            con.stop()
-            try:
-                con.wait(timeout=5)
-                plugin_data["State"] = "Stopped"
-                self.update_plugin(plugin_data)
-                return True
-            except ReadTimeout as ex:
-                self.log(
-                    40,
-                    str(ex)
-                )
+            self.log(
+                20,
+                "Stopping {}...".format(plugin_data["Name"])
+            )
+            con.stop(timeout=10)
+            plugin_data["State"] = "Stopped"
+            self.update_plugin(plugin_data)
+            return True
         return False
 
     def plugin_status(self, plugin_data):
@@ -425,13 +418,23 @@ class Controller():
         )
         for container in self.get_all_containers():
             try:
-                container.stop()
+                container.stop(timeout=5)
+                container.remove()
             except docker.errors.NotFound:
                 self.log(
                     20,
                     "".join((container.name, " not found!"))
                 )
         if environ["STAGE"] == "DEV":
+            try:
+                rdb = CLIENT.containers.get("rethinkdb")
+                rdb.stop(timeout=10)
+                rdb.remove()
+            except docker.errors.NotFound:
+                self.log(
+                    20,
+                    "".join(("rethinkdb not found!"))
+                )
             self.log(
                 20,
                 "Pruning networks..."
@@ -448,11 +451,11 @@ class Controller():
             con {container} -- a docker.container object corresponding
             to the plugin name.
         """
-        for container in self.get_all_containers():
-            if container.name == plugin_name:
-                return container
-        self.log(
-            20,
-            "".join((plugin_name, " not found!"))
-        )
+        try:
+            return CLIENT.containers.get(plugin_name)
+        except docker.errors.NotFound:
+            self.log(
+                20,
+                "".join((plugin_name, " not found!"))
+            )
         return None
