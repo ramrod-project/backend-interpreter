@@ -230,25 +230,17 @@ def test_update_job_status(brain, rethink):
     job_id = job_cursor.next().get("id")
 
     new_status = "Pending"
-    job_dict = {
-        "job": job_id,
-        "status": new_status
-    }
-    rethink.update_job_status(job_dict)
+    rethink.update_job_status(job_id, new_status)
     job_cursor = rethinkdb.db("Brain").table("Jobs").get(
         job_id
     ).pluck("Status").run(rethink.rethink_connection)
     job_status = job_cursor.get("Status")
     assert job_status == new_status
 
-    job_dict = {
-        "job" : job_id,
-        "status": "Bad"
-    }
     with raises(rethink_interface.InvalidStatus):
-        rethink.update_job_status(job_dict)
+        rethink.update_job_status(job_id, "Bad")
     # should not create exception
-    rethink.update_job_status({"job":"Not_a_real_id","status": "Done"})
+    rethink.update_job_status("Not_a_real_id", "Done")
 
 def test_update_job(rethink):
     """tests the ability to move through the normal flow of the
@@ -338,18 +330,14 @@ def test_send_output(brain, rethink):
         rethinkdb.row["JobTarget"]["PluginName"] == "texter"
         ).pluck("id").run(rethink.rethink_connection)
     job_id = job_cursor.next()
-    output_data = {
-        "job": job_id,
-        "output": content
-    }
-    rethink.send_output(output_data)
+    rethink.send_output(job_id["id"], content)
     output_cursor = rethinkdb.db("Brain").table("Outputs").filter(
         rethinkdb.row["OutputJob"]["id"]
         ).run(rethink.rethink_connection)
     #output_cursor.next()
     db_output = output_cursor.next().get("Content")
     assert(db_output == content)
-    rethink.send_output({"job": {"id": "badjob"},"output": content})
+    rethink.send_output("badjob", content})
 
 def test_get_table_contents(brain, rethink):
     """Tests getting an entire table
@@ -446,19 +434,11 @@ def test_update_output(brain, rethink):
         rethinkdb.row["JobTarget"]["PluginName"] == "updater"
     ).pluck("id").run(rethink.rethink_connection)
     job_obj = job_cursor.next()
-    updater = {
-        "job" : job_obj.get("id"),
-        "status": "Pending"
-    }
+    job_id = job_obj.get("id")
     #test updating without any associated output
-    rethink.update_job_status(updater)
-    output_data = {
-        "job": job_obj,
-        "output": content
-    }
-    rethink.send_output(output_data)
-    updater["status"] = "Done"
-    rethink.update_job_status(updater)
+    rethink.update_job_status(job_id, "Pending")
+    rethink.send_output(job_id, content)
+    rethink.update_job_status(job_id, "Done")
     output_cursor = rethinkdb.db("Brain").table("Outputs").filter(
         rethinkdb.row["OutputJob"]["id"] == job_obj.get("id")
     ).run(rethink.rethink_connection)

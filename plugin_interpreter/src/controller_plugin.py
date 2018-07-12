@@ -153,12 +153,7 @@ class ControllerPlugin(ABC):
             and "Active"
         """
 
-        self.DBI.update_job_status(
-            {
-                "job": job_id,
-                "status": status
-            }
-        )
+        self.DBI.update_job_status(job_id, status)
 
     def get_file(self, file_name, encoding=None):
         """Get the file specified from the Brain
@@ -274,10 +269,7 @@ class ControllerPlugin(ABC):
         """
         if not isinstance(output, (bytes, str, int, float)):
             raise TypeError
-        self.DBI.send_output({
-            "job": job,
-            "output": output
-        })
+        self.DBI.send_output(job["id"], output)
         self._update_job(job["id"])
 
     def _update_job_error(self, job, msg=""):
