@@ -55,8 +55,8 @@ class DummyDBInterface():
     def update_job(self, job_id):
         self.update = job_id
 
-    def send_output(self, output_data):
-        self.result = output_data
+    def send_output(self, job_id, output):
+        self.result = {"job": job_id, "output": output}
     
     def update_job_error(self, data):
         self.result["job"]["Status"] = "Error"
@@ -186,27 +186,26 @@ def test_respond_to_job(plugin_base):
     with raises(TypeError):
         plugin_base.respond_output(SAMPLE_JOB, DummyDBInterface)
 
-    print(SAMPLE_JOB["id"])
     plugin_base.respond_output(SAMPLE_JOB, "Sample Job Response")
-    assert plugin_base.DBI.result["job"] == SAMPLE_JOB
+    assert plugin_base.DBI.result["job"] == SAMPLE_JOB["id"]
     assert plugin_base.DBI.result["output"] == "Sample Job Response"
     assert plugin_base.get_job_id(SAMPLE_JOB) == SAMPLE_JOB["id"]
     assert plugin_base.get_command(SAMPLE_JOB) == SAMPLE_JOB["JobCommand"]
 
     plugin_base.respond_output(SAMPLE_JOB, bytes("Sample Job Response", "utf-8"))
-    assert plugin_base.DBI.result["job"] == SAMPLE_JOB
+    assert plugin_base.DBI.result["job"] == SAMPLE_JOB["id"]
     assert plugin_base.DBI.result["output"] == bytes("Sample Job Response", "utf-8")
 
     plugin_base.respond_output(SAMPLE_JOB, 666)
-    assert plugin_base.DBI.result["job"] == SAMPLE_JOB
+    assert plugin_base.DBI.result["job"] == SAMPLE_JOB["id"]
     assert plugin_base.DBI.result["output"] == 666
 
     plugin_base.respond_output(SAMPLE_JOB, 42.42)
-    assert plugin_base.DBI.result["job"] == SAMPLE_JOB
+    assert plugin_base.DBI.result["job"] == SAMPLE_JOB["id"]
     assert plugin_base.DBI.result["output"] == 42.42
 
     plugin_base.respond_error(SAMPLE_JOB, "error")
-    assert plugin_base.DBI.result["job"] == SAMPLE_JOB
+    assert plugin_base.DBI.result["job"] == SAMPLE_JOB["id"]
     assert plugin_base.DBI.result["output"] == "error"
     assert plugin_base.DBI.result["job"]["Status"] == "Error"
 
