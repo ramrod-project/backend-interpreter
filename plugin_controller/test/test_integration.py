@@ -53,7 +53,7 @@ def clean_up_containers():
         except:
             pass
         try:
-            con.remove()
+            con.remove(force=True)
         except:
             pass
 
@@ -223,7 +223,7 @@ def test_active_to_restart(brain_conn, clear_dbs, env, rethink, server_proc, giv
         sleep(0.5)
     assert db_updated2
     con.stop(timeout=1)
-    con.remove()
+    con.remove(force=True)
 
 def test_stopped_to_activate(brain_conn, clear_dbs, env, rethink, server_proc, give_manifest, clean_up_containers):
     """Test starting a stopped plugin.
