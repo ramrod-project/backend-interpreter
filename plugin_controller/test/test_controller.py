@@ -20,6 +20,15 @@ from ..controller import *
 from .. import server
 
 
+AUX_PLUGIN = {
+    "Name": "AuxiliaryServices",
+    "State": "Available",
+    "DesiredState": "",
+    "Interface": "",
+    "ExternalPort": ["20/tcp", "21/tcp", "80/tcp", "53/udp"],
+    "InternalPort": ["20/tcp", "21/tcp", "80/tcp", "53/udp"]
+}
+
 TEST_PLUGIN_DATA = {
     "Name": "testcontainer",
     "State": "Available",
@@ -551,3 +560,20 @@ def test_check_states(env, controller, rethink, clear_dbs, brain_conn, clean_up_
     result = brain.queries.get_plugin_by_name_controller("Harness", conn=brain_conn).next()
     assert result["State"] == "Stopped"
     assert result["DesiredState"] == ""
+
+def test_aux_volume_mount(env, controller, rethink, clear_dbs, brain_conn, clean_up_containers):
+    CLIENT.volumes.create(name="brain-volume")
+    con = controller.launch_plugin(AUX_PLUGIN)
+    now = time()
+    running = False
+    while time() - now < 4:
+        con = CLIENT.containers.get(con.id)
+        if con.name == "AuxiliaryServices" and con.status == "running":
+            running = True
+            break
+        sleep(0.3)
+    assert running
+    con.stop()
+    con.remove()
+    CLIENT.networks.prune()
+    CLIENT.volumes.prune()
