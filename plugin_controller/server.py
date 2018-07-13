@@ -26,26 +26,26 @@ LOGGER.addHandler(logging.StreamHandler())
 LOGGER.setLevel(logging.DEBUG)
 
 LOGLEVEL = getenv("LOGLEVEL", default="DEBUG")
-if LOGLEVEL == "INFO":
+if LOGLEVEL == "INFO":  # pragma: no cover
     LOGGER.setLevel(logging.INFO)
-elif LOGLEVEL == "WARNING":
+elif LOGLEVEL == "WARNING":  # pragma: no cover
     LOGGER.setLevel(logging.WARNING)
-elif LOGLEVEL == "ERROR":
+elif LOGLEVEL == "ERROR":  # pragma: no cover
     LOGGER.setLevel(logging.ERROR)
-elif LOGLEVEL == "CRITICAL":
+elif LOGLEVEL == "CRITICAL":  # pragma: no cover
     LOGGER.setLevel(logging.CRITICAL)
 
 
 STAGE = getenv("STAGE", default="PROD")
-if STAGE == "TESTING":
+if STAGE == "TESTING":  # pragma: no cover
     RETHINK_HOST = "localhost"
     NETWORK_NAME = "test"
     HARNESS_PORT = 5005
-elif STAGE == "DEV":
+elif STAGE == "DEV":  # pragma: no cover
     RETHINK_HOST = "rethinkdb"
     NETWORK_NAME = "test"
     HARNESS_PORT = 5005
-else:
+else:  # pragma: no cover
     RETHINK_HOST = "rethinkdb"
     NETWORK_NAME = "pcp"
     HARNESS_PORT = 5000
@@ -210,7 +210,7 @@ def main():
 
     signal(SIGTERM, sigterm_handler)
 
-    if environ["STAGE"] == "DEV" and not PLUGIN_CONTROLLER.dev_db():
+    if environ["STAGE"] == "DEV" and not PLUGIN_CONTROLLER.dev_db():  # pragma: no cover
         PLUGIN_CONTROLLER.log(
             40,
             "Port 28015 already allocated, \
@@ -220,7 +220,7 @@ def main():
 
     PLUGIN_CONTROLLER.load_plugins_from_manifest(MANIFEST_FILE)
 
-    if START_HARNESS == "YES":
+    if START_HARNESS == "YES":  # pragma: no cover
         port = "".join([
             str(HARNESS_PORT),
             "/",
