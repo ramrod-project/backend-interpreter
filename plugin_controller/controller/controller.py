@@ -315,11 +315,23 @@ class Controller():
             "STAGE": environ["STAGE"],
             "LOGLEVEL": environ["LOGLEVEL"]
         }
+        volumes = {}
         ports_config = self._get_ports_config(plugin_data)
         # ---Right now only one port mapping per plugin is supported---
         # ---hence the internal_ports[0].                           ---
         if plugin_data["Name"] == AUX_SERVICES_NAME:
             image_name = AUX_SERVICES_IMAGE
+            try:
+                CLIENT.volumes.get("brain-volume")
+                volumes = {
+                    "brain-volume": {"bind": "/www/files/brain", "mode": "ro"}
+                }
+            except docker.errors.NotFound:
+                self.log(
+                    30,
+                    "brain-volume not found! Files in \
+                    brain will not be available."
+                )
         else:
             image_name = PLUGIN_IMAGE
             environment["PLUGIN"] = plugin_data["Name"]
@@ -330,7 +342,8 @@ class Controller():
             environment=environment,
             detach=True,
             network=self.network_name,
-            ports=ports_config
+            ports=ports_config,
+            volumes=volumes
         )
         if self.wait_for_plugin(plugin_data):
             return con
