@@ -135,13 +135,13 @@ class Controller():
             })
         for plugin in manifest_loaded:
             if not self.create_plugin({
-                    "Name": plugin["Name"],
-                    "State": "Available",
-                    "DesiredState": "",
-                    "Interface": "",
-                    "ExternalPort": [],
-                    "InternalPort": []
-                }):
+                "Name": plugin["Name"],
+                "State": "Available",
+                "DesiredState": "",
+                "Interface": "",
+                "ExternalPort": [],
+                "InternalPort": []
+            }):
                 return False
         return True
 
@@ -487,7 +487,7 @@ class Controller():
                 container.remove(force=True)
             except docker.errors.NotFound:
                 pass
-        if environ["STAGE"] == "DEV":
+        if environ["STAGE"] == "DEV":  # pragma: no cover
             try:
                 rdb = CLIENT.containers.get("rethinkdb")
                 rdb.stop(timeout=10)
@@ -503,6 +503,10 @@ class Controller():
     def get_container_from_name(self, plugin_name, timeout=1):
         """Return a container object given a plugin name.
 
+        First attempts to reload the attributes of an existing
+        container in the container_mapping, then attempts
+        to get a new container from the CLIENT.
+
         Arguments:
             plugin_name {str} -- name of a plugin.
 
@@ -510,16 +514,14 @@ class Controller():
             con {container} -- a docker.container object corresponding
             to the plugin name.
         """
-        now = time()
         # --- *Try* to get a new container...this is very   ---
         # --- unreliable/unpredictable so if there are any  ---
         # --- errors, we just return None (and don't update ---
         # --- the status for now)                           ---
+        now = time()
         while time() - now < timeout:
             try:
                 return CLIENT.containers.get(plugin_name)
-            except docker.errors.NotFound:
-                pass
             except:
                 pass
             sleep(0.05)
