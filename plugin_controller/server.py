@@ -4,19 +4,15 @@ This is the main server file for the docker
 interpreter controller.
 
 TODO:
-- handle multiple plugins/containers
-- read config for plugin from file
-- dynamic ip assignment
-- *unit and integration tests*
 """
 import logging
-from os import environ, path as ospath
-from random import randint
+from os import environ, getenv
 from signal import signal, SIGTERM
-from sys import stderr
 from time import asctime, gmtime, sleep, time
 
-import docker
+from brain import connect, queries
+
+from controller import Controller
 
 
 logging.basicConfig(
@@ -24,227 +20,240 @@ logging.basicConfig(
     filemode="a",
     format='%(date)s %(name)-12s %(levelname)-8s %(message)s'
 )
+
 LOGGER = logging.getLogger("controller")
 LOGGER.addHandler(logging.StreamHandler())
+LOGGER.setLevel(logging.DEBUG)
 
-CLIENT = docker.from_env()
-INTERPRETER_PATH = ospath.join(
-    "/".join(ospath.abspath(__file__).split("/")[:-2]),
-    "plugin_interpreter"
-)
-HOST_PROTO = "TCP"
-PLUGIN = "Harness"
-try:
-    if environ["STAGE"] == "PROD":
-        NETWORK_NAME = "pcp"
-        HOST_PORT = 5000
-    else:
-        NETWORK_NAME = "test"
-        HOST_PORT = 5005
-except KeyError:
+LOGLEVEL = getenv("LOGLEVEL", default="DEBUG")
+if LOGLEVEL == "INFO":
+    LOGGER.setLevel(logging.INFO)
+elif LOGLEVEL == "WARNING":
+    LOGGER.setLevel(logging.WARNING)
+elif LOGLEVEL == "ERROR":
+    LOGGER.setLevel(logging.ERROR)
+elif LOGLEVEL == "CRITICAL":
+    LOGGER.setLevel(logging.CRITICAL)
+
+
+STAGE = getenv("STAGE", default="PROD")
+if STAGE == "TESTING":
+    RETHINK_HOST = "localhost"
     NETWORK_NAME = "test"
-    HOST_PORT = 5005
+    HARNESS_PORT = 5005
+elif STAGE == "DEV":
+    RETHINK_HOST = "rethinkdb"
+    NETWORK_NAME = "test"
+    HARNESS_PORT = 5005
+else:
+    RETHINK_HOST = "rethinkdb"
+    NETWORK_NAME = "pcp"
+    HARNESS_PORT = 5000
 
-try:
-    TAG = environ["TRAVIS_BRANCH"].replace("master", "latest")
-except KeyError:
-    TAG = "latest"
+HARNESS_PROTO = "TCP"
+HARNESS_PLUGIN = "Harness"
 
 
-def set_logging(logger):
-    """Set the logging level
+MANIFEST_FILE = getenv("MANIFEST", default="./manifest.json")
+START_HARNESS = getenv("START_HARNESS", default="NO")
+TAG = getenv("TRAVIS_BRANCH", default="latest").replace("master", "latest")
 
-    Set the python logging level for this process
-    based on the "LOGLEVEL" env variable.
+
+PLUGIN_CONTROLLER = Controller(NETWORK_NAME, TAG)
+
+# ---------------------------------------------------------
+# --- Below are the acceptable state mappings for the   ---
+# --- possible states for a plugin.                     ---
+# ---------------------------------------------------------
+AVAILABLE_MAPPING = {
+    "Activate": PLUGIN_CONTROLLER.launch_plugin
+}
+
+ACTIVE_MAPPING = {
+    "Stop": PLUGIN_CONTROLLER.stop_plugin,
+    "Restart": PLUGIN_CONTROLLER.restart_plugin,
+}
+
+STOPPED_MAPPING = {
+    "Activate": PLUGIN_CONTROLLER.launch_plugin,
+    "Restart": PLUGIN_CONTROLLER.launch_plugin
+}
+
+# --- Not able to do anything right now, just wait      ---
+# --- for restart.                                      ---
+RESTARTING_MAPPING = {}
+
+STATE_MAPPING = {
+    "Available": AVAILABLE_MAPPING,
+    "Active": ACTIVE_MAPPING,
+    "Stopped": STOPPED_MAPPING,
+    "Restarting": RESTARTING_MAPPING
+}
+
+# --- Maps docker container states to database entries  ---
+STATUS_MAPPING = {
+    "created": "Available",
+    "restarting": "Restarting",
+    "running": "Active",
+    "paused": "Stopped",
+    "exited": "Stopped"
+}
+# ---------------------------------------------------------
+
+
+def update_states():
+    """Update the current states of the running
+    containers.
+
+    Queries the docker client to get the current
+    states of the running plugin containers.
     """
-    levels = {
-        "DEBUG": logging.DEBUG,
-        "INFO": logging.INFO,
-        "WARNING": logging.WARNING,
-        "ERROR": logging.ERROR,
-        "CRITICAL": logging.CRITICAL
-    }
-    try:
-        logger.setLevel(levels[environ["LOGLEVEL"]])
-    except KeyError:
-        stderr.write("Invalid LOGLEVEL setting!\n")
-        exit(1)
+    for name, _ in PLUGIN_CONTROLLER.container_mapping.items():
+        # --- We have to update the container object here   ---
+        # --- because the 'status' attribute is not updated ---
+        # --- automatically.                                ---
+        # --- FOR NOW, EXCLUDE RETHINKDB                    ---
+        if name == "rethinkdb":
+            continue
+        new_con = PLUGIN_CONTROLLER.get_container_from_name(name)
+        if new_con:
+            PLUGIN_CONTROLLER.container_mapping[name] = new_con
+            PLUGIN_CONTROLLER.update_plugin({
+                "Name": name,
+                "State": STATUS_MAPPING[new_con.status]
+            })
 
 
-def dev_db(ports):
-    """Spins up db for dev environment
+def handle_state_change(plugin_data):
+    """Handle a container state change
 
-    When operating in a dev environment ("STAGE"
-    environment variable is "DEV")
+    When DesiredState and State are out of sync,
+    this function is called on the plugin
+    in question and the docker client attempts
+    to modify the state.
 
     Arguments:
-        port_mapping {dict} -- a mapping for keeping
-        track of used {host port: container}
-        combinations.
-    """
-    if 28015 in ports:
-        return False
-
-    CLIENT.networks.prune()
-    CLIENT.networks.create(NETWORK_NAME)
-
-    rethink_container = CLIENT.containers.run(
-        "".join(("ramrodpcp/database-brain:", TAG)),
-        name="rethinkdb",
-        detach=True,
-        ports={"28015/tcp": 28015},
-        network=NETWORK_NAME,
-        remove=True
-    )
-    ports[28015] = rethink_container
-    sleep(3)
-    return True
-
-
-def generate_port(ports):
-    """Generate a random port for container
-
-    Arguments:
-        port_mapping {dict} -- a mapping for keeping
-        track of used {host port: container}
-        combinations.
+        plugin_data {dict} -- the plugin data as
+        pulled from the database.
 
     Returns:
-        {int} -- the port to use for the docker
-        container (internally).
+        {bool} -- True if success, False if failure.
     """
-    rand_port = randint(1025, 65535)
-    while rand_port in ports.keys():
-        rand_port = randint(1025, 65535)
-    return rand_port
+    current_state = STATE_MAPPING[plugin_data["State"]]
+    desired_state = plugin_data["DesiredState"]
+    success = False
+    try:
+        if current_state[desired_state](plugin_data):
+            success = True
+    except KeyError:
+        to_log(
+            "Invalid state transition! {} to {}".format(
+                plugin_data["State"],
+                desired_state
+            ),
+            40
+        )
+    plugin_data["DesiredState"] = ""
+    PLUGIN_CONTROLLER.update_plugin(plugin_data)
+    return success
 
 
-def log(level, message):
-    """Log a message
+def check_states(cursor):
+    """Check the current states in the database.
 
     Arguments:
-        level {int} -- 10,20,30,40,50 are valid
-        log levels.
-        message {str} -- a string message to log.
+        cursor {rethinkdb cursor} -- cursor containing
+        the plugins and their statuses.
     """
+    for plugin_data in cursor:
+        actual = plugin_data["State"]
+        desired = plugin_data["DesiredState"]
+        if desired == "":
+            continue
+        if not handle_state_change(plugin_data):
+            to_log(
+                "{}: transition to {} from {} failed!".format(
+                    plugin_data["Name"],
+                    desired,
+                    actual
+                ),
+                40
+            )
+
+
+def to_log(log, level):
+    """Send message to log
+
+    Logs a message of a given level
+    to the logger with a timestamp.
+
+    Arguments:
+        log {str} -- log message.
+        level {int[10,20,30,40,50]} -- log level.
+    """
+    date = asctime(gmtime(time()))
     LOGGER.log(
         level,
-        message,
-        extra={
-            'date': asctime(gmtime(time()))
-        }
+        log,
+        extra={"date": date}
     )
 
 
-def launch_container(plugin, port, host_port, host_proto):
-    """Launch a plugin container
-
-    Arguments:
-        plugin {str} -- name of the plugin to run.
-        port {int} -- internal docker container port.
-        host_port {int} -- port to use on the host.
-        host_proto {str} -- TCP or UDP, the protocol used
-        by the plugin.
-
-    Returns:
-        {Container} -- a Container object corresponding
-        to the launched container.
+def main():
+    """Main server entry point
     """
-    assert host_proto == "TCP" or host_proto == "UDP"
-    assert host_port <= 65535
-
-    return CLIENT.containers.run(
-        "".join(("ramrodpcp/interpreter-plugin:", TAG)),
-        name="".join((
-            plugin,
-            "-{}_{}".format(host_port, host_proto)
-        )),
-        environment={
-            "STAGE": environ["STAGE"],
-            "LOGLEVEL": environ["LOGLEVEL"],
-            "PLUGIN": plugin,
-            "PORT": str(port)
-        },
-        detach=True,
-        remove=True,
-        network=NETWORK_NAME,
-        ports={
-            "".join([
-                str(port),
-                "/{}".format(HOST_PROTO.lower())
-            ]): host_port
-        }
-    )
-
-
-def stop_containers(containers):
-    """Clean up containers and network
-
-    Stops all running containers and prunes
-    the network (in dev environment).
-
-    Arguments:
-        containers {list} -- a list of all the containers
-        ran by the container.
-    """
-    log(
-        20,
-        "Kill signal received, stopping container(s)..."
-    )
-    for container in containers:
-        try:
-            container.stop()
-        except docker.errors.NotFound:
-            log(
-                20,
-                "".join((container.name, " not found!"))
-            )
-            continue
-    if environ["STAGE"] == "DEV":
-        log(
-            20,
-            "Pruning networks..."
-        )
-        CLIENT.networks.prune()
-
-
-if __name__ == "__main__":  # pragma: no cover
-
-    port_mapping = {}
-
-    set_logging(LOGGER)
-
     def sigterm_handler(_signo, _stack_frame):
         """Handles SIGTERM signal
         """
-        stop_containers(port_mapping.values())
+        PLUGIN_CONTROLLER.stop_all_containers()
         exit(0)
 
     signal(SIGTERM, sigterm_handler)
 
-    if environ["STAGE"] == "DEV" and not dev_db(port_mapping):
-        log(
+    if environ["STAGE"] == "DEV" and not PLUGIN_CONTROLLER.dev_db():
+        PLUGIN_CONTROLLER.log(
             40,
             "Port 28015 already allocated, \
             cannot launch rethinkdb container!"
         )
         exit(1)
 
-    plugin_container = launch_container(
-        PLUGIN,
-        generate_port(port_mapping),
-        HOST_PORT,
-        HOST_PROTO
-    )
-    port_mapping[HOST_PORT] = plugin_container
+    PLUGIN_CONTROLLER.load_plugins_from_manifest(MANIFEST_FILE)
 
-    log(
-        20,
-        "Containers started, press <CTRL-C> to stop..."
-    )
+    if START_HARNESS == "YES":
+        port = "".join([
+            str(HARNESS_PORT),
+            "/",
+            HARNESS_PROTO.lower()
+        ])
+        PLUGIN_CONTROLLER.launch_plugin({
+            "Name": HARNESS_PLUGIN,
+            "State": "Available",
+            "DesiredState": "",
+            "Interface": "",
+            "ExternalPort": [port],
+            "InternalPort": [port]
+        })
+
+    brain_connection = connect(host=RETHINK_HOST)
+
     while True:
+        # --- This main control loop monitors the running   ---
+        # --- plugin containers. It takes the following     ---
+        # --- actions:                                      ---
+        # --- 1) Update the running plugin container states ---
+        # --- 2) Query the plugin entries table             ---
+        # --- 3) Check the DesiredState agains the State    ---
+        # --- 3.1) If they differ, take appropriate action  ---
         try:
-            sleep(1)
+            sleep(0.3)
+            update_states()
+            cursor = queries.RPC.run(brain_connection)
+            check_states(cursor)
         except KeyboardInterrupt:
-            stop_containers(port_mapping.values())
+            PLUGIN_CONTROLLER.stop_all_containers()
             exit(0)
+
+
+if __name__ == "__main__":  # pragma: no cover
+    main()

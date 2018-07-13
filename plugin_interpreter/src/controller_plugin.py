@@ -7,6 +7,9 @@ TODO:
 from abc import ABC, abstractmethod
 from os import environ
 from queue import Empty
+import json
+from sys import stderr
+from os import environ, path as ospath, name as osname
 
 from src import rethink_interface
 
@@ -42,51 +45,36 @@ class ControllerPlugin(ABC):
     exported plugin controller class.
     """
 
-    def __init__(self, name, functionality):
+    def __init__(self, name, functionality=None):
         self.db_recv = None
         self.signal = None
         self.DBI = None
-        self.port = int(environ["PORT"])
-        self.functionality = functionality
-        """
-        List of dictionaries which advertises functionality of the plugin.
-        Example:
-        [
-            {
-                "name": "read_file",
-                "input": ["string"],
-                "family": "filesystem",
-                "tooltip": "Provided a full directory path, \
-                this function reads a file.",
-                "reference": "<reference url>"
-            },
-            {
-                "name": "send_file",
-                "input": ["string", "binary"],
-                "family": "filesystem",
-                "tooltip": "Provided a file and destination \
-                directory, this function sends a file.",
-                "reference": "<reference url>"
-            }
-        ]
-        The 'name' key is the unique identifier used to refer to the
-        function in communication between the front end interface and
-        the back end. This exact identifier will be sent back with
-        corresponding commands to let the plugin know which funcion
-        should be called.
-
-        The 'input' key is a list of required input types to properly
-        call the function. Possible input types include: string,
-        int, binary.
-
-        The 'tooltip' key is a human readable explanation of the
-        function usage. It will be displayed to the user through
-        the interface.
-        """
         self.name = name
-        """Define server port/proto requirement (TCP/UDP) so docker can be run
-        properly."""
+        self.port = int(environ["PORT"])
+        self.functionality = {}
+        if functionality:
+            self.functionality = functionality
+        else:
+            self._read_functionality()
         super().__init__()
+
+    def _read_functionality(self):
+        curr_dir = ospath.dirname(ospath.dirname(__file__))
+        filename = "{}/plugins/__{name}/{name}.json".format(
+            curr_dir,
+            name=self.name
+        )
+        try:
+            with open(filename) as f:
+                self.functionality = json.load(f)
+        except (IOError, json.JSONDecodeError):
+            self.functionality = [{
+                "CommandName": "Functionality Error",
+                "Tooltip": "There was an error loading plugin functionality",
+                "Output": False,
+                "Inputs": [],
+                "OptionalInputs": []
+            }]
 
     def initialize_queues(self, recv_queue):
         """Initialize command/response queues
@@ -103,8 +91,6 @@ class ControllerPlugin(ABC):
         formats are defined below above their respective methods.
 
         Arguments:
-            send_queue {Queue} -- The queue used to send responses back to the
-            database interface.
             recv_queue {Queue} -- The queue used to receive commands from the
             frontend through the database.
         """
@@ -116,8 +102,7 @@ class ControllerPlugin(ABC):
         if environ["STAGE"] == "TESTING":
             host = "127.0.0.1"
         self.DBI = rethink_interface.RethinkInterface(self.name, (host, 28015))
-        self.initialize_queues(self.DBI.plugin_queue)
-        self.DBI.start(signal)
+        self._advertise_functionality()
         self.start(logger, signal)
 
     @abstractmethod
@@ -157,19 +142,6 @@ class ControllerPlugin(ABC):
 
         self.DBI.update_job(job_id)
 
-    def _update_job_error(self, job, msg=""):
-        """updates a job's status to error and outputs an error message
-        to the output table. This indicates that a command has in some way
-        failed to execute correctly.
-
-        Arguments:
-            job {dict} -- The job that errored
-            msg {str|int|byte|float} -- (optional) The error message to display
-        """
-
-        self._respond_output(job, msg)
-        self.DBI.update_job_error(job["id"])
-
     def _update_job_status(self, job_id, status):
         """Updates a job's status to a specified status. _update_job should be
         used in most cases.
@@ -181,12 +153,52 @@ class ControllerPlugin(ABC):
             and "Active"
         """
 
-        self.DBI._update_job_status(
-            {
-                "job": job_id,
-                "status": status
-            }
-        )
+        self.DBI.update_job_status(job_id, status)
+
+    def get_file(self, file_name, encoding=None):
+        """Get the file specified from the Brain
+
+        Arguments:
+            file_name {str} -- the name of the file
+            encoding {str|None} -- optional method to decode
+
+        Returns:
+            bytes|str -- the contents of the file
+        """
+
+        content = self.DBI.get_file(file_name)["Content"]
+        try:
+            return content.decode(encoding)
+            # default None will throw a TypeError, return as bytes since
+            # no decode is specified
+        except TypeError:
+            return content
+
+    @staticmethod
+    def get_command(job):
+        """return's the job's command name
+
+        Arguments:
+            job {dict} -- the job whose command to get
+
+        Returns:
+            string -- the name of the command for that job
+        """
+
+        return job["JobCommand"]
+
+    @staticmethod
+    def get_job_id(job):
+        """returns the id of the job
+
+        Arguments:
+            job {dict} -- the job which id to go
+
+        Returns:
+            string -- the id of the job
+        """
+
+        return job["id"]
 
     def _advertise_functionality(self):
         """Advertises functionality to database
@@ -196,15 +208,23 @@ class ControllerPlugin(ABC):
         the plugin will be named the exact same string as the
         self.name attribute.
         """
-        self.DBI.create_plugin_table((self.name, self.functionality))
+        self.DBI.create_plugin_table(self.name, self.functionality)
 
     def _request_job(self):
+        """ DEPRECATED"""
+        stderr.write(
+            "_request_job() is deprecated. use request_job() instead\n"
+        )
+        self.request_job()
+
+    def request_job(self):
         """Request next job
 
         This first checks the receive queue to see if there is
         a job waiting, then if the queue is empty, it sends a
         request to the database handler to reply with the next
-        new job whose start time is in the past.
+        new job whose start time is in the past. If a job is
+        found that job's status is updated to Pending
 
         Returns:
             {dict} -- a dictionary describing the job containing
@@ -216,22 +236,26 @@ class ControllerPlugin(ABC):
                 "JobCommand": {dict} -- command to run
             }
         """
-        try:
-            job = self.db_recv.get_nowait()
-        except Empty:
-            job = None
+        job = self.DBI.get_job()
 
         if job:
             self._update_job(job["id"])
         return job
 
     def _respond_output(self, job, output):
+        """DEPRECATED"""
+        stderr.write(
+            "_respond_output is deprecated, use respond_output instead\n"
+        )
+        self.respond_output(job, output)
+
+    def respond_output(self, job, output):
         """Provide job response output
 
         This method is a helper method for the plugin
         which is inheriting this base class. The plugin
         must pass this function the job object it
-        received from the _request_job helper function
+        received from the request_job helper function
         and the corresponding output from the
         command.
 
@@ -241,15 +265,32 @@ class ControllerPlugin(ABC):
         Arguments:
             job {dict} -- the dictionary object for
             the job received from the database/frontend.
-            output {} -- [description]
+            output {str} -- The data to send to the database
         """
         if not isinstance(output, (bytes, str, int, float)):
             raise TypeError
-        self.DBI.send_output({
-            "job": job,
-            "output": output
-        })
+        self.DBI.send_output(job["id"], output)
         self._update_job(job["id"])
+
+    def _update_job_error(self, job, msg=""):
+        """DEPRECATED"""
+        stderr.write(
+            "_update_job_error is deprecated, use respond_error instead\n"
+        )
+        self.respond_error(job, msg)
+
+    def respond_error(self, job, msg=""):
+        """updates a job's status to error and outputs an error message
+        to the output table. This indicates that a command has in some way
+        failed to execute correctly.
+
+        Arguments:
+            job {dict} -- The job that errored
+            msg {str|int|byte|float} -- (optional) The error message to display
+        """
+
+        self.respond_output(job, msg)
+        self.DBI.update_job_error(job["id"])
 
     @abstractmethod
     def _stop(self, **kwargs):

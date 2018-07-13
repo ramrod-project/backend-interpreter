@@ -1,6 +1,8 @@
 FROM alpine:3.7
   
-RUN apk add --no-cach python3 && \
+RUN apk update && \
+    apk add --no-cache python3 linux-headers \
+    gcc python3-dev musl-dev && \
     python3 -m ensurepip && \
     rm -r /usr/lib/python*/ensurepip && \
     pip3 install --upgrade pip setuptools && \

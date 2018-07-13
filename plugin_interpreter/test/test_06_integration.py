@@ -4,7 +4,7 @@ from time import asctime, gmtime, sleep, time
 
 import docker
 from pytest import fixture
-from brain import r as rethinkdb
+from brain import r as rethinkdb, connect
 
 from src import controller_plugin, supervisor, rethink_interface
 
@@ -44,17 +44,17 @@ class IntegrationTest(controller_plugin.ControllerPlugin):
         self.functionality = [
             {
                 "CommandName": "read_file",
-                "input": ["string"],
-                "family": "filesystem",
-                "tooltip": "Provided a full directory path, this function reads a file.",
-                "reference": "no reference"
+                "Input": [],
+                "OptionalInputs": [],
+                "Output": True,
+                "Tooltip": "Provided a full directory path, this function reads a file.",
             },
             {
                 "CommandName": "send_file",
-                "input": ["string", "binary"],
-                "family": "filesystem",
-                "tooltip": "Provided a file and destination directory, this function sends a file.",
-                "reference": "no reference"
+                "Input": [],
+                "OptionalInputs": [],
+                "Output": True,
+                "Tooltip": "Provided a file and destination directory, this function sends a file.",
             }
         ]
         super().__init__(self.name, self.functionality)
@@ -76,7 +76,7 @@ class IntegrationTest(controller_plugin.ControllerPlugin):
             """Pull a job"""
             now = time()
             while time() - now < 3:
-                new_job = self._request_job()
+                new_job = self.request_job()
                 if new_job is not None:
                     break
                 sleep(0.1)
@@ -85,7 +85,7 @@ class IntegrationTest(controller_plugin.ControllerPlugin):
         elif environ["TEST_SELECTION"] == "TEST2":
             """Send output"""
             output = "test output"
-            self._respond_output(SAMPLE_JOB, output)
+            self.respond_output(SAMPLE_JOB, output)
         elif environ["TEST_SELECTION"] == "TEST3":
             """Update job status"""
             self._update_job_status(SAMPLE_JOB["id"],"Pending")
@@ -98,7 +98,7 @@ class IntegrationTest(controller_plugin.ControllerPlugin):
                 NOW
             ])
         elif environ["TEST_SELECTION"] == "TEST5":
-            self._update_job_error(SAMPLE_JOB, "Testing Error")
+            self.respond_error(SAMPLE_JOB, "Testing Error")
 
         while signal.value is not True:
             sleep(1)
@@ -145,7 +145,7 @@ def sup():
 
 @fixture(scope="function")
 def connection():
-    conn = rethink_interface.RethinkInterface.connect_to_db("127.0.0.1", 28015)
+    conn = connect("127.0.0.1", 28015)
     yield conn
     conn.close()
 
@@ -284,25 +284,6 @@ def test_log_to_logger(sup, rethink):
             if output[0] == "":
                 break
     assert found_plugin_log
-
-def test_database_connection(rethink):
-    """Test that the interpreter check the connection
-
-    This tests if the interpreter will check for the
-    database to be available for connection.
-    
-    Arguments:
-        rethink {none} -- allows access to the rethinkdb
-    """
-    environ["TEST_SELECTION"] = "TEST4"
-    environ["STAGE"] = "TESTING"
-    #this SHOULD be a bad port to connect to. if this test fails
-    #something is very wrong
-    location = ("localhost",28888)
-    try:
-        rethink_interface.RethinkInterface(IntegrationTest(), location)
-    except SystemExit as ex:
-        assert str(ex) == "111"
 
 def test_database_connection_succeed(rethink):
     location = ("localhost", 28015)
