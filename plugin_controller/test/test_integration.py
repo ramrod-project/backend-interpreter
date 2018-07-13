@@ -114,7 +114,7 @@ def test_available_to_start(brain_conn, clear_dbs, env, rethink, server_proc, gi
     assert running
     db_updated = False
     now = time()
-    while time() - now < 3:
+    while time() - now < 6:
         sleep(0.5)
         result = brain.queries.get_plugin_by_name_controller("Harness", conn=brain_conn).next()
         if result["Name"] == "Harness" and result["State"] == "Active" and result["DesiredState"] == "":
