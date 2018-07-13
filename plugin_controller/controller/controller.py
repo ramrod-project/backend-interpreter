@@ -323,11 +323,14 @@ class Controller():
             image_name = AUX_SERVICES_IMAGE
             try:
                 CLIENT.volumes.get("brain-volume")
-                volumes = {"brain-volume": {"bind": "/www/files/brain", "mode": "ro"}}
+                volumes = {
+                    "brain-volume": {"bind": "/www/files/brain", "mode": "ro"}
+                }
             except docker.errors.NotFound:
                 self.log(
                     30,
-                    "brain-volume not found! Files in brain will not be available."
+                    "brain-volume not found! Files in \
+                    brain will not be available."
                 )
         else:
             image_name = PLUGIN_IMAGE
