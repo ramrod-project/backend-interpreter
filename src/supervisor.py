@@ -18,6 +18,7 @@ from plugins import *
 __version__ = "0.2"
 __author__ = "Christopher Manzi"
 
+
 def get_class_instance(plugin_name):
     """Returns class instances from 'plugins' folder.
 
@@ -174,7 +175,7 @@ class SupervisorController:
         except RuntimeError:
             self.teardown(99)
 
-    def monitor(self): # pragma: no cover
+    def monitor(self):  # pragma: no cover
         """Monitor loop
 
         This method runs for the duration of the application lifecycle...

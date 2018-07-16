@@ -21,6 +21,7 @@ logging.basicConfig(
     format='%(date)s %(name)-12s %(levelname)-8s %(message)s'
 )
 
+
 class CentralLogger():
 
     def __init__(self, pipes, level):
@@ -41,13 +42,12 @@ class CentralLogger():
         elif level == "CRITICAL":
             self.logger.setLevel(logging.CRITICAL)
 
-
     def start(self, logger, signal):
         """Start the logger
 
         The 'start' method is used as a target for the
         LinkedProcess that is run by the Supervisor.
-        
+
         Arguments:
             logger {Pipe} -- the central logger start function
             uses the same calling convention as other processes,
@@ -90,7 +90,7 @@ class CentralLogger():
             self.logger.log(
                 log[2],
                 "".join([log[0], ": ", log[1]]),
-                extra={ 'date': date }
+                extra={'date': date}
             )
 
     def _stop(self):
@@ -116,9 +116,11 @@ class CentralLogger():
         """
         self.logger.log(
             50,
-            "loggerprocess: " 
-            + str(ex) 
-            + ", stopping...",
+            "".join([
+                "loggerprocess: ",
+                str(ex),
+                ", stopping..."
+            ]),
             extra={ 'date': asctime(gmtime(time()))
             }
         )
