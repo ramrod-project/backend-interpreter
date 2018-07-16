@@ -236,23 +236,22 @@ class RethinkInterface:
             the plugin and the list of Commands (plguin_name, command_list)
         """
 
-        if verify(plugin_data, Commands()):
-            try:
-                create_plugin(plugin_name, self.rethink_connection)
-                advertise_plugin_commands(
+        try:
+            create_plugin(plugin_name, self.rethink_connection)
+            advertise_plugin_commands(
+                plugin_name,
+                plugin_data,
+                conn=self.rethink_connection
+            )
+        except ValueError:
+            self._log(
+                "".join([
+                    "Unable to add command to table '",
                     plugin_name,
-                    plugin_data,
-                    conn=self.rethink_connection
-                )
-            except ValueError:
-                self._log(
-                    "".join([
-                        "Unable to add command to table '",
-                        plugin_name,
-                        "'"
-                    ]),
-                    20
-                )
+                    "'"
+                ]),
+                20
+            )
 
     def _log(self, log, level):
         date = asctime(gmtime(time()))

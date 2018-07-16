@@ -141,10 +141,10 @@ def compare_to(tablecheck, compare_list):
         if any items in tablecheck are not in compare_list return false
     """
     table_list = list(tablecheck)
-    if len(table_list) is 0:
+    if len(table_list) == 0:
         return False
-    for i in table_list:
-        if i not in compare_list:
+    for i in compare_list:
+        if i not in table_list:
             return False
     return True
 
@@ -161,49 +161,85 @@ def test_rethink_plugin_create(brain, rethink):
     """
 
     #test adding a valid table
-    command_list = [{
-                "CommandName": "test_func_1",
-                "Input": [],
-                "Output": True,
-                "Tooltip": "This is a test",
-                "OptionalInputs": []
-            },
-            {
-                "CommandName": "test_func_2",
-                "Input": [],
-                "Output": False,
-                "Tooltip": "This is also a test",
-                "OptionalInputs": []
-            }]
-    rethink.create_plugin_table("TestTable",command_list)
+    command_list = [
+        {
+        "CommandName":"get_file",
+        "Tooltip":"tooltip for get file",
+        "Output":True,
+        "Inputs":[
+                {"Name":"FilePath",
+                "Type":"textbox",
+                "Tooltip":"Must be the fully qualified path",
+                "Value":"remote filename"
+                },
+            ],
+        "OptionalInputs":[]
+        },
+        {
+        "CommandName":"delete_file",
+        "Tooltip":"tooltip for delete file",
+        "Output":True,
+        "Inputs":[
+                {"Name":"FilePath",
+                "Type":"textbox",
+                "Tooltip":"Must be the fully qualified path",
+                "Value":"remote filename"
+                },
+            ],
+        "OptionalInputs":[]
+        }
+    ]
+    rethink.create_plugin_table("TestTable", command_list)
     assert rethink.check_for_plugin("TestTable")
     tablecheck = rethinkdb.db("Plugins").table("TestTable").run(rethink.rethink_connection)
     assert compare_to(tablecheck, command_list)
 
     #test updating a table
-    command_list = [{
-                "CommandName": "test_func_1",
-                "Input": [],
-                "Output": True,
-                "Tooltip": "This is a test",
-                "OptionalInputs": []
-            },
-            {
-                "CommandName": "test_func_2",
-                "Input": ["string"],
-                "Output": False,
-                "Tooltip": "This is also a test",
-                "OptionalInputs": []
-            },
-            {
-                "CommandName": "test_func_3",
-                "Input": [],
-                "Output": True,
-                "Tooltip": "a bonus command",
-                "OptionalInputs": [],
-                "ExtraTestKey": "You can add keys to your Command"
-            }]
-    rethink.create_plugin_table("TestTable", command_list)
+    updated_commands = [{
+        "CommandName": "test_func_1",
+        "Input": [],
+        "Output": True,
+        "Tooltip": "This is a test",
+        "OptionalInputs": []
+    },
+    {
+        "CommandName": "test_func_2",
+        "Input": ["string"],
+        "Output": False,
+        "Tooltip": "This is also a test",
+        "OptionalInputs": []
+    },
+    {
+        "CommandName": "test_func_3",
+        "Input": [],
+        "Output": True,
+        "Tooltip": "a bonus command",
+        "OptionalInputs": [],
+        "ExtraTestKey": "You can add keys to your Command"
+    }]
+    command_list.extend([{
+        "CommandName": "test_func_1",
+        "Input": [],
+        "Output": True,
+        "Tooltip": "This is a test",
+        "OptionalInputs": []
+    },
+    {
+        "CommandName": "test_func_2",
+        "Input": ["string"],
+        "Output": False,
+        "Tooltip": "This is also a test",
+        "OptionalInputs": []
+    },
+    {
+        "CommandName": "test_func_3",
+        "Input": [],
+        "Output": True,
+        "Tooltip": "a bonus command",
+        "OptionalInputs": [],
+        "ExtraTestKey": "You can add keys to your Command"
+    }])
+    rethink.create_plugin_table("TestTable", updated_commands)
     tablecheck = rethinkdb.db("Plugins").table("TestTable").run(rethink.rethink_connection)
     table_list = list(tablecheck)
     assert compare_to(table_list, command_list)
