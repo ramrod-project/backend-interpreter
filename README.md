@@ -3,6 +3,8 @@
 [![Maintainability](https://api.codeclimate.com/v1/badges/72fa8fec9d9fe43497bd/maintainability)](https://codeclimate.com/github/ramrod-project/backend-interpreter/maintainability)
 [![Test Coverage](https://api.codeclimate.com/v1/badges/72fa8fec9d9fe43497bd/test_coverage)](https://codeclimate.com/github/ramrod-project/backend-interpreter/test_coverage)
 
+## Guide
+
 **Building interpreter image**
 
 From top level repository:
