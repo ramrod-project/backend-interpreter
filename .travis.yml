@@ -50,10 +50,10 @@ script:
   - docker stop rethinkdb
 
 after_success:
-  - if [[ "$TRAVIS_PULL_REQUEST" == "false" ]]; 
+  - if [[ "$TRAVIS_PULL_REQUEST" == "false" ]];
     then echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin; fi
-  - if [[ "$TRAVIS_PULL_REQUEST" == "false"  ]]; 
-    docker push ramrodpcp/interpreter-plugin:$TAG; fi
+  - if [[ "$TRAVIS_PULL_REQUEST" == "false"  ]];
+    then docker push ramrodpcp/interpreter-plugin:$TAG; fi
 
 notifications:
   slack: ramrod-project:GDF82rRYDg3KSekrT3GA24qO
