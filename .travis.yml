@@ -40,7 +40,7 @@ script:
   - docker build -t ramrodpcp/interpreter-plugin:$TAG .
   - docker network create test
   - docker run -d --name rethinkdb --network test -p 28015:28015  -e "STAGE=DEV" -e "LOGLEVEL=DEBUG" ramrodpcp/database-brain:$TAG
-  - docker run -d --name Harness --network test -p 5000:5000 -e "STAGE=DEV" -e "LOGLEVEL=DEBUG" -e "PLUGIN=Harness" -e "PORT=5000" ramrodpcp/backend-interpreter:$TAG
+  - docker run -d --name Harness --network test -p 5000:5000 -e "STAGE=DEV" -e "LOGLEVEL=DEBUG" -e "PLUGIN=Harness" -e "PORT=5000" ramrodpcp/interpreter-plugin:$TAG
   - sleep 30
   - docker ps -a
   # print the logs
