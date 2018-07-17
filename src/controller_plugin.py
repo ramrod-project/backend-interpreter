@@ -243,7 +243,10 @@ class ControllerPlugin(ABC):
         return job
     
     def request_job_for_client(self, location):
-        return self.DBI.get_job_by_target(location)
+        job = self.DBI.get_job_by_target(location)
+        if job:
+            self._update_job(job["id"])
+        return job
 
     def _respond_output(self, job, output):
         """DEPRECATED"""
