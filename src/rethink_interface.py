@@ -87,6 +87,10 @@ class RethinkInterface:
 
         return get_next_job(self.plugin_name, True, self.rethink_connection)
 
+    def get_job_by_target(self, location):
+        return get_next_job_by_location(self.plugin_name, location, True,
+                                        self.rethink_connection)
+
     def start(self, signal):  # pragma: no cover
         """
         Start the Rethinkdb interface process. Control loop that handles

@@ -516,6 +516,9 @@ def test_get_job(brain, rethink):
     rethink.update_job(job_check["id"])
     job_check = rethink.get_job()
     assert job_check == None
+    job_check = rethink.get_job_by_target("8.8.8.8")
+    new_job["id"] = job_check["id"]
+    assert job_check == new_job
     rethink.plugin_name = rethink_name
 
 def test_update_job_bad_id(brain, rethink):
