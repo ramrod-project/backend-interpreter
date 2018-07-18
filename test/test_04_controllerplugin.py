@@ -224,3 +224,30 @@ def test_get_file(plugin_base):
     # bad codec
     with raises(LookupError):
         plugin_base.get_file("testfile.txt","MYNEWSTANDARD")
+
+def test_get_value(plugin_base):
+    input_job = SAMPLE_JOB
+    input_job["JobCommand"] = {
+        "CommandName": "TestCommand",
+        "Tooltip": " testing command",
+        "Output": True,
+        "Inputs": [
+            {
+                "Name": "testinput",
+                "Type": "textbox",
+                "Tooltip": "fortesting",
+                "Value": "Test Input 1"
+            }
+        ],
+        "OptionalInputs": [
+            {
+                "Name": "testinput2",
+                "Type": "textbox",
+                "Tooltip": "fortesting",
+                "Value": "Test Input 2"
+            }
+        ]
+    }
+    assert plugin_base.value_of_input(input_job, 0) == "Test Input 1"
+    assert plugin_base.value_of_option(input_job, 0) == "Test Input 2"
+    assert plugin_base.value_of_input(input_job, 5) == None

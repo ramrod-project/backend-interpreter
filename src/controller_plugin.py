@@ -199,6 +199,20 @@ class ControllerPlugin(ABC):
         """
 
         return job["id"]
+    
+    @staticmethod
+    def value_of_input(job, input):
+        try:
+            return job["JobCommand"]["Inputs"][input]["Value"]
+        except IndexError:
+            return None
+
+    @staticmethod
+    def value_of_option(job, option):
+        try:
+            return job["JobCommand"]["OptionalInputs"][option]["Value"]
+        except IndexError:
+            return None
 
     def _advertise_functionality(self):
         """Advertises functionality to database
@@ -243,6 +257,25 @@ class ControllerPlugin(ABC):
         return job
     
     def request_job_for_client(self, location):
+        """Attempts to get a job with the same plugin name at the specified
+        location (typically an IP). Use this for communicating for multiple
+        plugins
+        
+        Arguments:
+            location {str} -- The location (usually the IP) of the plugin's
+            client the get a job for.
+        
+        Returns:
+            dict|None -- a job with the given location as its target or None
+            {
+                "id": {string} -- GUID, not needed for plugin,
+                "JobTarget": {dict} -- target from Targets table,
+                "Status": {string} -- the status of the job,
+                "StartTime": {int} -- unix epoch start time,
+                "JobCommand": {dict} -- command to run
+            }
+        """
+
         job = self.DBI.get_job_by_target(location)
         if job:
             self._update_job(job["id"])
