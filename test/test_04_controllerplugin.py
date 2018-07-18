@@ -251,3 +251,4 @@ def test_get_value(plugin_base):
     assert plugin_base.value_of_input(input_job, 0) == "Test Input 1"
     assert plugin_base.value_of_option(input_job, 0) == "Test Input 2"
     assert plugin_base.value_of_input(input_job, 5) == None
+    assert plugin_base.value_of_option(input_job, 5) == None
