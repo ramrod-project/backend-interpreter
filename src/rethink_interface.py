@@ -100,10 +100,8 @@ class RethinkInterface:
             no jobs are ready
         """
 
-        job = get_next_job_by_location(self.plugin_name, location, False,
+        return get_next_job_by_location(self.plugin_name, location, False,
                                         self.rethink_connection)
-        print(job)
-        return job
     
     def get_job_by_port(self, port):
         return get_next_job_by_port(self.plugin_name, port, False,
