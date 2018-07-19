@@ -54,14 +54,13 @@ def notest_back_in_main_e(e, a):
 
 
 def test_minimal_jobs(rethink):
-    with Pool(processes=2) as pool:
-        sleep(5)
-        pool.apply_async(notest_signal_sleeper,
-                         (EXT_SIGNAL,),
-                         error_callback=notest_back_in_main_e)
-        sleep(20)  # let the job get done
-        pool.terminate()
-
+    pool = Pool(processes=2)
+    sleep(5)
+    pool.apply_async(notest_signal_sleeper,
+                     (EXT_SIGNAL,),
+                     error_callback=notest_back_in_main_e)
+    sleep(20)  # let the job get done
+    pool.terminate()
     c = connect()  #verify they all got done
     jobs = 0
     for job in RBJ.run(c):
