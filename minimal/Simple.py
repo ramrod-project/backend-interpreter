@@ -60,7 +60,7 @@ TGT = {
     "PluginName": "Simple",
     "Location": "127.0.0.1",
     "Port": "0000",
-    "Optional" : {"anything" : "anything"}
+    "Optional": {"anything": "anything"}
 }
 
 JOBS = [{"JobTarget": TGT,
