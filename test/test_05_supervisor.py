@@ -10,7 +10,7 @@ from pytest import fixture, raises
 import docker
 CLIENT = docker.from_env()
 
-from src import central_logger, controller_plugin, linked_process, rethink_interface, supervisor
+from src import controller_plugin, linked_process, rethink_interface, supervisor
 
 assert osname == 'posix'
 
@@ -61,23 +61,16 @@ def test_supervisor_setup(sup):
 def test_supervisor_server_creation(sup):
     # Test server creation
     sup.create_servers()
-    for proc in [sup.logger_process, sup.plugin_process]:
-        assert isinstance(proc, linked_process.LinkedProcess)
+    assert isinstance(sup.plugin_process, linked_process.LinkedProcess)
 
     assert isinstance(sup.plugin, controller_plugin.ControllerPlugin)
-    assert isinstance(sup.logger_instance, central_logger.CentralLogger)
-
-def test_supervisor_log_creation(sup):
-    # Test log creation
-    assert sup.logger_process
 
 def test_supervisor_server_spawn(sup):
     # Test server spawning
     sup.spawn_servers()
     
-    for proc in [sup.logger_process, sup.plugin_process]:
-        assert proc.is_alive()
+    assert sup.plugin_process.is_alive()
 
 def test_linked_process_creation(sup):
     # Test linked process creation
-    assert sup.logger_instance
+    pass

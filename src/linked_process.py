@@ -4,11 +4,12 @@ Process class. It allows processes to be restarted if they die
 and stores the Pipe() being used by the process.
 """
 
+import logging
 from multiprocessing import connection, Process, sharedctypes
-from time import sleep, time
+from os import environ
+from time import asctime, gmtime, sleep, time
 
 LOGGER_NAME = "loggerprocess"
-LOG_PIPE = "logger_pipe"
 LP_TARGET = "target"
 LP_SIGNAL = "signal"
 LP_NAME = "name"
@@ -22,12 +23,21 @@ class LinkedProcess:
     the ability to restart a Process() if it has exited. It takes
     an optional Pipe() conection object.
     """
+    # Initialize logger
+    logging.basicConfig(
+        filename="plugin_logfile",
+        filemode="a",
+        format='%(date)s %(name)-12s %(levelname)-8s %(message)s'
+    )
+
+    LOGGER = logging.getLogger('linked_process')
+    LOGGER.addHandler(logging.StreamHandler())
+    LOGLEVEL = environ.get("LOGLEVEL", default="DEBUG")
+    LOGGER.setLevel(LOGLEVEL)
+
     def __init__(self, **kwargs):
         self.name = kwargs[LP_NAME]
         if self._verify_init_kwargs(**kwargs):  # might throw TypeError
-            self.logger_pipe = None
-            if self.name is not LOGGER_NAME:
-                self.logger_pipe = kwargs[LOG_PIPE]
             self.proc = None
             self.target = kwargs[LP_TARGET]
             self.signal = kwargs[LP_SIGNAL]
@@ -36,9 +46,8 @@ class LinkedProcess:
         """
         May raise typeerror if the params are not correct
 
-        1. kwargs["logger_pipe"], it must be a (c) connection or (n) None
-        2. kwargs["target"] must be a callable function
-        3. kwargs["signal"] must be a Synchronized signal
+        1. kwargs["target"] must be a callable function
+        2. kwargs["signal"] must be a Synchronized signal
 
         any check fails, this raises typeerror
 
@@ -46,8 +55,7 @@ class LinkedProcess:
         :return: <bool>
         """
         good_args = False
-        if isinstance(kwargs[LOG_PIPE], (type(None), BASE_CONNECTION)) \
-                and callable(kwargs["target"]) \
+        if callable(kwargs["target"]) \
                 and isinstance(kwargs["signal"], sharedctypes.Synchronized):
             good_args = True
         else:
@@ -59,7 +67,7 @@ class LinkedProcess:
         self.proc = Process(
             target=self.target,
             name=self.name,
-            args=(self.logger_pipe, self.signal)
+            args=(self.signal,)
         )
 
         try:
@@ -85,8 +93,10 @@ class LinkedProcess:
         if self.is_alive():
             return True
         else:
-            self._log_create("{} restarting...".format(self.name),
-                             level=20)
+            self._log_create(
+                "{} restarting...".format(self.name),
+                level=20
+            )
             self.start()
             return self._did_start()
 
@@ -119,8 +129,10 @@ class LinkedProcess:
             is dead, othewise True.
         """
         if not self.proc:
-            self._log_create("{} not started!".format(self.name),
-                             level=20)
+            self._log_create(
+                "{} not started!".format(self.name),
+                level=20
+            )
             return False
         if self.proc.is_alive():
             return True
@@ -150,34 +162,53 @@ class LinkedProcess:
                 and self.is_alive() \
                 and (self.proc.terminate() is None) \
                 and self.check_alive_until(time() + 3, False):
-            log = "{} terminated with exit code {}".format(self.name,
-                                                           self.get_exitcode())
+            log = "{} terminated with exit code {}".format(
+                self.name,
+                self.get_exitcode()
+            )
             self._log_create(log,
                              level=20)
         else:
             log = "{} failed to terminate".format(self.name)
-            self._log_create(log,
-                             level=20)
+            self._log_create(
+                log,
+                level=20
+            )
 
     def _did_start(self):
         begin = time()
         while time() - begin < 5:
             if self.is_alive() and time() - begin > 3:
-                self._log_create("{} started!".format(self.name),
-                                 level=20)
+                self._log_create(
+                    "{} started!".format(self.name),
+                    level=20
+                )
                 return True
             sleep(0.5)
-        self._log_create("{} failed to start!".format(self.name),
-                         level=50)
+        self._log_create(
+            "{} failed to start!".format(self.name),
+            level=50
+        )
         return False
 
     def _log_create(self, log_str, level=20, timestamp=None):
         timestamp = timestamp or time()
-        self._log([self.name,
-                   log_str,
-                   level,
-                   timestamp])
+        self._log([
+            self.name,
+            log_str,
+            level,
+            timestamp
+        ])
 
-    def _log(self, message):
-        if self.logger_pipe:
-            self.logger_pipe.send(message)
+    def _log(self, log):
+        """The log function is called by the
+        class instance to send a collection of storted
+        logs to the main logger. Iterate over list
+        of [<component>, <log>, <severity>, <timestamp>]
+        """
+        date = asctime(gmtime(log[3]))
+        self.LOGGER.log(
+            log[2],
+            log[1],
+            extra={'date': date}
+        )

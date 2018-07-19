@@ -9,7 +9,7 @@ import docker
 
 CLIENT = docker.from_env()
 
-from src import central_logger, controller_plugin, linked_process, rethink_interface, supervisor
+from src import controller_plugin, linked_process, rethink_interface, supervisor
 
 
 def startup_brain():
@@ -58,19 +58,16 @@ def supervisor_server_creation(sup):
     # Test server creation
     sup.create_servers()
 
-    for proc in [sup.logger_process, sup.plugin_process]:
-        assert isinstance(proc, linked_process.LinkedProcess)
+    assert isinstance(sup.plugin_process, linked_process.LinkedProcess)
 
     assert isinstance(sup.plugin, controller_plugin.ControllerPlugin)
-    assert isinstance(sup.logger_instance, central_logger.CentralLogger)
 
 
 def supervisor_server_spawn(sup):
     # Test server supawning
     sup.spawn_servers()
 
-    for proc in [sup.logger_process, sup.plugin_process]:
-        assert proc.is_alive()
+    assert sup.plugin_process.is_alive()
 
 TEST_COMMANDS = [
    {'Output': True,
