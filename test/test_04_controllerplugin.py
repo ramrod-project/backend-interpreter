@@ -5,9 +5,6 @@ import multiprocessing
 from os import environ
 from threading import Thread
 from time import time, sleep
-import logging
-import docker
-from brain import connect
 
 from pytest import fixture, raises
 
@@ -117,38 +114,6 @@ def plugin_base():
     plugin.initialize_queues(TO_PLUGIN)
     yield plugin
 
-CLIENT = docker.from_env()
-logging.basicConfig(
-    filename="logfile",
-    filemode="a",
-    format='%(date)s %(name)-12s %(levelname)-8s %(message)s'
-)
-LOGGER = logging.getLogger('testlogger')
-
-# Provide database-brain container for module tests
-@fixture(scope='module')
-def brain():
-    # Setup for all module tests
-    try:
-        tag = environ.get("TRAVIS_BRANCH", "dev").replace("master", "latest")
-        environ["STAGE"] = "TESTING"
-    except KeyError:
-        tag = "latest"
-    CLIENT.containers.run(
-        "".join(("ramrodpcp/database-brain:", tag)),
-        name="rethinkdb_rethink",
-        detach=True,
-        ports={"28015/tcp": 28016},
-        remove=True
-    )
-    yield
-    # Teardown for all module tests
-    containers = CLIENT.containers.list()
-    for container in containers:
-        if container.name == "rethinkdb_rethink":
-            container.stop()
-            break
-
 def test_instantiate():
     """Test plugin instancing
 
@@ -212,8 +177,6 @@ def test_request_job(plugin_base):
     assert plugin_base.DBI.update == "138thg-eg98198-sf98gy3-feh8h8"
     result = plugin_base.request_job_for_client("127.0.0.1")
     assert result == SAMPLE_JOB
-
-
 
 def test_respond_to_job(plugin_base):
     """Test sending job response

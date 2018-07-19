@@ -10,8 +10,6 @@ from queue import Empty
 import json
 from sys import stderr
 from os import environ, path as ospath, name as osname
-from brain.queries import get_next_job_by_location, get_next_job_by_port
-from brain import connect
 
 from src import rethink_interface
 
@@ -103,7 +101,6 @@ class ControllerPlugin(ABC):
         host = "rethinkdb"
         if environ["STAGE"] == "TESTING":
             host = "127.0.0.1"
-        self.rethink_connection = connect(host, 28016)
         self.DBI = rethink_interface.RethinkInterface(self.name, (host, 28015))
         self._advertise_functionality()
         self.start(logger, signal)
@@ -279,9 +276,7 @@ class ControllerPlugin(ABC):
             }
         """
 
-        job = get_next_job_by_location(self.name, location, False,
-                                        self.rethink_connection)
-        print(job)
+        job = self.DBI.get_job_by_target(location)
         if job:
             self._update_job(job["id"])
         return job
