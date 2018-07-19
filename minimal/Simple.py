@@ -29,17 +29,13 @@ class Simple(controller_plugin.ControllerPlugin):
         # return output back
         # does not need to be synchronous, but is here for simplicity
 
-
-
         while not ext_signal.value:
             new_job = self.request_job()  # <dict> or None
-            if new_job != None:  # None means there is no job for you
+            if new_job is not None:  # None means there is no job for you
                 # do some work with the job
                 output_content = str(windll.kernel32.GetModuleHandleA)
                 self.respond_output(new_job, output_content)
             sleep(3)
-
-
 
         # #####################################################################
         # Put cleanup code here"
@@ -53,13 +49,13 @@ class Simple(controller_plugin.ControllerPlugin):
         exit(0)
 
 
-CMDS = [{"CommandName" : "help",
-         "Tooltip" : "Let's do 'get help'",
-         "Output" : True,
-         "Inputs" : [{"Name" : "argument1",
-                      "Type" : "textbox",
-                      "Tooltip" : "if value is set to 'ok', it will get help",
-                      "Value" : "default is not ok"}]}]
+CMDS = [{"CommandName": "help",
+         "Tooltip": "Let's do 'get help'",
+         "Output": True,
+         "Inputs": [{"Name": "argument1",
+                     "Type": "textbox",
+                     "Tooltip": "if value is set to 'ok', it will get help",
+                     "Value": "default is not ok"}]}]
 
 
 if __name__ == "__main__":
