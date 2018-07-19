@@ -1,16 +1,18 @@
 """Unit testing for the linked_process module.
 """
-
-import multiprocessing
-from os import environ
-from threading import Thread
+from json import dump, load
+from os import environ, makedirs, remove, removedirs
 from time import time, sleep
 
+import brain
+import docker
 from pytest import fixture, raises
 
 from src import controller_plugin
 
-TO_PLUGIN = multiprocessing.Queue()
+
+CLIENT = docker.from_env()
+
 
 SAMPLE_TARGET = {
     "id": "w93hyh-vc83j5i-v82h54u-b6eu4n",
@@ -38,6 +40,23 @@ SAMPLE_FILE = {
     "Timestamp": 123456789,
     "Content": "This is just a TEST!"
 }
+
+SAMPLE_FUNCTIONALITY = [
+    {
+        "CommandName": "read_file",
+        "Tooltip": "Provided a full directory path, this function reads a file.",
+        "Output": False,
+        "Inputs": [],
+        "OptionalInputs": []
+    },
+    {
+        "CommandName": "send_file",
+        "Tooltip": "Provided a file and destination directory, this function sends a file.",
+        "Output": False,
+        "Inputs": [],
+        "OptionalInputs": []
+    }
+]
 
 environ["PORT"] = "8080"
 
@@ -84,20 +103,51 @@ class SamplePlugin(controller_plugin.ControllerPlugin):
     """
 
 
-    def __init__(self):
+    def __init__(self, functionality):
+        self.db_conn = brain.connect()
         super().__init__(
-            "SamplePlugin"
+            "SamplePlugin",
+            functionality=functionality
         )
-        self.DBI = DummyDBInterface()
 
     def start(self, logger, signal):
         """abstractmethod overload"""
         pass
 
-    def _stop(self, **kwargs):
-        """abstractmethod overload"""
-        pass
+@fixture(scope="function")
+def conn():
+    yield brain.connect()
 
+@fixture(scope="module")
+def give_brain():
+    # Setup for all module tests
+    tag = environ.get("TRAVIS_BRANCH", "dev").replace("master", "latest")
+    old_stage = environ.get("STAGE", "")
+    environ["STAGE"] = "TESTING"
+    rdb = CLIENT.containers.run(
+        "".join(("ramrodpcp/database-brain:", tag)),
+        name="rethinkdb_rethink",
+        detach=True,
+        ports={"28015/tcp": 28015},
+        remove=True
+    )
+    yield
+    # Teardown for all module tests
+    environ["STAGE"] = old_stage
+    rdb.stop(timeout=5)
+
+@fixture(scope="function")
+def clear_dbs():
+    yield
+    sleep(1)
+    conn = brain.connect()
+    brain.r.db("Brain").table("Targets").delete().run(conn)
+    brain.r.db("Brain").table("Outputs").delete().run(conn)
+    brain.r.db("Brain").table("Jobs").delete().run(conn)
+    brain.r.db("Audit").table("Jobs").delete().run(conn)
+    for table in brain.r.db("Plugins").table_list().run(conn):
+        brain.r.db("Plugins").table(table).delete().run(conn)
+    sleep(1)
 
 @fixture(scope="function")
 def plugin_base():
@@ -106,8 +156,7 @@ def plugin_base():
     This fixture instances a SamplePlugin
     for use in testing.
     """
-    plugin = SamplePlugin()
-    plugin.initialize_queues(TO_PLUGIN)
+    plugin = SamplePlugin({})
     yield plugin
 
 def test_instantiate():
@@ -118,41 +167,55 @@ def test_instantiate():
     """
     with raises(TypeError):
         plugin = controller_plugin.ControllerPlugin()
-    plugin = SamplePlugin()
+    plugin = SamplePlugin(SAMPLE_FUNCTIONALITY)
     assert isinstance(plugin, controller_plugin.ControllerPlugin)
-    plugin.initialize_queues(TO_PLUGIN)
-    assert isinstance(plugin.db_recv, multiprocessing.queues.Queue)
 
-def test_advertise(plugin_base):
+def test_job_helpers():
+    assert controller_plugin.ControllerPlugin.get_command(SAMPLE_JOB) == SAMPLE_JOB["JobCommand"]
+    assert controller_plugin.ControllerPlugin.get_job_id(SAMPLE_JOB) == SAMPLE_JOB["id"]
+
+def test_read_functionality(give_brain, clear_dbs):
+    makedirs("plugins/__SamplePlugin")
+    with open("plugins/__SamplePlugin/SamplePlugin.json", "w") as openfile:
+        dump(SAMPLE_FUNCTIONALITY, openfile)
+    plugin = SamplePlugin(None)
+    for func in SAMPLE_FUNCTIONALITY:
+        assert func in plugin.functionality
+    remove("plugins/__SamplePlugin/SamplePlugin.json")
+    removedirs("plugins/__SamplePlugin")
+
+def test_advertise(plugin_base, give_brain, clear_dbs, conn):
     """Test functionality advertisement
 
     Arguments:
         plugin_base {fixture} -- yields the SamplePlugin
         instance needed for testing.
     """
+    plugin_base.functionality = SAMPLE_FUNCTIONALITY
+    plugin_base.db_conn = conn
     plugin_base._advertise_functionality()
-    result = plugin_base.DBI.result
-    functionality = [
-                        {
-                            "CommandName": "read_file",
-                            "Tooltip": "Provided a full directory path, this function reads a file.",
-                            "Output": False,
-                            "Inputs": [],
-                            "OptionalInputs": []
-                        },
-                        {
-                            "CommandName": "send_file",
-                            "Tooltip": "Provided a file and destination directory, this function sends a file.",
-                            "Output": False,
-                            "Inputs": [],
-                            "OptionalInputs": []
-                        }
-                    ]
-    assert result[0] == "SamplePlugin"
-    assert result[1] == functionality
-    assert plugin_base.functionality == functionality
+    db_updated = False
+    result = None
+    now = time()
+    while time() - now < 3:
+        sleep(0.3)
+        result = brain.queries.get_plugin_commands(
+            plugin_base.name,
+            conn=plugin_base.db_conn
+        )
+        try:
+            c1 = result.__next__()
+            print(c1)
+            c2 = result.__next__()
+            print(c2)
+            assert c1 in SAMPLE_FUNCTIONALITY and c2 in SAMPLE_FUNCTIONALITY
+            db_updated = True
+            break
+        except:
+            continue
+    assert db_updated
 
-def test_request_job(plugin_base):
+def test_request_job(plugin_base, give_brain, clear_dbs, conn):
     """Test requesting a job
 
     Start a dummy_interface thread to send
@@ -162,17 +225,62 @@ def test_request_job(plugin_base):
         plugin_base {fixture} -- yields the SamplePlugin
         instance needed for testing.
     """
-    TO_PLUGIN.put(SAMPLE_JOB)
+    plugin_base.db_conn = conn
+    assert plugin_base.request_job() is None
+    brain.r.db("Brain").table("Jobs").insert(SAMPLE_JOB).run(conn)
     now = time()
     while time() - now < 3:
         result = plugin_base.request_job()
         if result is not None:
             break
-        sleep(0.1)
+        sleep(0.3)
     assert result == SAMPLE_JOB
-    assert plugin_base.DBI.update == "138thg-eg98198-sf98gy3-feh8h8"
 
-def test_respond_to_job(plugin_base):
+def test_update_job(plugin_base, give_brain, clear_dbs, conn):
+    plugin_base.db_conn = conn
+    assert plugin_base._update_job("doenstexist") is None
+    brain.r.db("Brain").table("Jobs").insert(SAMPLE_JOB).run(conn)
+    now = time()
+    while time() - now < 3:
+        result = brain.queries.get_job_by_id(SAMPLE_JOB["id"])
+        if result is not None:
+            break
+        sleep(0.3)
+    assert result == SAMPLE_JOB
+    assert plugin_base._update_job(SAMPLE_JOB["id"]) == "Pending"
+    db_updated1 = False
+    now = time()
+    while time() - now < 3:
+        result = brain.queries.get_job_by_id(SAMPLE_JOB["id"])
+        if result is not None and result["Status"] == "Pending":
+            db_updated1 = True
+        sleep(0.3)
+    assert db_updated1
+    assert plugin_base._update_job(SAMPLE_JOB["id"]) == "Done"
+    db_updated2 = False
+    now = time()
+    while time() - now < 3:
+        result = brain.queries.get_job_by_id(SAMPLE_JOB["id"])
+        if result is not None and result["Status"] == "Done":
+            db_updated2 = True
+        sleep(0.3)
+    assert db_updated2
+    assert plugin_base._update_job(SAMPLE_JOB["id"]) == None
+    db_not_updated = True
+    now = time()
+    while time() - now < 3:
+        result = brain.queries.get_job_by_id(SAMPLE_JOB["id"])
+        if result is not None and result["Status"] != "Done":
+            db_not_updated = False
+            break
+        sleep(0.3)
+    assert db_not_updated
+
+def test_update_job_status(plugin_base, give_brain, clear_dbs):
+    plugin_base.db_conn = conn
+    
+
+def test_respond_to_job(plugin_base, give_brain, clear_dbs):
     """Test sending job response
 
     Tests the various types of allowed response
@@ -210,7 +318,10 @@ def test_respond_to_job(plugin_base):
     assert plugin_base.DBI.result["output"] == "error"
     assert plugin_base.DBI.status == "Error"
 
-def test_get_file(plugin_base):
+def test_respond_error(plugin_base, give_brain, clear_dbs):
+    pass
+
+def test_get_file(plugin_base, give_brain, clear_dbs):
     SAMPLE_FILE["Content"] = SAMPLE_FILE["Content"].encode("utf-8")
     # check with encoding specified
     assert plugin_base.get_file("testfile.txt", "utf-8") == "This is just a TEST!"

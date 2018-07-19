@@ -74,7 +74,7 @@ class ControllerPlugin(ABC):
         self.db_conn = None
         self.name = name
         self.port = int(environ["PORT"])
-        self.functionality = {}
+        self.functionality = None
         if functionality:
             self.functionality = functionality
         else:
@@ -177,18 +177,18 @@ class ControllerPlugin(ABC):
             job = get_job_status(job_id, conn=self.db_conn)
         except ValueError as ex:
             self._log(str(ex), 20)
-            return
+            return None
         if job not in VALID_STATES:
             self._log(
                 "".join([job_id, " has an invalid state, setting to error"]),
                 30
             )
-            self._update_job_status(job_id, "Error")
+            return self._update_job_status(job_id, "Error")
 
         if job == "Ready":
-            self._update_job_status(job_id, "Pending")
+            return self._update_job_status(job_id, "Pending")
         elif job == "Pending":
-            self._update_job_status(job_id, "Done")
+            return self._update_job_status(job_id, "Done")
         else:
             self._log(
                 "".join([
@@ -199,6 +199,7 @@ class ControllerPlugin(ABC):
                 ]),
                 30
             )
+        return None
 
     def _update_job_status(self, job_id, status):
         """Update's the specified job's status to the given status
@@ -219,6 +220,7 @@ class ControllerPlugin(ABC):
             ]))
         try:
             brain_update_job_status(job_id, status, conn=self.db_conn)
+            return status
         except ValueError:
             self._log(
                 "".join([
@@ -229,6 +231,7 @@ class ControllerPlugin(ABC):
                 ]),
                 20
             )
+        return None
 
     def get_file(self, file_name, encoding=None):
         """Get the file specified from the Brain
@@ -319,7 +322,7 @@ class ControllerPlugin(ABC):
                 "JobCommand": {dict} -- command to run
             }
         """
-        job = get_next_job(self.name, True, conn=self.db_conn)
+        job = get_next_job(self.name, False, conn=self.db_conn)
 
         if job:
             self._update_job(job["id"])
