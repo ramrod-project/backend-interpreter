@@ -61,7 +61,6 @@ def test_minimal_jobs(rethink):
                      error_callback=notest_back_in_main_e)
     sleep(20)  # let the job get done
     pool.terminate()
-    assert False
     c = connect()  #verify they all got done
     jobs = 0
     for job in RBJ.run(c):
@@ -73,7 +72,7 @@ def test_minimal_jobs(rethink):
         outputs += 1
         assert output["Content"][0] == "<"
     assert outputs > 0
-
+    assert 2 == 0
 
 if __name__ == "__main__":
     test_minimal_jobs()
