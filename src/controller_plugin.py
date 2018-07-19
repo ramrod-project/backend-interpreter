@@ -230,7 +230,7 @@ class ControllerPlugin(ABC):
 
     @staticmethod
     def value_of_option(job, option):
-        if isinstance(input, str):
+        if isinstance(option, str):
             for i in job["JobCommand"]["OptionalInputs"]:
                 if i["Name"] == option:
                     return i["Value"]
