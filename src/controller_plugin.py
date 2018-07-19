@@ -6,10 +6,11 @@ TODO:
 
 from abc import ABC, abstractmethod
 from os import environ
-from queue import Empty
 import json
-from sys import stderr
+import logging
 from os import environ, path as ospath, name as osname
+from sys import stderr
+from time import asctime, gmtime, time
 
 from src import rethink_interface
 
@@ -44,6 +45,17 @@ class ControllerPlugin(ABC):
     the template onl requires a specified format for the above
     exported plugin controller class.
     """
+    # Initialize logger
+    logging.basicConfig(
+        filename="plugin_logfile",
+        filemode="a",
+        format='%(date)s %(name)-12s %(levelname)-8s %(message)s'
+    )
+
+    LOGGER = logging.getLogger('plugin')
+    LOGGER.addHandler(logging.StreamHandler())
+    LOGLEVEL = environ.get("LOGLEVEL", default="DEBUG")
+    LOGGER.setLevel(LOGLEVEL)
 
     def __init__(self, name, functionality=None):
         self.db_recv = None
@@ -56,7 +68,21 @@ class ControllerPlugin(ABC):
             self.functionality = functionality
         else:
             self._read_functionality()
+        self.LOGGER.send = self.log
         super().__init__()
+
+    def log(self, log):
+        """The _to_log function is called by the
+        class instance to send a collection of storted
+        logs to the main logger. Iterate over list
+        of [<component>, <log>, <severity>, <timestamp>]
+        """
+        date = asctime(gmtime(log[3]))
+        self.LOGGER.log(
+            log[2],
+            log[1],
+            extra={'date': date}
+        )
 
     def _read_functionality(self):
         curr_dir = ospath.dirname(ospath.dirname(__file__))
@@ -103,7 +129,7 @@ class ControllerPlugin(ABC):
             host = "127.0.0.1"
         self.DBI = rethink_interface.RethinkInterface(self.name, (host, 28015))
         self._advertise_functionality()
-        self.start(logger, signal)
+        self.start(self.LOGGER, signal)
 
     @abstractmethod
     def start(self, logger, signal):

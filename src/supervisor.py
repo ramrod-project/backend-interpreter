@@ -6,17 +6,15 @@ TODO:
 """
 
 from ctypes import c_bool
+import logging
 from multiprocessing import Pipe, Value
 from os import environ, path as ospath, name as osname
 from pkgutil import iter_modules
 from sys import exit as sysexit
-from time import sleep
+from time import asctime, gmtime, sleep, time
 
 from src import central_logger, linked_process
 from plugins import *
-
-__version__ = "0.2"
-__author__ = "Christopher Manzi"
 
 
 def get_class_instance(plugin_name):
@@ -58,6 +56,17 @@ class SupervisorController:
         FileNotFoundError -- If the plugin file specified cannot be found.
     """
 
+    # Initialize logger
+    logging.basicConfig(
+        filename="plugin_logfile",
+        filemode="a",
+        format='%(date)s %(name)-12s %(levelname)-8s %(message)s'
+    )
+    LOGGER = logging.getLogger('supervisor')
+    LOGGER.addHandler(logging.StreamHandler())
+    LOGLEVEL = environ.get("LOGLEVEL", default="DEBUG")
+    LOGGER.setLevel(LOGLEVEL)
+
     def __init__(self, plugin_name):
         """
         Properties:
@@ -74,6 +83,20 @@ class SupervisorController:
         self.logger_pipe = None
         self.logger_process = None
         self.signal = Value(c_bool, False)
+
+    @staticmethod
+    def log(self, log):
+        """The _to_log function is called by the
+        class instance to send a collection of storted
+        logs to the main logger. Iterate over list
+        of [<component>, <log>, <severity>, <timestamp>]
+        """
+        date = asctime(gmtime(log[3]))
+        self.LOGGER.log(
+            log[2],
+            log[1],
+            extra={'date': date}
+        )
 
     def create_servers(self):
         """Create all processes
@@ -94,9 +117,6 @@ class SupervisorController:
         logger_pipes = []
 
         logger_pipes.append(self._plugin_setup())
-
-        log_receiver, self.logger_pipe = Pipe()
-        logger_pipes.append(log_receiver)
 
         self._create_logger(logger_pipes)
 

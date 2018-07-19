@@ -109,6 +109,11 @@ class IntegrationTest(controller_plugin.ControllerPlugin):
         """placeholder"""
         exit(0)
 
+@fixture(scope="module", autouse=True)
+def cleanup_logs():
+    yield
+    remove("./plugin_logfile")
+
 @fixture(scope="module")
 def rethink():
     tag = "latest"
@@ -265,17 +270,16 @@ def test_log_to_logger(sup, rethink):
 
     found_plugin_log = False
 
-    with open("logfile","r+") as file_handler:
+    with open("plugin_logfile","r+") as file_handler:
         output = re.split(" +", file_handler.readline())
         while output:
-            print(output) #confirms there are 6 other logs in the logger before the above.
+            print(output)
             if re.match(r'(Mon|Tue|Wed|Thu|Fri|Sat|Sun)', output[0]):
                 try:
                     assert re.split(" +", asctime(gmtime(NOW))) == output[:5]
-                    assert output[5] == "central"
+                    assert output[5] == "plugin"
                     assert output[6] == "CRITICAL"
-                    assert output[7].split(":")[0] == "plugin"
-                    assert " ".join(output[8:]).split("\n")[0] == "Testing out the logger."
+                    assert " ".join(output[7:]).split("\n")[0] == "Testing out the logger."
                     found_plugin_log = True
                 except AssertionError:
                     pass
