@@ -57,7 +57,8 @@ def test_minimal_jobs(rethink):
         sleep(1)
         pool.apply_async(notest_signal_sleeper,
                          (EXT_SIGNAL,))
-        sleep(8)  # let the job get done
+        sleep(20)  # let the job get done
+
     c = connect()  #verify they all got done
     jobs = 0
     for job in RBJ.run(c):

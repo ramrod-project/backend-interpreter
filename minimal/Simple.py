@@ -35,7 +35,7 @@ class Simple(controller_plugin.ControllerPlugin):
                 # do some work with the job
                 output_content = "<"  # call your handle to DLL here
                 self.respond_output(new_job, output_content)
-            sleep(3)
+            sleep(1)
 
         # #####################################################################
         # Put cleanup code here"
