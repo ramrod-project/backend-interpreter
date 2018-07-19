@@ -202,11 +202,33 @@ class ControllerPlugin(ABC):
 
     @staticmethod
     def get_status(job):
+        """returns a job's status
+
+        Arguments:
+            job {dict} -- A dict in the format of a job
+
+        Returns:
+            str -- the job's current status
+        """
+
         return job["Status"]
     
 
     @staticmethod
     def value_of(job, input):
+        """returns the value of an input name
+
+        Arguments:
+            job {dict} -- A dict in the format of a job
+            input {str} -- the name of an input or optional input
+
+        Returns:
+            str -- The value of the first input or optional input with the
+            given name. If there is an input or an optional input with the
+            same name, the input's value will be returned. None if no inputs
+            found.
+        """
+
         if isinstance(input, str):
             value =  ControllerPlugin.value_of_input(job, input)
             if value is None:
@@ -217,6 +239,16 @@ class ControllerPlugin(ABC):
 
     @staticmethod
     def value_of_input(job, input):
+        """Get the value of an input by index or name
+
+        Arguments:
+            job {dict} -- A dict in the format of a job
+            input {int|str} -- The index of an input or the name of an input.
+
+        Returns:
+            str|None -- The value of the given input. None if no input found.
+        """
+
         if isinstance(input, str):
             for i in job["JobCommand"]["Inputs"]:
                 if i["Name"] == input:
@@ -230,6 +262,16 @@ class ControllerPlugin(ABC):
 
     @staticmethod
     def value_of_option(job, option):
+        """Get the value of an optional input by index or name
+
+        Arguments:
+            job {dict} -- A dict in the format of a job
+            input {int|str} -- The index of an input or the name of an input.
+
+        Returns:
+            str|None -- The value of the given input. None if no input found.
+        """
+
         if isinstance(option, str):
             for i in job["JobCommand"]["OptionalInputs"]:
                 if i["Name"] == option:
@@ -243,6 +285,17 @@ class ControllerPlugin(ABC):
 
     @staticmethod
     def get_args(job):
+        """Get a tuple containing a list of all input values and a list of all
+        optional input values.
+
+        Arguments:
+            job {dict} -- A dict in the format of a job
+
+        Returns:
+            list, list -- Two lists each containing the values of the command's
+            input list and optional input list.
+        """
+
         inputs = []
         optional = []
         for i in job["JobCommand"]["Inputs"]:
@@ -253,14 +306,42 @@ class ControllerPlugin(ABC):
     
     @staticmethod
     def job_location(job):
+        """Get the target location of a job
+
+        Arguments:
+            job {dict} -- A dict in the format of a job
+
+        Returns:
+            str -- The target's location. typically an IP address
+        """
+
         return job["JobTarget"]["Location"]
 
     @staticmethod
     def job_port(job):
+        """Get the target's port on which the plugin is cummunicating
+
+        Arguments:
+            job {dict} -- A dict in the format of a job
+
+        Returns:
+            str -- The port the plugin is communicating on.
+        """
+
         return job["JobTarget"]["Port"]
 
     @staticmethod
     def has_output(job):
+        """Returns whether a job can send output back to the database.
+
+        Arguments:
+            job {dict} -- A dict in the format of a job
+
+        Returns:
+            Bool -- True if the job should respond with output, false
+            otherwise.
+        """
+
         return job["JobCommand"]["Output"]
 
     def _advertise_functionality(self):
