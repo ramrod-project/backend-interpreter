@@ -12,6 +12,7 @@ from pytest import fixture, raises
 import docker
 from brain import r as rethinkdb, connect
 from brain.binary import put as bin_put
+from brain.queries import RBJ
 
 from plugins import *
 from src import rethink_interface, linked_process
@@ -513,17 +514,17 @@ def test_get_job(brain, rethink):
     new_job["id"] = job_check["id"]
     # check
     assert job_check == new_job
-    rethink.update_job(job_check["id"])
-    job_check = rethink.get_job()
-    assert job_check == None
     job_check = rethink.get_job_by_target("8.8.8.8")
     sleep(2)
-    print(job_check)
+    print([job for job in RBJ.run(connect())])
     new_job["id"] = job_check["id"]
     assert job_check == new_job
     job_check = rethink.get_job_by_port("80")
     new_job["id"] = job_check["id"]
     assert job_check == new_job
+    rethink.update_job(job_check["id"])
+    job_check = rethink.get_job()
+    assert job_check == None
     rethink.plugin_name = rethink_name
 
 def test_update_job_bad_id(brain, rethink):
