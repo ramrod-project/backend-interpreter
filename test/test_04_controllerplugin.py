@@ -7,6 +7,7 @@ from threading import Thread
 from time import time, sleep
 import logging
 import docker
+from brain import connect
 
 from pytest import fixture, raises
 
@@ -94,6 +95,7 @@ class SamplePlugin(controller_plugin.ControllerPlugin):
             "SamplePlugin"
         )
         self.DBI = DummyDBInterface()
+        self.rethink_connection = connect("127.0.0.1", 28016)
 
     def start(self, logger, signal):
         """abstractmethod overload"""
