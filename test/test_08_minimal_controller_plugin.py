@@ -60,6 +60,7 @@ def test_minimal_jobs(rethink):
                          (EXT_SIGNAL,),
                          error_callback=notest_back_in_main_e)
         sleep(20)  # let the job get done
+        pool.terminate()
 
     c = connect()  #verify they all got done
     jobs = 0
