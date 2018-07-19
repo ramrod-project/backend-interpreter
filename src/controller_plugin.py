@@ -185,7 +185,7 @@ class ControllerPlugin(ABC):
             string -- the name of the command for that job
         """
 
-        return job["JobCommand"]
+        return job["JobCommand"]["CommandName"]
 
     @staticmethod
     def get_job_id(job):
@@ -199,9 +199,28 @@ class ControllerPlugin(ABC):
         """
 
         return job["id"]
+
+    @staticmethod
+    def get_status(job):
+        return job["Status"]
     
+
+    @staticmethod
+    def value_of(job, input):
+        if isinstance(input, str):
+            job =  ControllerPlugin.value_of_input(job, input)
+            if job is None:
+                job = ControllerPlugin.value_of_option(job, input)
+            return job
+        else:
+            return None
+
     @staticmethod
     def value_of_input(job, input):
+        if isinstance(input, str):
+            for i in job["JobCommand"]["Inputs"]:
+                if i["Name"] == input:
+                    return i["Value"]
         try:
             return job["JobCommand"]["Inputs"][input]["Value"]
         except IndexError:
@@ -209,10 +228,36 @@ class ControllerPlugin(ABC):
 
     @staticmethod
     def value_of_option(job, option):
+        if isinstance(input, str):
+            for i in job["JobCommand"]["OptionalInputs"]:
+                if i["Name"] == input:
+                    return i["Value"]
         try:
             return job["JobCommand"]["OptionalInputs"][option]["Value"]
         except IndexError:
             return None
+
+    @staticmethod
+    def get_args(job):
+        inputs = []
+        optional = []
+        for i in job["JobCommand"]["Inputs"]:
+            inputs.append(i["Value"])
+        for j in job["JobCommand"]["OptionalInputs"]:
+            optional.append(j["Value"])
+        return (inputs, optional)
+    
+    @staticmethod
+    def job_location(job):
+        return job["JobTarget"]["Location"]
+
+    @staticmethod
+    def job_port(job):
+        return job["JobTarget"]["Port"]
+
+    @staticmethod
+    def has_output(job):
+        return job["JobCommand"]["Output"]
 
     def _advertise_functionality(self):
         """Advertises functionality to database
@@ -255,16 +300,16 @@ class ControllerPlugin(ABC):
         if job:
             self._update_job(job["id"])
         return job
-    
+
     def request_job_for_client(self, location):
         """Attempts to get a job with the same plugin name at the specified
         location (typically an IP). Use this for communicating for multiple
         plugins
-        
+
         Arguments:
             location {str} -- The location (usually the IP) of the plugin's
             client the get a job for.
-        
+
         Returns:
             dict|None -- a job with the given location as its target or None
             {
