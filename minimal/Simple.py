@@ -6,7 +6,7 @@ controller_plugin.py should be in your path!
 import controller_plugin
 from ctypes import c_bool
 from time import sleep
-
+from os import environ
 
 class Simple(controller_plugin.ControllerPlugin):
     def __init__(self, ):
@@ -36,6 +36,8 @@ class Simple(controller_plugin.ControllerPlugin):
                 output_content = "<"  # call your handle to DLL here
                 self.respond_output(new_job, output_content)
             sleep(1)
+            if environ.get("TRAVIS_BRANCH", False):
+                break  # remove this when
 
         # #####################################################################
         # Put cleanup code here"

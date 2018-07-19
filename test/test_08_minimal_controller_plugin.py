@@ -42,16 +42,9 @@ def rethink():
             container.stop()
             break
 
-def notest_signal_sleeper(ext_signal):
-    self_test(EXT_SIGNAL)
-
 
 def test_minimal_jobs(rethink):
-    pool = Pool(processes=2)
-    sleep(5)
-    pool.apply_async(notest_signal_sleeper,
-                     (EXT_SIGNAL,),)
-    sleep(20)  # let the job get done
+    self_test()
     c = connect()  #verify they all got done
 
     jobs = 0
@@ -67,4 +60,4 @@ def test_minimal_jobs(rethink):
 
 
 if __name__ == "__main__":
-    test_minimal_jobs()
+    test_minimal_jobs(None)
