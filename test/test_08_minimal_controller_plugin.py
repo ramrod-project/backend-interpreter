@@ -4,8 +4,39 @@ from ctypes import c_bool
 from multiprocessing import Pool
 from brain.queries import RBO, RBJ
 from brain import connect
-EXT_SIGNAL = c_bool(False)
+from pytest import fixture
+import docker
+import sys
+import os.path
 
+_path = os.path.abspath(os.path.join(os.path.abspath(__file__), "../../"))
+sys.path.append(_path)
+
+EXT_SIGNAL = c_bool(False)
+CLIENT = docker.from_env()
+
+@fixture(scope='module')
+def rethink():
+    sleep(3) #prior test docker needs to shut down
+    try:
+        tag = environ.get("TRAVIS_BRANCH", "dev").replace("master", "latest")
+    except KeyError:
+        tag = "latest"
+    container_name = "brainmodule_query_test"
+    CLIENT.containers.run(
+        "ramrodpcp/database-brain:{}".format(tag),
+        name=container_name,
+        detach=True,
+        ports={"28015/tcp": 28015},
+        remove=True
+    )
+    yield True
+    # Teardown for module tests
+    containers = CLIENT.containers.list()
+    for container in containers:
+        if container.name == container_name:
+            container.stop()
+break
 
 def notest_signal_sleeper(ext_signal):
     sleep(9)
