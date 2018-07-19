@@ -46,22 +46,14 @@ def notest_signal_sleeper(ext_signal):
     self_test(EXT_SIGNAL)
 
 
-def notest_back_in_main(result):
-    assert ValueError("Should have died")
-
-def notest_back_in_main_e(e, a):
-    assert ValueError("Should have died")
-
-
 def test_minimal_jobs(rethink):
     pool = Pool(processes=2)
     sleep(5)
     pool.apply_async(notest_signal_sleeper,
-                     (EXT_SIGNAL,),
-                     error_callback=notest_back_in_main_e)
+                     (EXT_SIGNAL,),)
     sleep(20)  # let the job get done
-    pool.terminate()
     c = connect()  #verify they all got done
+    assert 2 == 0
     jobs = 0
     for job in RBJ.run(c):
         jobs += 1
@@ -72,7 +64,7 @@ def test_minimal_jobs(rethink):
         outputs += 1
         assert output["Content"][0] == "<"
     assert outputs > 0
-    assert 2 == 0
+
 
 if __name__ == "__main__":
     test_minimal_jobs()
