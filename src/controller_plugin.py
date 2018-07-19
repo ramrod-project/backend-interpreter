@@ -232,7 +232,7 @@ class ControllerPlugin(ABC):
     def value_of_option(job, option):
         if isinstance(input, str):
             for i in job["JobCommand"]["OptionalInputs"]:
-                if i["Name"] == input:
+                if i["Name"] == option:
                     return i["Value"]
         try:
             return job["JobCommand"]["OptionalInputs"][option]["Value"]
