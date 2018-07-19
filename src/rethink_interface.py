@@ -88,6 +88,17 @@ class RethinkInterface:
         return get_next_job(self.plugin_name, True, self.rethink_connection)
 
     def get_job_by_target(self, location):
+        """Requests a job from the brain with the given location
+        
+        Arguments:
+            location {str} -- the location to include for the job. typically
+            the IP
+        
+        Returns:
+            dict|None -- returns a dictionary containing a job or none if
+            no jobs are ready
+        """
+
         return get_next_job_by_location(self.plugin_name, location, True,
                                         self.rethink_connection)
 
