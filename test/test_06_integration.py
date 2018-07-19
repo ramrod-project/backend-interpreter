@@ -109,11 +109,6 @@ class IntegrationTest(controller_plugin.ControllerPlugin):
         """placeholder"""
         exit(0)
 
-@fixture(scope="module", autouse=True)
-def cleanup_logs():
-    yield
-    remove("./plugin_logfile")
-
 @fixture(scope="module")
 def rethink():
     tag = "latest"
