@@ -11,7 +11,7 @@ from time import sleep
 class Simple(controller_plugin.ControllerPlugin):
     def __init__(self, ):
         name = "Simple"
-        functionality = CMDS  # example below
+        functionality = [CMD]  # example below
         super().__init__(name, functionality)
 
     def _start(self, logger, ext_signal):
@@ -49,16 +49,35 @@ class Simple(controller_plugin.ControllerPlugin):
         exit(0)
 
 
-CMDS = [{"CommandName": "help",
-         "Tooltip": "Let's do 'get help'",
-         "Output": True,
-         "Inputs": [{"Name": "argument1",
-                     "Type": "textbox",
-                     "Tooltip": "if value is set to 'ok', it will get help",
-                     "Value": "default is not ok"}]}]
+CMD = {"CommandName": "help",
+       "Tooltip": "Let's do 'get help'",
+       "Output": True,
+       "Inputs": [{"Name": "argument1",
+                   "Type": "textbox",
+                   "Tooltip": "if value is set to 'ok', it will get help",
+                   "Value": "default is not ok"}]}
+TGT = {
+    "PluginName": "Simple",
+    "Location": "127.0.0.1",
+    "Port": "0000",
+    "Optional" : {"anything" : "anything"}
+}
+
+JOBS = [{"JobTarget": TGT,
+         "Status": "Ready",
+         "StartTime": 0,
+         "JobCommand": CMD}]
+
+
+def self_test(ext_signal=None):
+    if ext_signal is None:
+        ext_signal = c_bool(False)
+    assert isinstance(ext_signal, c_bool)
+    from brain.queries.writes import insert_jobs
+    assert insert_jobs(JOBS)["inserted"] == 1
+    S = Simple()
+    S.start(None, ext_signal)
 
 
 if __name__ == "__main__":
-    S = Simple()
-    ext_signal = c_bool(False)
-    S.start(None, ext_signal)
+    self_test()

@@ -55,11 +55,11 @@ class ControllerPlugin(object):
         """
         job = brain.queries.reads.get_next_job(self.name)
         if job:
-            new_status = brain.jobs.transition_success(job['Status'])
-            brain.queries.writes.update_job_status(job['id'], new_status)
+            job['Status'] = brain.jobs.transition_success(job['Status'])
+            brain.queries.writes.update_job_status(job['id'], job['Status'])
         return job
 
-    def respond_output(self, job, output):
+    def respond_output(self, job, output, transition_state=True):
         """Provide job response output
 
         This method is a helper method for the plugin
@@ -79,9 +79,10 @@ class ControllerPlugin(object):
         """
         if not isinstance(output, (bytes, str, int, float)):
             raise TypeError
+        if transition_state:
+            job['Status'] = brain.jobs.transition_success(job['Status'])
         brain.queries.writes.write_output(job['id'], output)
-        new_status = brain.jobs.transition_success(job['Status'])
-        brain.queries.writes.update_job_status(job['id'], new_status)
+        brain.queries.writes.update_job_status(job['id'], job['Status'])
 
     def _stop(self, **kwargs):
         """Stop the plugin
