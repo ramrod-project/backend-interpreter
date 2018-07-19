@@ -225,6 +225,8 @@ class ControllerPlugin(ABC):
             return job["JobCommand"]["Inputs"][input]["Value"]
         except IndexError:
             return None
+        except TypeError:
+            return None
 
     @staticmethod
     def value_of_option(job, option):
@@ -235,6 +237,8 @@ class ControllerPlugin(ABC):
         try:
             return job["JobCommand"]["OptionalInputs"][option]["Value"]
         except IndexError:
+            return None
+        except TypeError:
             return None
 
     @staticmethod
