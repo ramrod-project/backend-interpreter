@@ -9,6 +9,7 @@ from os import environ
 import json
 import logging
 from os import environ, path as ospath, name as osname
+from signal import signal, SIGTERM
 from sys import stderr
 from time import asctime, gmtime, time
 
@@ -69,7 +70,14 @@ class ControllerPlugin(ABC):
         else:
             self._read_functionality()
         self.LOGGER.send = self.log
+        signal(SIGTERM, self.sigterm_handler)
         super().__init__()
+
+    def sigterm_handler(self, _signo, _stack_frame):
+        """Handles SIGTERM signal
+        """
+        self._stop()
+        exit(0)
 
     def log(self, log):
         """The log function is called by the
@@ -318,12 +326,11 @@ class ControllerPlugin(ABC):
         self.respond_output(job, msg)
         self.DBI.update_job_error(job["id"])
 
-    @abstractmethod
     def _stop(self, **kwargs):
         """Stop the plugin
 
-        This method should be used and called when the exit signal
-        is sent to the program subprocesses. Pass any keyword args
-        needed and execute any cleanup required.
+        This method can be used if any teardown is needed
+        before the plugin exits. It will be called automatically
+        when the SIGTERM is received for tearing the container down.
         """
         exit(0)
