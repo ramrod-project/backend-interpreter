@@ -15,36 +15,39 @@ class Simple(controller_plugin.ControllerPlugin):
         super().__init__(name, functionality)
 
     def _start(self, logger, ext_signal):
-        #################################################################################################\n",
+        # #####################################################################
         # Add Plugin specific startup routine here\n",
         pass
         pass
         handle = windll.kernel32
         pass
         pass
-        ################################################################################################\n",
+        # #####################################################################
         # Add plugin control loop here",
-        # most basic: loop the request_job function, operate on it, return output back
+        # most basic: loop the request_job function,
+        # operate on it,
+        # return output back
         # does not need to be synchronous, but is here for simplicity
 
 
 
         while not ext_signal.value:
             new_job = self.request_job()  # <dict> or None
-            if new_job != None: #None means there is no job for you
-                output_content = str(windll.kernel32.GetModuleHandleA) #  do some work with the job
+            if new_job != None:  # None means there is no job for you
+                # do some work with the job
+                output_content = str(windll.kernel32.GetModuleHandleA)
                 self.respond_output(new_job, output_content)
             sleep(3)
 
 
 
-        ###############################################################################################\n",
+        # #####################################################################
         # Put cleanup code here"
         pass
         pass
         pass
         pass
-        ###############################################################################################\n",
+        # #####################################################################
 
     def _stop(self):
         exit(0)
