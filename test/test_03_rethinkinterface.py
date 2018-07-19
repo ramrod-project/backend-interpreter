@@ -517,6 +517,8 @@ def test_get_job(brain, rethink):
     job_check = rethink.get_job()
     assert job_check == None
     job_check = rethink.get_job_by_target("8.8.8.8")
+    sleep(2)
+    print(job_check)
     new_job["id"] = job_check["id"]
     assert job_check == new_job
     job_check = rethink.get_job_by_port("80")

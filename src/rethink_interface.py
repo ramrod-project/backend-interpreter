@@ -100,11 +100,11 @@ class RethinkInterface:
             no jobs are ready
         """
 
-        return get_next_job_by_location(self.plugin_name, location, True,
+        return get_next_job_by_location(self.plugin_name, location, False,
                                         self.rethink_connection)
     
     def get_job_by_port(self, port):
-        return get_next_job_by_port(self.plugin_name, port, True,
+        return get_next_job_by_port(self.plugin_name, port, False,
                                     self.rethink_connection)
 
     def start(self, signal):  # pragma: no cover
