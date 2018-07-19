@@ -53,7 +53,7 @@ def test_minimal_jobs(rethink):
                      (EXT_SIGNAL,),)
     sleep(20)  # let the job get done
     c = connect()  #verify they all got done
-    assert 2 == 0
+
     jobs = 0
     for job in RBJ.run(c):
         jobs += 1
