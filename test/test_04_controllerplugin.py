@@ -92,7 +92,6 @@ class SamplePlugin(controller_plugin.ControllerPlugin):
             "SamplePlugin"
         )
         self.DBI = DummyDBInterface()
-        self.rethink_connection = connect("127.0.0.1", 28016)
 
     def start(self, logger, signal):
         """abstractmethod overload"""
