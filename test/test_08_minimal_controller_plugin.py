@@ -36,7 +36,7 @@ def rethink():
     for container in containers:
         if container.name == container_name:
             container.stop()
-break
+            break
 
 def notest_signal_sleeper(ext_signal):
     sleep(9)
