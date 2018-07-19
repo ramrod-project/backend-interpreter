@@ -4,7 +4,7 @@ controller_plugin.py should be in your path!
 """
 
 import controller_plugin
-from ctypes import c_bool, windll
+from ctypes import c_bool
 from time import sleep
 
 
@@ -19,7 +19,7 @@ class Simple(controller_plugin.ControllerPlugin):
         # Add Plugin specific startup routine here\n",
         pass
         pass
-        handle = windll.kernel32
+        handle = None  # or a pointer to a DLL
         pass
         pass
         # #####################################################################
@@ -33,7 +33,7 @@ class Simple(controller_plugin.ControllerPlugin):
             new_job = self.request_job()  # <dict> or None
             if new_job is not None:  # None means there is no job for you
                 # do some work with the job
-                output_content = str(windll.kernel32.GetModuleHandleA)
+                output_content = "<"  # call your handle to DLL here
                 self.respond_output(new_job, output_content)
             sleep(3)
 

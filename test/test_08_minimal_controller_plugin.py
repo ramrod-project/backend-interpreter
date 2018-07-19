@@ -1,3 +1,10 @@
+import sys
+import os.path
+from os import environ
+
+_path = os.path.abspath(os.path.join(os.path.abspath(__file__), "../../"))+"/minimal"
+sys.path.append(_path)
+
 from minimal.Simple import self_test, Simple
 from time import sleep
 from ctypes import c_bool
@@ -6,11 +13,8 @@ from brain.queries import RBO, RBJ
 from brain import connect
 from pytest import fixture
 import docker
-import sys
-import os.path
 
-_path = os.path.abspath(os.path.join(os.path.abspath(__file__), "../../"))
-sys.path.append(_path)
+
 
 EXT_SIGNAL = c_bool(False)
 CLIENT = docker.from_env()
@@ -22,7 +26,7 @@ def rethink():
         tag = environ.get("TRAVIS_BRANCH", "dev").replace("master", "latest")
     except KeyError:
         tag = "latest"
-    container_name = "brainmodule_query_test"
+    container_name = "brain_minimal"
     CLIENT.containers.run(
         "ramrodpcp/database-brain:{}".format(tag),
         name=container_name,
@@ -48,7 +52,7 @@ def notest_back_in_main(result):
     print("Set to done")
 
 
-def test_minimal_jobs():
+def test_minimal_jobs(rethink):
     with Pool(processes=2) as pool:
         sleep(1)
         pool.apply_async(notest_signal_sleeper,
