@@ -11,7 +11,6 @@ from os import environ, name as osname, path as ospath
 from pkgutil import iter_modules
 
 from plugins import *
-from src import supervisor
 
 
 try:

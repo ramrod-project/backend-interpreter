@@ -1,11 +1,8 @@
 """Unit test file for RethinkInterface class.
 """
 
-from ctypes import c_bool
 import logging
-from multiprocessing import Pipe, Value
 from os import environ
-from threading import Thread
 from time import asctime, gmtime, sleep, time
 
 from pytest import fixture, raises
@@ -14,7 +11,7 @@ from brain import r as rethinkdb, connect
 from brain.binary import put as bin_put
 
 from plugins import *
-from src import rethink_interface, linked_process
+from src import rethink_interface
 
 SAMPLE_FILE = {
     "id": "testfile.txt",
