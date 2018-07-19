@@ -16,15 +16,22 @@ class ControllerPlugin(object):
         self.name = name
         self.port = int(environ.get("PORT", "9999"))
         self.functionality = {}
+        brain.queries.writes.create_plugin(self.name)
         if functionality:
             self.functionality = functionality
-        brain.queries.writes.advertise_plugin_commands(self.name, functionality)
+            brain.queries.writes.advertise_plugin_commands(self.name, functionality)
         super().__init__()
 
     def start(self, logger, signal):
-        self.start(logger, signal)
+        self._start(logger, signal)
 
     def _start(self, logger, signal):
+        """
+        subclass should overwrite this
+        :param logger:
+        :param signal:
+        :return:
+        """
         pass
 
     def request_job(self):
@@ -46,7 +53,7 @@ class ControllerPlugin(object):
                 "JobCommand": {dict} -- command to run
             }
         """
-        job = brain.queries.reads.get_next_job(self.__name__)
+        job = brain.queries.reads.get_next_job(self.name)
         if job:
             new_status = brain.jobs.transition_success(job['Status'])
             brain.queries.writes.update_job_status(job['id'], new_status)
