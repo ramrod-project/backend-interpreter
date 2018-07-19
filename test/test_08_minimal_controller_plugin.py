@@ -55,10 +55,11 @@ def notest_back_in_main(result):
 def test_minimal_jobs(rethink):
     with Pool(processes=2) as pool:
         sleep(1)
+        self_test(EXT_SIGNAL)
         pool.apply_async(notest_signal_sleeper,
                          (EXT_SIGNAL,),
                          callback=notest_back_in_main)
-        self_test(EXT_SIGNAL)
+
     c = connect()
     jobs = 0
     for job in RBJ.run(c):
