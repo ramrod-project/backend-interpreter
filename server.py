@@ -20,7 +20,6 @@ except KeyError:
     exit(99)
 
 
-
 def get_class_instance(plugin_name):
     """Returns class instances from 'plugins' folder.
 
@@ -47,7 +46,7 @@ def get_class_instance(plugin_name):
     return None
 
 
-def main():
+def main():  # pragma: no cover
     """Main server entry point
     """
     plugin_instance = get_class_instance(PLUGIN_NAME)
@@ -58,6 +57,6 @@ def main():
     except KeyboardInterrupt:
         plugin_instance._stop()
 
-if __name__ == '__main__':
+if __name__ == '__main__':  # pragma: no cover
     main()
     
