@@ -13,7 +13,7 @@ from pkgutil import iter_modules
 from sys import exit as sysexit
 from time import asctime, gmtime, sleep, time
 
-from src import central_logger, linked_process
+from src import linked_process
 from plugins import *
 
 
@@ -79,9 +79,6 @@ class SupervisorController:
         self.plugin = get_class_instance(plugin_name)
         if not self.plugin:
             raise FileNotFoundError
-        self.logger_instance = None
-        self.logger_pipe = None
-        self.logger_process = None
         self.signal = Value(c_bool, False)
 
     @staticmethod
@@ -114,29 +111,7 @@ class SupervisorController:
                   to DEV, TESTING, or PROD!")
             raise KeyError
 
-        logger_pipes = []
-
-        logger_pipes.append(self._plugin_setup())
-
-        self._create_logger(logger_pipes)
-
-    def _create_logger(self, logger_pipes):
-        """Set up the logger
-
-        Sets up the central logger instance and process.
-
-        Arguments:
-            logger_pipes {list} -- a list of pipes
-            to receive logs from
-        """
-        self.logger_instance = central_logger.CentralLogger(
-            logger_pipes,
-            environ["LOGLEVEL"]
-        )
-        self.logger_process, _ = self._create_process(
-            self.logger_instance,
-            "loggerprocess"
-        )
+        self.plugin_process = self._plugin_setup()
 
     def _create_process(self, instance, name):
         """Create a LinkedProcess
@@ -145,26 +120,17 @@ class SupervisorController:
         LinkedProcess from it.
 
         Arguments:
-            instance {[type]} -- [description]
+            instance {callable} -- target function,
 
         Returns:
-            {tuple}(LinkedProcess, Pipe) -- returns a LinkedProcess
-            and a Pipe for the log receiver
+            {LinkedProcess} -- returns a LinkedProcess
         """
-        log_receiver, log_sender = Pipe()
-        target = instance.start
-        if name == "loggerprocess":
-            log_sender = None
-        else:
-            target = instance._start
-
         created_process = linked_process.LinkedProcess(
             name=name,
-            target=target,
-            logger_pipe=log_sender,
+            target=instance._start,
             signal=self.signal
         )
-        return (created_process, log_receiver)
+        return created_process
 
     def _plugin_setup(self):
         """Set up the plugin
@@ -176,11 +142,10 @@ class SupervisorController:
             {Pipe} -- the receiving pipe from the plugin
             to the logger.
         """
-        self.plugin_process, log_receiver = self._create_process(
+        return self._create_process(
             self.plugin,
             self.plugin.name
         )
-        return log_receiver
 
     def spawn_servers(self):
         """Spawn server processes
@@ -188,8 +153,6 @@ class SupervisorController:
         This starts all...
         """
         try:
-            if not self.logger_process.start():
-                raise RuntimeError
             if not self.plugin_process.start():
                 raise RuntimeError
         except RuntimeError:
@@ -200,13 +163,11 @@ class SupervisorController:
 
         This method runs for the duration of the application lifecycle...
         """
-        processes = [self.plugin_process, self.logger_process]
         while True:
             try:
                 sleep(1)
-                for proc in processes:
-                    if not proc.restart():
-                        self.teardown(proc.get_exitcode())
+                if not self.plugin_process.restart():
+                    self.teardown(self.plugin_process.get_exitcode())
             except KeyboardInterrupt:
                 self.teardown(0)
 
@@ -225,6 +186,4 @@ class SupervisorController:
 
         if self.plugin_process.is_alive():
             self.plugin_process.terminate()
-        if self.logger_process.is_alive():
-            self.logger_process.terminate()
         sysexit(code)

@@ -72,7 +72,7 @@ class ControllerPlugin(ABC):
         super().__init__()
 
     def log(self, log):
-        """The _to_log function is called by the
+        """The log function is called by the
         class instance to send a collection of storted
         logs to the main logger. Iterate over list
         of [<component>, <log>, <severity>, <timestamp>]
@@ -123,7 +123,7 @@ class ControllerPlugin(ABC):
         self.db_recv = recv_queue
         self._advertise_functionality()
 
-    def _start(self, logger, signal):
+    def _start(self, signal):
         host = "rethinkdb"
         if environ["STAGE"] == "TESTING":
             host = "127.0.0.1"
