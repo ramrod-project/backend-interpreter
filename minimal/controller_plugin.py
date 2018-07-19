@@ -20,7 +20,6 @@ class ControllerPlugin(object):
             self.functionality = functionality
         super().__init__()
 
-
     def start(self, logger, signal):
         self.start(logger, signal)
 
