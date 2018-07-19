@@ -18,6 +18,7 @@ class ControllerPlugin(object):
         self.functionality = {}
         if functionality:
             self.functionality = functionality
+        brain.queries.writes.advertise_plugin_commands(self.name, functionality)
         super().__init__()
 
     def start(self, logger, signal):
