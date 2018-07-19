@@ -19,6 +19,7 @@ from brain.queries import plugin_exists, create_plugin, get_next_job
 from brain.queries import advertise_plugin_commands, create_plugin
 from brain.queries import get_job_status, VALID_STATES, write_output
 from brain.queries import update_job_status as b_update_status
+from brain.queries import get_next_job_by_location, get_next_job_by_port
 from brain.binary import get as binary_get
 
 
@@ -101,6 +102,10 @@ class RethinkInterface:
 
         return get_next_job_by_location(self.plugin_name, location, True,
                                         self.rethink_connection)
+    
+    def get_job_by_port(self, port):
+        return get_next_job_by_port(self.plugin_name, port, True,
+                                    self.rethink_connection)
 
     def start(self, signal):  # pragma: no cover
         """
