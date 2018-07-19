@@ -49,17 +49,16 @@ def notest_signal_sleeper(ext_signal):
 def notest_back_in_main(result):
     assert ValueError("Should have died")
 
-def notest_back_in_main_e(result):
-    global EXT_SIGNAL
-    EXT_SIGNAL.value = True
-    print("Set to done")
+def notest_back_in_main_e(e, a):
+    assert ValueError("Should have died")
 
 
 def test_minimal_jobs(rethink):
     with Pool(processes=2) as pool:
         sleep(5)
         pool.apply_async(notest_signal_sleeper,
-                         (EXT_SIGNAL,))
+                         (EXT_SIGNAL,),
+                         error_callback=notest_back_in_main_e)
         sleep(20)  # let the job get done
 
     c = connect()  #verify they all got done
