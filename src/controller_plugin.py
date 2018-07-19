@@ -208,10 +208,10 @@ class ControllerPlugin(ABC):
     @staticmethod
     def value_of(job, input):
         if isinstance(input, str):
-            job =  ControllerPlugin.value_of_input(job, input)
-            if job is None:
-                job = ControllerPlugin.value_of_option(job, input)
-            return job
+            value =  ControllerPlugin.value_of_input(job, input)
+            if value is None:
+                value = ControllerPlugin.value_of_option(job, input)
+            return value
         else:
             return None
 
