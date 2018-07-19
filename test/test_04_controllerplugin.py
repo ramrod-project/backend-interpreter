@@ -64,6 +64,9 @@ class DummyDBInterface():
     
     def get_job(self):
         return SAMPLE_JOB
+
+    def get_job_by_target(self, location):
+        return SAMPLE_JOB
     
     def get_file(self, filename):
         return SAMPLE_FILE
@@ -171,6 +174,8 @@ def test_request_job(plugin_base):
         sleep(0.1)
     assert result == SAMPLE_JOB
     assert plugin_base.DBI.update == "138thg-eg98198-sf98gy3-feh8h8"
+    result = plugin_base.request_job_for_client("127.0.0.1")
+    assert result == SAMPLE_JOB
 
 def test_respond_to_job(plugin_base):
     """Test sending job response
@@ -219,3 +224,31 @@ def test_get_file(plugin_base):
     # bad codec
     with raises(LookupError):
         plugin_base.get_file("testfile.txt","MYNEWSTANDARD")
+
+def test_get_value(plugin_base):
+    input_job = SAMPLE_JOB
+    input_job["JobCommand"] = {
+        "CommandName": "TestCommand",
+        "Tooltip": " testing command",
+        "Output": True,
+        "Inputs": [
+            {
+                "Name": "testinput",
+                "Type": "textbox",
+                "Tooltip": "fortesting",
+                "Value": "Test Input 1"
+            }
+        ],
+        "OptionalInputs": [
+            {
+                "Name": "testinput2",
+                "Type": "textbox",
+                "Tooltip": "fortesting",
+                "Value": "Test Input 2"
+            }
+        ]
+    }
+    assert plugin_base.value_of_input(input_job, 0) == "Test Input 1"
+    assert plugin_base.value_of_option(input_job, 0) == "Test Input 2"
+    assert plugin_base.value_of_input(input_job, 5) == None
+    assert plugin_base.value_of_option(input_job, 5) == None
