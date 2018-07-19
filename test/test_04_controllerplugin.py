@@ -83,6 +83,9 @@ class DummyDBInterface():
     
     def get_job(self):
         return SAMPLE_JOB
+
+    def get_job_by_target(self, location):
+        return SAMPLE_JOB
     
     def get_file(self, filename):
         return SAMPLE_FILE
@@ -235,6 +238,10 @@ def test_request_job(plugin_base, give_brain, clear_dbs, conn):
             break
         sleep(0.3)
     assert result == SAMPLE_JOB
+    brain.r.db("Brain").table("Jobs").get(SAMPLE_JOB["id"]).update({"Status": "Ready"}).run(conn)
+    sleep(1)
+    result = plugin_base.request_job_for_client("127.0.0.1")
+    assert result == SAMPLE_JOB
 
 def test_update_job(plugin_base, give_brain, clear_dbs, conn):
     plugin_base.db_conn = conn
@@ -242,7 +249,7 @@ def test_update_job(plugin_base, give_brain, clear_dbs, conn):
     brain.r.db("Brain").table("Jobs").insert(SAMPLE_JOB).run(conn)
     now = time()
     while time() - now < 3:
-        result = brain.queries.get_job_by_id(SAMPLE_JOB["id"])
+        result = brain.queries.get_job_by_id(SAMPLE_JOB["id"], conn=conn)
         if result is not None:
             break
         sleep(0.3)
@@ -251,7 +258,7 @@ def test_update_job(plugin_base, give_brain, clear_dbs, conn):
     db_updated1 = False
     now = time()
     while time() - now < 3:
-        result = brain.queries.get_job_by_id(SAMPLE_JOB["id"])
+        result = brain.queries.get_job_by_id(SAMPLE_JOB["id"], conn=conn)
         if result is not None and result["Status"] == "Pending":
             db_updated1 = True
         sleep(0.3)
@@ -260,7 +267,7 @@ def test_update_job(plugin_base, give_brain, clear_dbs, conn):
     db_updated2 = False
     now = time()
     while time() - now < 3:
-        result = brain.queries.get_job_by_id(SAMPLE_JOB["id"])
+        result = brain.queries.get_job_by_id(SAMPLE_JOB["id"], conn=conn)
         if result is not None and result["Status"] == "Done":
             db_updated2 = True
         sleep(0.3)
@@ -269,18 +276,45 @@ def test_update_job(plugin_base, give_brain, clear_dbs, conn):
     db_not_updated = True
     now = time()
     while time() - now < 3:
-        result = brain.queries.get_job_by_id(SAMPLE_JOB["id"])
+        result = brain.queries.get_job_by_id(SAMPLE_JOB["id"], conn=conn)
         if result is not None and result["Status"] != "Done":
             db_not_updated = False
             break
         sleep(0.3)
     assert db_not_updated
 
-def test_update_job_status(plugin_base, give_brain, clear_dbs):
+def test_update_job_status(plugin_base, give_brain, clear_dbs, conn):
     plugin_base.db_conn = conn
+    brain.r.db("Brain").table("Jobs").insert(SAMPLE_JOB).run(conn)
+    now = time()
+    while time() - now < 3:
+        result = brain.queries.get_job_by_id(SAMPLE_JOB["id"], conn=conn)
+        if result is not None:
+            break
+        sleep(0.3)
+    assert result == SAMPLE_JOB
+    assert plugin_base._update_job_status(SAMPLE_JOB["id"], "Done") == "Done"
     
+    db_updated1 = False
+    now = time()
+    while time() - now < 3:
+        result = brain.queries.get_job_by_id(SAMPLE_JOB["id"], conn=conn)
+        if result is not None and result["Status"] == "Done":
+            db_updated1 = True
+        sleep(0.3)
+    assert db_updated1
 
-def test_respond_to_job(plugin_base, give_brain, clear_dbs):
+    assert plugin_base._update_job_status(SAMPLE_JOB["id"], "Error") == "Error"
+    db_updated2 = False
+    now = time()
+    while time() - now < 3:
+        result = brain.queries.get_job_by_id(SAMPLE_JOB["id"], conn=conn)
+        if result is not None and result["Status"] == "Error":
+            db_updated2 = True
+        sleep(0.3)
+    assert db_updated2
+
+def test_respond_to_job(plugin_base, give_brain, clear_dbs, conn):
     """Test sending job response
 
     Tests the various types of allowed response
@@ -293,33 +327,67 @@ def test_respond_to_job(plugin_base, give_brain, clear_dbs):
     with raises(TypeError):
         plugin_base.respond_output(SAMPLE_JOB, None)
     with raises(TypeError):
-        plugin_base.respond_output(SAMPLE_JOB, DummyDBInterface)
+        plugin_base.respond_output(SAMPLE_JOB, {})
 
     plugin_base.respond_output(SAMPLE_JOB, "Sample Job Response")
-    assert plugin_base.DBI.result["job"] == SAMPLE_JOB["id"]
-    assert plugin_base.DBI.result["output"] == "Sample Job Response"
-    assert plugin_base.get_job_id(SAMPLE_JOB) == SAMPLE_JOB["id"]
-    assert plugin_base.get_command(SAMPLE_JOB) == SAMPLE_JOB["JobCommand"]
+    db_updated1 = False
+    now = time()
+    while time() - now < 3:
+        result = brain.queries.get_output_content(SAMPLE_JOB["id"], conn=conn)
+        if result is not None and result == "Sample Job Response":
+            db_updated1 = True
+        sleep(0.3)
+    print(result)
+    assert db_updated1
 
     plugin_base.respond_output(SAMPLE_JOB, bytes("Sample Job Response", "utf-8"))
-    assert plugin_base.DBI.result["job"] == SAMPLE_JOB["id"]
-    assert plugin_base.DBI.result["output"] == bytes("Sample Job Response", "utf-8")
+    db_updated2 = False
+    now = time()
+    while time() - now < 3:
+        result = brain.queries.get_output_content(SAMPLE_JOB["id"], conn=conn)
+        if result is not None and result == bytes("Sample Job Response", "utf-8"):
+            db_updated2 = True
+        sleep(0.3)
+    assert db_updated2
 
     plugin_base.respond_output(SAMPLE_JOB, 666)
-    assert plugin_base.DBI.result["job"] == SAMPLE_JOB["id"]
-    assert plugin_base.DBI.result["output"] == 666
+    db_updated3 = False
+    now = time()
+    while time() - now < 3:
+        result = brain.queries.get_output_content(SAMPLE_JOB["id"], conn=conn)
+        if result is not None and result == 666:
+            db_updated3 = True
+        sleep(0.3)
+    assert db_updated3
 
     plugin_base.respond_output(SAMPLE_JOB, 42.42)
-    assert plugin_base.DBI.result["job"] == SAMPLE_JOB["id"]
-    assert plugin_base.DBI.result["output"] == 42.42
+    db_updated4 = False
+    now = time()
+    while time() - now < 3:
+        result = brain.queries.get_output_content(SAMPLE_JOB["id"], conn=conn)
+        if result is not None and result == 42.42:
+            db_updated4 = True
+        sleep(0.3)
+    assert db_updated4
 
     plugin_base.respond_error(SAMPLE_JOB, "error")
-    assert plugin_base.DBI.result["job"] == SAMPLE_JOB["id"]
-    assert plugin_base.DBI.result["output"] == "error"
-    assert plugin_base.DBI.status == "Error"
+    db_updated5 = False
+    now = time()
+    while time() - now < 3:
+        result = brain.queries.get_output_content(SAMPLE_JOB["id"], conn=conn)
+        if result is not None and result == "error":
+            db_updated5 = True
+        sleep(0.3)
+    assert db_updated5
 
-def test_respond_error(plugin_base, give_brain, clear_dbs):
-    pass
+    db_updated6 = False
+    now = time()
+    while time() - now < 3:
+        result = brain.queries.get_job_by_id(SAMPLE_JOB["id"], conn=conn)
+        if result is not None and result["Status"] == "Error":
+            db_updated6 = True
+        sleep(0.3)
+    assert db_updated6
 
 def test_get_file(plugin_base, give_brain, clear_dbs):
     SAMPLE_FILE["Content"] = SAMPLE_FILE["Content"].encode("utf-8")
@@ -330,3 +398,31 @@ def test_get_file(plugin_base, give_brain, clear_dbs):
     # bad codec
     with raises(LookupError):
         plugin_base.get_file("testfile.txt","MYNEWSTANDARD")
+
+def test_get_value(plugin_base):
+    input_job = SAMPLE_JOB
+    input_job["JobCommand"] = {
+        "CommandName": "TestCommand",
+        "Tooltip": " testing command",
+        "Output": True,
+        "Inputs": [
+            {
+                "Name": "testinput",
+                "Type": "textbox",
+                "Tooltip": "fortesting",
+                "Value": "Test Input 1"
+            }
+        ],
+        "OptionalInputs": [
+            {
+                "Name": "testinput2",
+                "Type": "textbox",
+                "Tooltip": "fortesting",
+                "Value": "Test Input 2"
+            }
+        ]
+    }
+    assert plugin_base.value_of_input(input_job, 0) == "Test Input 1"
+    assert plugin_base.value_of_option(input_job, 0) == "Test Input 2"
+    assert plugin_base.value_of_input(input_job, 5) == None
+    assert plugin_base.value_of_option(input_job, 5) == None
