@@ -8,7 +8,7 @@ import docker
 from pytest import fixture
 from brain import r as rethinkdb, connect
 
-from src import controller_plugin, rethink_interface
+from src import controller_plugin
 
 CLIENT = docker.from_env()
 NOW = time()
@@ -298,11 +298,6 @@ def test_log_to_logger(proc, rethink):
             if output[0] == "":
                 break
     assert found_plugin_log
-
-def test_database_connection_succeed(rethink):
-    location = ("localhost", 28015)
-    rti = rethink_interface.RethinkInterface(IntegrationTest(), location)
-    assert isinstance(rti.rethink_connection,rethinkdb.Connection)
 
 def test_update_error(proc, rethink, connection):
     rethinkdb.db("Brain").table("Jobs").delete().run(connection)

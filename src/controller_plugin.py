@@ -5,7 +5,6 @@ TODO:
 """
 
 from abc import ABC, abstractmethod
-from os import environ
 import json
 import logging
 from os import environ, path as ospath, name as osname
@@ -13,7 +12,21 @@ from signal import signal, SIGTERM
 from sys import stderr
 from time import asctime, gmtime, time
 
-from src import rethink_interface
+from brain import connect
+from brain.binary import get as brain_binary_get
+from brain.jobs import STATES, transition_success
+from brain.queries import get_next_job_by_location
+from brain.queries import advertise_plugin_commands, create_plugin
+from brain.queries import get_next_job, get_job_status, VALID_STATES
+from brain.queries import update_job_status as brain_update_job_status
+from brain.queries import write_output
+
+
+class InvalidStatus(Exception):
+    """Exception raised when job status
+    is invalid.
+    """
+    pass
 
 
 class ControllerPlugin(ABC):
@@ -59,12 +72,11 @@ class ControllerPlugin(ABC):
     LOGGER.setLevel(LOGLEVEL)
 
     def __init__(self, name, functionality=None):
-        self.db_recv = None
         self.signal = None
-        self.DBI = None
+        self.db_conn = None
         self.name = name
         self.port = int(environ["PORT"])
-        self.functionality = {}
+        self.functionality = None
         if functionality:
             self.functionality = functionality
         else:
@@ -76,7 +88,7 @@ class ControllerPlugin(ABC):
     def sigterm_handler(self, _signo, _stack_frame):
         """Handles SIGTERM signal
         """
-        self._stop()
+        self.stop()
         exit(0)
 
     def log(self, log):
@@ -92,6 +104,16 @@ class ControllerPlugin(ABC):
             extra={'date': date}
         )
 
+    def _log(self, log, level):
+        """Formats log
+        """
+        self.log([
+            "",
+            log,
+            level,
+            time()
+        ])
+
     def _read_functionality(self):
         curr_dir = ospath.dirname(ospath.dirname(__file__))
         filename = "{}/plugins/__{name}/{name}.json".format(
@@ -99,8 +121,8 @@ class ControllerPlugin(ABC):
             name=self.name
         )
         try:
-            with open(filename) as f:
-                self.functionality = json.load(f)
+            with open(filename) as config_file:
+                self.functionality = json.load(config_file)
         except (IOError, json.JSONDecodeError):
             self.functionality = [{
                 "CommandName": "Functionality Error",
@@ -110,32 +132,11 @@ class ControllerPlugin(ABC):
                 "OptionalInputs": []
             }]
 
-    def initialize_queues(self, recv_queue):
-        """Initialize command/response queues
-
-        The 'initialize_queues' method is called by the Supervisor with
-        two multiprocessing.Queue() instances with send_queue being the
-        response queue owned by the RethinkInterface instanc, and
-        recv_queue being a unique command queue used by the RethinkInterface
-        process to communicate with the plugin process.
-        #
-        These queues follow a defined message format depending on the
-        action which is being requested (in the case of the recv_queue),
-        or the data which is being sent back (send_queue). These message
-        formats are defined below above their respective methods.
-
-        Arguments:
-            recv_queue {Queue} -- The queue used to receive commands from the
-            frontend through the database.
-        """
-        self.db_recv = recv_queue
-        self._advertise_functionality()
-
     def _start(self, signal):
         host = "rethinkdb"
         if environ["STAGE"] == "TESTING":
             host = "127.0.0.1"
-        self.DBI = rethink_interface.RethinkInterface(self.name, (host, 28015))
+        self.db_conn = connect(host=host)
         self._advertise_functionality()
         self.start(self.LOGGER, signal)
 
@@ -171,23 +172,27 @@ class ControllerPlugin(ABC):
         Ready -> Pending, Pending -> Done
 
         Arguments:
-            job_id {int} -- The job id to update the state of
+            job_id {str} -- The job id to update the state of
         """
-
-        self.DBI.update_job(job_id)
+        job_status = None
+        job_status = get_job_status(job_id, conn=self.db_conn)
+        return self._update_job_status(job_id, transition_success(job_status))
 
     def _update_job_status(self, job_id, status):
-        """Updates a job's status to a specified status. _update_job should be
-        used in most cases.
+        """Update's the specified job's status to the given status
 
         Arguments:
-            job_id {int} -- The job id to update
-            status {string} -- what the new status will be. The valid states
-            are "Ready", "Pending", "Done", "Error", "Stopped", "Waiting",
-            and "Active"
+            job_id {str}: id of job to be transitioned.
+            status {str}: status to set job to.
+            Interpreter should in most cases be setting "Ready" status to
+            "Pending" or the "Pending" status to either "Done" or "Error"
         """
-
-        self.DBI.update_job_status(job_id, status)
+        try:
+            brain_update_job_status(job_id, status, conn=self.db_conn)
+        except ValueError as ex:
+            self._log("{} not a valid status!".format(status), 50)
+            raise ex
+        return status
 
     def get_file(self, file_name, encoding=None):
         """Get the file specified from the Brain
@@ -199,14 +204,10 @@ class ControllerPlugin(ABC):
         Returns:
             bytes|str -- the contents of the file
         """
-
-        content = self.DBI.get_file(file_name)["Content"]
-        try:
+        content = brain_binary_get(file_name, conn=self.db_conn)["Content"]
+        if isinstance(content, bytes) and encoding:
             return content.decode(encoding)
-            # default None will throw a TypeError, return as bytes since
-            # no decode is specified
-        except TypeError:
-            return content
+        return content
 
     @staticmethod
     def get_command(job):
@@ -389,14 +390,23 @@ class ControllerPlugin(ABC):
         the plugin will be named the exact same string as the
         self.name attribute.
         """
-        self.DBI.create_plugin_table(self.name, self.functionality)
-
-    def _request_job(self):
-        """ DEPRECATED"""
-        stderr.write(
-            "_request_job() is deprecated. use request_job() instead\n"
-        )
-        self.request_job()
+        try:
+            create_plugin(self.name, conn=self.db_conn)
+            advertise_plugin_commands(
+                self.name,
+                self.functionality,
+                conn=self.db_conn
+            )
+        except ValueError:
+            self._log(
+                "".join([
+                    "Unable to add command to table '",
+                    self.name,
+                    "'"
+                ]),
+                50
+            )
+            raise ValueError
 
     def request_job(self):
         """Request next job
@@ -417,10 +427,10 @@ class ControllerPlugin(ABC):
                 "JobCommand": {dict} -- command to run
             }
         """
-        job = self.DBI.get_job()
-
+        job = get_next_job(self.name, False, conn=self.db_conn)
         if job:
             self._update_job(job["id"])
+            job["Status"] = transition_success(job["Status"])
         return job
 
     def request_job_for_client(self, location):
@@ -442,20 +452,18 @@ class ControllerPlugin(ABC):
                 "JobCommand": {dict} -- command to run
             }
         """
-
-        job = self.DBI.get_job_by_target(location)
+        job = get_next_job_by_location(
+            self.name,
+            location,
+            False,
+            self.db_conn
+        )
         if job:
             self._update_job(job["id"])
+            job["Status"] = transition_success(job["Status"])
         return job
 
-    def _respond_output(self, job, output):
-        """DEPRECATED"""
-        stderr.write(
-            "_respond_output is deprecated, use respond_output instead\n"
-        )
-        self.respond_output(job, output)
-
-    def respond_output(self, job, output):
+    def respond_output(self, job, output, transition_state=True):
         """Provide job response output
 
         This method is a helper method for the plugin
@@ -472,18 +480,22 @@ class ControllerPlugin(ABC):
             job {dict} -- the dictionary object for
             the job received from the database/frontend.
             output {str} -- The data to send to the database
+            transition_state {bool} -- If True, transition to
+            "Done" (no more output).
         """
-        if not isinstance(output, (bytes, str, int, float)):
+        if isinstance(output, bytes):
+            write_output(job["id"], output, conn=self.db_conn)
+        elif isinstance(output, (str, int, float)):
+            string_output = str(output)
+            write_output(job["id"], string_output, conn=self.db_conn)
+        else:
+            self._log(
+                "Invalid output type! (<str>, <int>, <float>, <bytes>",
+                50)
             raise TypeError
-        self.DBI.send_output(job["id"], output)
-        self._update_job(job["id"])
-
-    def _update_job_error(self, job, msg=""):
-        """DEPRECATED"""
-        stderr.write(
-            "_update_job_error is deprecated, use respond_error instead\n"
-        )
-        self.respond_error(job, msg)
+        if transition_state:
+            job["Status"] = transition_success(job["Status"])
+            self._update_job(job["id"])
 
     def respond_error(self, job, msg=""):
         """updates a job's status to error and outputs an error message
@@ -496,9 +508,9 @@ class ControllerPlugin(ABC):
         """
 
         self.respond_output(job, msg)
-        self.DBI.update_job_error(job["id"])
+        self._update_job_status(job["id"], "Error")
 
-    def _stop(self, **kwargs):
+    def stop(self):
         """Stop the plugin
 
         This method can be used if any teardown is needed

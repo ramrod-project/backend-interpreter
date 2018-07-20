@@ -10,7 +10,7 @@ import docker
 
 CLIENT = docker.from_env()
 
-from src import controller_plugin, rethink_interface
+from src import controller_plugin
 
 
 @fixture(scope="function")
