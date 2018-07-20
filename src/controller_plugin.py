@@ -14,7 +14,7 @@ from time import asctime, gmtime, time
 
 from brain import connect
 from brain.binary import get as brain_binary_get
-from brain.jobs import transition_success
+from brain.jobs import STATES, transition_success
 from brain.queries import get_next_job_by_location
 from brain.queries import advertise_plugin_commands, create_plugin
 from brain.queries import get_next_job, get_job_status, VALID_STATES
@@ -172,68 +172,27 @@ class ControllerPlugin(ABC):
         Ready -> Pending, Pending -> Done
 
         Arguments:
-            job_id {int} -- The job id to update the state of
+            job_id {str} -- The job id to update the state of
         """
-        job = None
-        try:
-            job = get_job_status(job_id, conn=self.db_conn)
-        except ValueError as ex:
-            self._log(str(ex), 20)
-            return None
-        if job not in VALID_STATES:
-            self._log(
-                "".join([job_id, " has an invalid state, setting to error"]),
-                30
-            )
-            return self._update_job_status(job_id, "Error")
-
-        if job == "Ready":
-            return self._update_job_status(job_id, "Pending")
-        elif job == "Pending":
-            return self._update_job_status(job_id, "Done")
-        else:
-            self._log(
-                "".join([
-                    "Job: ",
-                    job_id,
-                    " attempted to advance from the invalid state: ",
-                    job
-                ]),
-                30
-            )
-        return None
+        job_status = None
+        job_status = get_job_status(job_id, conn=self.db_conn)
+        return self._update_job_status(job_id, transition_success(job_status))
 
     def _update_job_status(self, job_id, status):
         """Update's the specified job's status to the given status
 
-
         Arguments:
-            job_data {Dictionary} -- Dictionary containing the job
-            id and the new status.
-            job: string
-            status: string
+            job_id {str}: id of job to be transitioned.
+            status {str}: status to set job to.
             Interpreter should in most cases be setting "Ready" status to
             "Pending" or the "Pending" status to either "Done" or "Error"
         """
-        if status not in VALID_STATES:
-            raise InvalidStatus("".join([
-                status,
-                " is not a valid state."
-            ]))
         try:
             brain_update_job_status(job_id, status, conn=self.db_conn)
-            return status
-        except ValueError:
-            self._log(
-                "".join([
-                    "Unable to update job '",
-                    job_id,
-                    "' to ",
-                    status
-                ]),
-                20
-            )
-        return None
+        except ValueError as ex:
+            self._log("{} not a valid status!".format(status), 50)
+            raise ex
+        return status
 
     def get_file(self, file_name, encoding=None):
         """Get the file specified from the Brain
