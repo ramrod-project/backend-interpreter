@@ -261,7 +261,8 @@ def test_request_job(plugin_base, give_brain, clear_dbs, conn):
 
 def test_update_job(plugin_base, give_brain, clear_dbs, conn):
     plugin_base.db_conn = conn
-    assert plugin_base._update_job("doenstexist") is None
+    with raises(ValueError):
+        plugin_base._update_job("doesntexist")
     brain.r.db("Brain").table("Jobs").insert(SAMPLE_JOB).run(conn)
     now = time()
     while time() - now < 3:
@@ -288,7 +289,7 @@ def test_update_job(plugin_base, give_brain, clear_dbs, conn):
             db_updated2 = True
         sleep(0.3)
     assert db_updated2
-    assert plugin_base._update_job(SAMPLE_JOB["id"]) == None
+    assert plugin_base._update_job(SAMPLE_JOB["id"]) == "Done"
     db_not_updated = True
     now = time()
     while time() - now < 3:
