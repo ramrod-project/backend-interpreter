@@ -213,7 +213,6 @@ class ControllerPlugin(ABC):
 
         return job["Status"]
     
-
     @staticmethod
     def value_of(job, input):
         """returns the value of an input name
@@ -230,7 +229,7 @@ class ControllerPlugin(ABC):
         """
 
         if isinstance(input, str):
-            value =  ControllerPlugin.value_of_input(job, input)
+            value = ControllerPlugin.value_of_input(job, input)
             if value is None:
                 value = ControllerPlugin.value_of_option(job, input)
             return value
@@ -249,10 +248,9 @@ class ControllerPlugin(ABC):
             str|None -- The value of the given input. None if no input found.
         """
 
-        if isinstance(input, str):
-            for i in job["JobCommand"]["Inputs"]:
-                if i["Name"] == input:
-                    return i["Value"]
+        for i in job["JobCommand"]["Inputs"]:
+            if i["Name"] == input:
+                return i["Value"]
         try:
             return job["JobCommand"]["Inputs"][input]["Value"]
         except IndexError:
@@ -272,10 +270,9 @@ class ControllerPlugin(ABC):
             str|None -- The value of the given input. None if no input found.
         """
 
-        if isinstance(option, str):
-            for i in job["JobCommand"]["OptionalInputs"]:
-                if i["Name"] == option:
-                    return i["Value"]
+        for i in job["JobCommand"]["OptionalInputs"]:
+            if i["Name"] == option:
+                return i["Value"]
         try:
             return job["JobCommand"]["OptionalInputs"][option]["Value"]
         except IndexError:
@@ -296,13 +293,17 @@ class ControllerPlugin(ABC):
             input list and optional input list.
         """
 
-        inputs = []
-        optional = []
-        for i in job["JobCommand"]["Inputs"]:
-            inputs.append(i["Value"])
-        for j in job["JobCommand"]["OptionalInputs"]:
-            optional.append(j["Value"])
+        inputs = ControllerPlugin._get_value_list(job["JobCommand"]["Inputs"])
+        optional = ControllerPlugin._get_value_list(
+                    job["JobCommand"]["OptionalInputs"])
         return (inputs, optional)
+
+    @staticmethod
+    def _get_value_list(inputs):
+        val_list = []
+        for i in inputs:
+            val_list.append(i["Value"])
+        return val_list
     
     @staticmethod
     def job_location(job):
