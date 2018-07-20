@@ -88,7 +88,7 @@ class ControllerPlugin(ABC):
     def sigterm_handler(self, _signo, _stack_frame):
         """Handles SIGTERM signal
         """
-        self._stop()
+        self.stop()
         exit(0)
 
     def log(self, log):
@@ -418,7 +418,7 @@ class ControllerPlugin(ABC):
         self.respond_output(job, msg)
         self._update_job_status(job["id"], "Error")
 
-    def _stop(self, **kwargs):
+    def stop(self):
         """Stop the plugin
 
         This method can be used if any teardown is needed
