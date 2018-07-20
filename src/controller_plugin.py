@@ -14,6 +14,7 @@ from time import asctime, gmtime, time
 
 from brain import connect
 from brain.binary import get as brain_binary_get
+from brain.jobs import transition_success
 from brain.queries import get_next_job_by_location
 from brain.queries import advertise_plugin_commands, create_plugin
 from brain.queries import get_next_job, get_job_status, VALID_STATES
@@ -245,12 +246,9 @@ class ControllerPlugin(ABC):
             bytes|str -- the contents of the file
         """
         content = brain_binary_get(file_name, conn=self.db_conn)["Content"]
-        try:
+        if isinstance(content, bytes) and encoding:
             return content.decode(encoding)
-            # default None will throw a TypeError, return as bytes since
-            # no decode is specified
-        except TypeError:
-            return content
+        return content
 
     @staticmethod
     def get_command(job):
@@ -338,9 +336,9 @@ class ControllerPlugin(ABC):
             }
         """
         job = get_next_job(self.name, False, conn=self.db_conn)
-
         if job:
             self._update_job(job["id"])
+            job["Status"] = transition_success(job["Status"])
         return job
     
     def request_job_for_client(self, location):
@@ -370,9 +368,10 @@ class ControllerPlugin(ABC):
         )
         if job:
             self._update_job(job["id"])
+            job["Status"] = transition_success(job["Status"])
         return job
 
-    def respond_output(self, job, output):
+    def respond_output(self, job, output, transition_state=True):
         """Provide job response output
 
         This method is a helper method for the plugin
@@ -389,14 +388,22 @@ class ControllerPlugin(ABC):
             job {dict} -- the dictionary object for
             the job received from the database/frontend.
             output {str} -- The data to send to the database
+            transition_state {bool} -- If True, transition to
+            "Done" (no more output).
         """
-        if not isinstance(output, (bytes, str, int, float)):
-            raise TypeError
-        try:
+        if isinstance(output, bytes):
             write_output(job["id"], output, conn=self.db_conn)
+        elif isinstance(output, (str, int, float)):
+            string_output = str(output)
+            write_output(job["id"], string_output, conn=self.db_conn)
+        else:
+            self._log(
+                "Invalid output type! (<str>, <int>, <float>, <bytes>",
+                50)
+            raise TypeError
+        if transition_state:
+            job["Status"] = transition_success(job["Status"])
             self._update_job(job["id"])
-        except ValueError:
-            self._log(str(ValueError), 30)
 
     def respond_error(self, job, msg=""):
         """updates a job's status to error and outputs an error message

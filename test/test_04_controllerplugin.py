@@ -25,11 +25,21 @@ SAMPLE_TARGET = {
     }
 }
 
+NOW = int(time())
+
 SAMPLE_JOB = {
     "id": "138thg-eg98198-sf98gy3-feh8h8",
     "JobTarget": SAMPLE_TARGET,
     "Status": "Ready",
-    "StartTime": int(time()),
+    "StartTime": NOW,
+    "JobCommand": "Do stuff"
+}
+
+SAMPLE_JOB_PENDING = {
+    "id": "138thg-eg98198-sf98gy3-feh8h8",
+    "JobTarget": SAMPLE_TARGET,
+    "Status": "Pending",
+    "StartTime": NOW,
     "JobCommand": "Do stuff"
 }
 
@@ -39,6 +49,14 @@ SAMPLE_FILE = {
     "ContentType": "data",
     "Timestamp": 123456789,
     "Content": "This is just a TEST!"
+}
+
+SAMPLE_FILE_BYTES = {
+    "id": "testfile2.txt",
+    "Name": "testfile2.txt",
+    "ContentType": "data",
+    "Timestamp": 123456789,
+    "Content": b'This is just a TEST!'
 }
 
 SAMPLE_FUNCTIONALITY = [
@@ -59,36 +77,6 @@ SAMPLE_FUNCTIONALITY = [
 ]
 
 environ["PORT"] = "8080"
-
-
-class DummyDBInterface():
-
-
-    def __init__(self):
-        self.result = None
-        self.update = None
-        self.status = None
-
-    def create_plugin_table(self, db_data, db_data2):
-        self.result = (db_data, db_data2)
-
-    def update_job(self, job_id):
-        self.update = job_id
-
-    def send_output(self, job_id, output):
-        self.result = {"job": job_id, "output": output}
-    
-    def update_job_error(self, data):
-        self.status = "Error"
-    
-    def get_job(self):
-        return SAMPLE_JOB
-
-    def get_job_by_target(self, location):
-        return SAMPLE_JOB
-    
-    def get_file(self, filename):
-        return SAMPLE_FILE
 
 
 class SamplePlugin(controller_plugin.ControllerPlugin):
@@ -162,12 +150,13 @@ def plugin_base():
     plugin = SamplePlugin({})
     yield plugin
 
-def test_instantiate():
+def test_instantiate(give_brain):
     """Test plugin instancing
 
     Instantiates the SamplePlugin and attempts
     to populate its queue attributes.
     """
+    
     with raises(TypeError):
         plugin = controller_plugin.ControllerPlugin()
     plugin = SamplePlugin(SAMPLE_FUNCTIONALITY)
@@ -237,11 +226,11 @@ def test_request_job(plugin_base, give_brain, clear_dbs, conn):
         if result is not None:
             break
         sleep(0.3)
-    assert result == SAMPLE_JOB
+    assert result == SAMPLE_JOB_PENDING
     brain.r.db("Brain").table("Jobs").get(SAMPLE_JOB["id"]).update({"Status": "Ready"}).run(conn)
-    sleep(1)
+    sleep(2)
     result = plugin_base.request_job_for_client("127.0.0.1")
-    assert result == SAMPLE_JOB
+    assert result == SAMPLE_JOB_PENDING
 
 def test_update_job(plugin_base, give_brain, clear_dbs, conn):
     plugin_base.db_conn = conn
@@ -324,62 +313,85 @@ def test_respond_to_job(plugin_base, give_brain, clear_dbs, conn):
         plugin_base {fixture} -- yields the SamplePlugin
         instance needed for testing.
     """
+    plugin_base.db_conn = conn
+    brain.r.db("Brain").table("Jobs").insert(SAMPLE_JOB_PENDING).run(conn)
     with raises(TypeError):
-        plugin_base.respond_output(SAMPLE_JOB, None)
+        plugin_base.respond_output(SAMPLE_JOB_PENDING, None)
     with raises(TypeError):
-        plugin_base.respond_output(SAMPLE_JOB, {})
+        plugin_base.respond_output(SAMPLE_JOB_PENDING, {})
 
-    plugin_base.respond_output(SAMPLE_JOB, "Sample Job Response")
+    plugin_base.respond_output(SAMPLE_JOB_PENDING, "Sample Job Response")
     db_updated1 = False
     now = time()
     while time() - now < 3:
-        result = brain.queries.get_output_content(SAMPLE_JOB["id"], conn=conn)
+        result = brain.queries.get_output_content(SAMPLE_JOB_PENDING["id"], conn=conn)
         if result is not None and result == "Sample Job Response":
             db_updated1 = True
         sleep(0.3)
     print(result)
     assert db_updated1
 
-    plugin_base.respond_output(SAMPLE_JOB, bytes("Sample Job Response", "utf-8"))
+def test_respond_to_job_bytes(plugin_base, give_brain, clear_dbs, conn):
+    """Test sending job response (bytes)
+    """
+    plugin_base.db_conn = conn
+    brain.r.db("Brain").table("Jobs").insert(SAMPLE_JOB_PENDING).run(conn)
+    plugin_base.respond_output(SAMPLE_JOB_PENDING, bytes("Sample Job Response", "utf-8"))
     db_updated2 = False
     now = time()
     while time() - now < 3:
-        result = brain.queries.get_output_content(SAMPLE_JOB["id"], conn=conn)
+        result = brain.queries.get_output_content(SAMPLE_JOB_PENDING["id"], conn=conn)
         if result is not None and result == bytes("Sample Job Response", "utf-8"):
             db_updated2 = True
         sleep(0.3)
     assert db_updated2
 
-    plugin_base.respond_output(SAMPLE_JOB, 666)
+
+def test_respond_to_job_int(plugin_base, give_brain, clear_dbs, conn):
+    """Test sending job response (int)
+    """
+    plugin_base.db_conn = conn
+    brain.r.db("Brain").table("Jobs").insert(SAMPLE_JOB_PENDING).run(conn)
+    plugin_base.respond_output(SAMPLE_JOB_PENDING, 666)
     db_updated3 = False
     now = time()
     while time() - now < 3:
-        result = brain.queries.get_output_content(SAMPLE_JOB["id"], conn=conn)
-        if result is not None and result == 666:
+        result = brain.queries.get_output_content(SAMPLE_JOB_PENDING["id"], conn=conn)
+        if result is not None and int(result) == 666:
             db_updated3 = True
         sleep(0.3)
     assert db_updated3
 
-    plugin_base.respond_output(SAMPLE_JOB, 42.42)
+def test_respond_to_job_float(plugin_base, give_brain, clear_dbs, conn):
+    """Test sending job response (float)
+    """
+    plugin_base.db_conn = conn
+    brain.r.db("Brain").table("Jobs").insert(SAMPLE_JOB_PENDING).run(conn)
+    plugin_base.respond_output(SAMPLE_JOB_PENDING, 42.42)
     db_updated4 = False
     now = time()
     while time() - now < 3:
-        result = brain.queries.get_output_content(SAMPLE_JOB["id"], conn=conn)
-        if result is not None and result == 42.42:
+        result = brain.queries.get_output_content(SAMPLE_JOB_PENDING["id"], conn=conn)
+        if result is not None and float(result) == 42.42:
             db_updated4 = True
         sleep(0.3)
     assert db_updated4
 
-    plugin_base.respond_error(SAMPLE_JOB, "error")
+def test_respond_to_job_error(plugin_base, give_brain, clear_dbs, conn):
+    """Test sending job response (error)
+    """
+    plugin_base.db_conn = conn
+    brain.r.db("Brain").table("Jobs").insert(SAMPLE_JOB_PENDING).run(conn)
+    plugin_base.respond_error(SAMPLE_JOB_PENDING, "error")
     db_updated5 = False
     now = time()
     while time() - now < 3:
-        result = brain.queries.get_output_content(SAMPLE_JOB["id"], conn=conn)
+        result = brain.queries.get_output_content(SAMPLE_JOB_PENDING["id"], conn=conn)
         if result is not None and result == "error":
             db_updated5 = True
         sleep(0.3)
     assert db_updated5
-
+    # Verify error status
     db_updated6 = False
     now = time()
     while time() - now < 3:
@@ -389,17 +401,38 @@ def test_respond_to_job(plugin_base, give_brain, clear_dbs, conn):
         sleep(0.3)
     assert db_updated6
 
-def test_get_file(plugin_base, give_brain, clear_dbs):
-    SAMPLE_FILE["Content"] = SAMPLE_FILE["Content"].encode("utf-8")
-    # check with encoding specified
-    assert plugin_base.get_file("testfile.txt", "utf-8") == "This is just a TEST!"
+def test_get_file(plugin_base, give_brain, clear_dbs, conn):
+    plugin_base.db_conn = conn
+    brain.binary.put(SAMPLE_FILE, conn=conn)
+    db_updated1 = False
+    now = time()
+    while time() - now < 3:
+        result = brain.binary.get(SAMPLE_FILE["Name"], conn=conn)
+        if result is not None:
+            db_updated1 = True
+        sleep(0.3)
+    print(result)
+    assert db_updated1
     # check without encoding to get bytes blob
     assert plugin_base.get_file("testfile.txt") == SAMPLE_FILE["Content"]
+    brain.binary.put(SAMPLE_FILE_BYTES, conn=conn)
+    db_updated2 = False
+    now = time()
+    while time() - now < 3:
+        result = brain.binary.get(SAMPLE_FILE_BYTES["Name"], conn=conn)
+        if result is not None:
+            db_updated2 = True
+        sleep(0.3)
+    print(result)
+    assert db_updated2
+    # check with encoding specified
+    assert plugin_base.get_file("testfile2.txt", encoding="utf-8") == "This is just a TEST!"
     # bad codec
     with raises(LookupError):
-        plugin_base.get_file("testfile.txt","MYNEWSTANDARD")
+        plugin_base.get_file("testfile2.txt", encoding="MYNEWSTANDARD")
 
-def test_get_value(plugin_base):
+def test_get_value():
+    plugin_base.db_conn = conn
     input_job = SAMPLE_JOB
     input_job["JobCommand"] = {
         "CommandName": "TestCommand",
@@ -422,7 +455,7 @@ def test_get_value(plugin_base):
             }
         ]
     }
-    assert plugin_base.value_of_input(input_job, 0) == "Test Input 1"
-    assert plugin_base.value_of_option(input_job, 0) == "Test Input 2"
-    assert plugin_base.value_of_input(input_job, 5) == None
-    assert plugin_base.value_of_option(input_job, 5) == None
+    assert controller_plugin.ControllerPlugin.value_of_input(input_job, 0) == "Test Input 1"
+    assert controller_plugin.ControllerPlugin.value_of_option(input_job, 0) == "Test Input 2"
+    assert controller_plugin.ControllerPlugin.value_of_input(input_job, 5) == None
+    assert controller_plugin.ControllerPlugin.value_of_option(input_job, 5) == None
