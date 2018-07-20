@@ -73,7 +73,6 @@ JOBS = [{"JobTarget": TGT,
 def self_test(ext_signal=None):
     if ext_signal is None:
         ext_signal = c_bool(False)
-    assert isinstance(ext_signal, c_bool)
     from brain.queries.writes import insert_jobs
     assert insert_jobs(JOBS)["inserted"] == 1
     S = Simple()
