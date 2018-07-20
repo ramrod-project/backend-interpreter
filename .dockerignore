@@ -7,4 +7,9 @@ Dockerfile
 *.pyc
 venv*
 *.pytest*
-.coverage
+.coverage*
+test*
+coverage*
+*logfile*
+LICENSE
+.travis.yml

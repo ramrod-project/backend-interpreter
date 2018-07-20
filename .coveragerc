@@ -4,9 +4,11 @@ include =
     *src*
     # plugins
     *plugins*
+    # minimal
+    *minimal*
 
 omit =
     *venv*
     *test*
-    *plugin_interpreter/server.py
+    *server.py
     *__init__.py

@@ -1,7 +1,8 @@
 """Unit testing for the supervisor module.
 """
 
-from multiprocessing import Pool
+from ctypes import c_bool
+from multiprocessing import Pool, Process, Value
 from os import environ
 from time import sleep
 from pytest import fixture, raises
@@ -9,15 +10,14 @@ import docker
 
 CLIENT = docker.from_env()
 
-from src import central_logger, controller_plugin, linked_process, rethink_interface, supervisor
+from src import controller_plugin
 
 
+@fixture(scope="function")
 def startup_brain():
+    old_log = environ.get("LOGLEVEL", "")
     environ["LOGLEVEL"] = "DEBUG"
-    try:
-        tag = environ.get("TRAVIS_BRANCH", "dev").replace("master", "latest")
-    except KeyError:
-        pass
+    tag = environ.get("TRAVIS_BRANCH", "dev").replace("master", "latest")
     CLIENT.containers.run(
         "".join(("ramrodpcp/database-brain:", tag)),
         name="rethinkdbtestapp",
@@ -26,51 +26,37 @@ def startup_brain():
         remove=True,
     )
     sleep(3) #docker needs to start up the DB before sup starts up
-    sup = supervisor.SupervisorController("Harness")
-    yield sup
+    yield
     try:
-        environ["LOGLEVEL"] = ""
+        environ["LOGLEVEL"] = old_log
         containers = CLIENT.containers.list()
         for container in containers:
             if container.name == "rethinkdbtestapp":
                 container.stop()
                 break
-        sup.teardown(0)
-        yield None
     except SystemExit:
         pass
 
-
-def supervisor_setup(sup):
-    """Test the Supervisor class.
-    """
-    # DEV environment test
-    assert isinstance(sup, supervisor.SupervisorController)
-    old_stage = environ['STAGE']
-    environ["STAGE"] = ""
-    with raises(KeyError):
-        sup.create_servers()
+@fixture(scope="function")
+def proc():
+    old_plugin = environ.get("PLUGIN", "")
+    old_stage = environ.get("STAGE", "")
+    old_port = environ.get("PORT", "")
+    environ["PLUGIN"] = "Harness"
+    environ["STAGE"] = "TESTING"
+    environ["PORT"] = "5000"
+    import server
+    plugin_instance = server.get_class_instance("Harness")
+    signal = Value(c_bool, False)
+    process = Process(target=plugin_instance._start, args=(signal,))
+    yield (signal, process)
+    try:
+        process.terminate()
+    except:
+        pass
+    environ["PLUGIN"] = old_plugin
     environ["STAGE"] = old_stage
-    assert isinstance(sup.plugin, controller_plugin.ControllerPlugin)
-
-
-def supervisor_server_creation(sup):
-    # Test server creation
-    sup.create_servers()
-
-    for proc in [sup.logger_process, sup.plugin_process]:
-        assert isinstance(proc, linked_process.LinkedProcess)
-
-    assert isinstance(sup.plugin, controller_plugin.ControllerPlugin)
-    assert isinstance(sup.logger_instance, central_logger.CentralLogger)
-
-
-def supervisor_server_spawn(sup):
-    # Test server supawning
-    sup.spawn_servers()
-
-    for proc in [sup.logger_process, sup.plugin_process]:
-        assert proc.is_alive()
+    environ["PORT"] = old_port
 
 TEST_COMMANDS = [
    {'Output': True,
@@ -187,17 +173,11 @@ def the_pretend_app():
         test_results = p.map(the_pretend_getter, ["127.0.0.1:5000"])
         assert False not in test_results
 
-def test_the_Harness_app():
+def test_the_Harness_app(startup_brain, proc):
     environ["STAGE"] = "TESTING"
     environ["PORT"] = "5000"
-    sup_gen = startup_brain()
-    s = sup_gen.__next__()
-    supervisor_setup(s)
-    sleep(5)
-    supervisor_server_creation(s)
-    sleep(5)
-    supervisor_server_spawn(s)
-    sleep(5)
+    proc[1].start()
+    sleep(3)
     try:
         from brain import connect, r
         conn = connect()
@@ -220,9 +200,10 @@ def test_the_Harness_app():
         pass
     finally:
         try:
-            sup_gen.__next__()
-        except StopIteration:
-            pass
+            proc[0].value = True
+            sleep(2)
+        except SystemExit as ex:
+            assert str(ex) == "0"
 
 if __name__ == "__main__":
     test_the_Harness_app()

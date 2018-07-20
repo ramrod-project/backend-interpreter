@@ -1,3 +1,5 @@
+from ctypes import c_bool
+from multiprocessing import Process, Value
 from os import environ, remove
 import re
 from time import asctime, gmtime, sleep, time
@@ -6,7 +8,7 @@ import docker
 from pytest import fixture
 from brain import r as rethinkdb, connect
 
-from src import controller_plugin, supervisor, rethink_interface
+from src import controller_plugin
 
 CLIENT = docker.from_env()
 NOW = time()
@@ -101,7 +103,7 @@ class IntegrationTest(controller_plugin.ControllerPlugin):
             self.respond_error(SAMPLE_JOB, "Testing Error")
 
         while signal.value is not True:
-            sleep(1)
+            sleep(0.1)
         
         self._stop()
 
@@ -135,13 +137,26 @@ def rethink():
     except SystemExit:
         pass
 
-@fixture
-def sup():
+@fixture(scope="module", autouse=True)
+def env():
+    old_log = environ.get("LOGLEVEL", "")
+    old_stage = environ.get("STAGE", "")
     environ["LOGLEVEL"] = "DEBUG"
     environ["STAGE"] = "TESTING"
-    sup = supervisor.SupervisorController("Harness")
-    sup.plugin = IntegrationTest()
-    return sup
+    yield
+    environ["LOGLEVEL"] = old_log
+    environ["STAGE"] = old_stage
+
+@fixture(scope="function")
+def proc():
+    plugin_instance = IntegrationTest()
+    signal = Value(c_bool, False)
+    process = Process(target=plugin_instance._start, args=(signal,))
+    yield (signal, process)
+    try:
+        process.terminate()
+    except:
+        pass
 
 @fixture(scope="function")
 def connection():
@@ -149,7 +164,7 @@ def connection():
     yield conn
     conn.close()
 
-def test_pull_job(sup, rethink, connection):
+def test_pull_job(proc, rethink, connection):
     """Test pulling a job
 
     This test runs a supervisor, which runs a plugin
@@ -167,10 +182,10 @@ def test_pull_job(sup, rethink, connection):
         SAMPLE_JOB
     ).run(connection)
     try:
-        sup.create_servers()
-        sup.spawn_servers()
+        proc[1].start()
         sleep(5)
-        sup.teardown(0)
+        proc[0].value = True
+        sleep(2)
     except SystemExit as ex:
         assert str(ex) == "0"
 
@@ -189,7 +204,7 @@ def test_create_plugin(rethink, connection):
     tables = rethinkdb.db("Plugins").table_list().run(connection)
     assert "IntegrationTest" in tables
 
-def test_send_output(sup, rethink, connection):
+def test_send_output(proc, rethink, connection):
     """Test sending output from the plugin
 
     This test should send a mock output to the database
@@ -204,10 +219,10 @@ def test_send_output(sup, rethink, connection):
     environ["TEST_SELECTION"] = "TEST2"
     environ["STAGE"] = "TESTING"
     try:
-        sup.create_servers()
-        sup.spawn_servers()
-        sleep(10)
-        sup.teardown(0)
+        proc[1].start()
+        sleep(5)
+        proc[0].value = True
+        sleep(2)
     except SystemExit as ex:
         assert str(ex) == "0"
     cursor = rethinkdb.db("Brain").table("Outputs").run(connection)
@@ -215,7 +230,7 @@ def test_send_output(sup, rethink, connection):
     assert output["OutputJob"]["id"] == SAMPLE_JOB["id"]
     assert output["Content"] == "test output"
 
-def test_job_status_update(sup, rethink, connection):
+def test_job_status_update(proc, rethink, connection):
     """Test sending a job status update
 
     This test send a job status update from the plugin to the
@@ -230,10 +245,10 @@ def test_job_status_update(sup, rethink, connection):
     environ["TEST_SELECTION"] = "TEST3"
     environ["STAGE"] = "TESTING"
     try:
-        sup.create_servers()
-        sup.spawn_servers()
-        sleep(10)
-        sup.teardown(0)
+        proc[1].start()
+        sleep(5)
+        proc[0].value = True
+        sleep(2)
     except SystemExit as ex:
         assert str(ex) == "0"
 
@@ -242,7 +257,7 @@ def test_job_status_update(sup, rethink, connection):
     assert job["id"] == SAMPLE_JOB["id"]
     assert job["Status"] == "Pending"
 
-def test_log_to_logger(sup, rethink):
+def test_log_to_logger(proc, rethink):
     """Test logging to the logger
 
     This test logs to the logger from the plugin.
@@ -256,26 +271,25 @@ def test_log_to_logger(sup, rethink):
     environ["TEST_SELECTION"] = "TEST4"
     environ["STAGE"] = "TESTING"
     try:
-        sup.create_servers()
-        sup.spawn_servers()
+        proc[1].start()
         sleep(5)
-        sup.teardown(0)
+        proc[0].value = True
+        sleep(2)
     except SystemExit as ex:
         assert str(ex) == "0"
 
     found_plugin_log = False
 
-    with open("logfile","r+") as file_handler:
+    with open("plugin_logfile","r+") as file_handler:
         output = re.split(" +", file_handler.readline())
         while output:
-            print(output) #confirms there are 6 other logs in the logger before the above.
+            print(output)
             if re.match(r'(Mon|Tue|Wed|Thu|Fri|Sat|Sun)', output[0]):
                 try:
                     assert re.split(" +", asctime(gmtime(NOW))) == output[:5]
-                    assert output[5] == "central"
+                    assert output[5] == "plugin"
                     assert output[6] == "CRITICAL"
-                    assert output[7].split(":")[0] == "plugin"
-                    assert " ".join(output[8:]).split("\n")[0] == "Testing out the logger."
+                    assert " ".join(output[7:]).split("\n")[0] == "Testing out the logger."
                     found_plugin_log = True
                 except AssertionError:
                     pass
@@ -285,12 +299,7 @@ def test_log_to_logger(sup, rethink):
                 break
     assert found_plugin_log
 
-def test_database_connection_succeed(rethink):
-    location = ("localhost", 28015)
-    rti = rethink_interface.RethinkInterface(IntegrationTest(), location)
-    assert isinstance(rti.rethink_connection,rethinkdb.Connection)
-
-def test_update_error(sup, rethink, connection):
+def test_update_error(proc, rethink, connection):
     rethinkdb.db("Brain").table("Jobs").delete().run(connection)
     rethinkdb.db("Brain").table("Outputs").delete().run(connection)
     sleep(5)
@@ -300,10 +309,10 @@ def test_update_error(sup, rethink, connection):
     environ["STAGE"] = "TESTING"
 
     try:
-        sup.create_servers()
-        sup.spawn_servers()
-        sleep(10)
-        sup.teardown(0)
+        proc[1].start()
+        sleep(5)
+        proc[0].value = True
+        sleep(2)
     except SystemExit as ex:
         assert str(ex) == "0"
 
