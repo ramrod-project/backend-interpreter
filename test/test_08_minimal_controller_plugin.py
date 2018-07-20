@@ -42,7 +42,7 @@ def set_signal_true():
 def test_minimal_jobs(rethink):
     p = Pool(processes=2)
     p.apply_async(set_signal_true, [])
-    self_test()
+    self_test(ext_signal=EXT_SIGNAL)
     c = connect()  #verify they all got done
 
     jobs = 0
