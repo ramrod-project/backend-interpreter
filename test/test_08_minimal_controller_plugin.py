@@ -8,15 +8,14 @@ sys.path.append(_path)
 from minimal.Simple import self_test, Simple
 from time import sleep
 from ctypes import c_bool
-from multiprocessing import Pool
+from multiprocessing import Pool, Value
 from brain.queries import RBO, RBJ
 from brain import connect
 from pytest import fixture
 import docker
 
 
-
-EXT_SIGNAL = c_bool(False)
+EXT_SIGNAL = Value(c_bool(False))
 CLIENT = docker.from_env()
 
 @fixture(scope='module')
@@ -35,7 +34,14 @@ def rethink():
     # Teardown for module tests
     container.stop(timeout=5)
 
+def set_signal_true():
+    global EXT_SIGNAL
+    sleep(10)
+    EXT_SIGNAL.value = True
+
 def test_minimal_jobs(rethink):
+    p = Pool(processes=2)
+    p.apply_async(set_signal_true, [])
     self_test()
     c = connect()  #verify they all got done
 
