@@ -248,15 +248,10 @@ class ControllerPlugin(ABC):
             str|None -- The value of the given input. None if no input found.
         """
 
-        try:
-            return job["JobCommand"]["Inputs"][option]["Value"]
-        except IndexError:
-            return None
-        except TypeError:
-            return ControllerPlugin._srch_4_val(
-                job["JobCommand"]["Inputs"],
-                option
-            )
+        return ControllerPlugin._srch_4_val(
+            job["JobCommand"]["Inputs"],
+            option
+        )
 
     @staticmethod
     def value_of_option(job, option):
@@ -270,21 +265,21 @@ class ControllerPlugin(ABC):
             str|None -- The value of the given input. None if no input found.
         """
 
-        try:
-            return job["JobCommand"]["OptionalInputs"][option]["Value"]
-        except IndexError:
-            return None
-        except TypeError:
-            return ControllerPlugin._srch_4_val(
-                job["JobCommand"]["OptionalInputs"],
-                option
-            )
+        return ControllerPlugin._srch_4_val(
+            job["JobCommand"]["OptionalInputs"],
+            option
+        )
 
     @staticmethod
     def _srch_4_val(val_list, search):
-        for i in val_list:
-            if i["Name"] == search:
-                return i["Value"]
+        try:
+            return val_list[option]["Value"]
+        except IndexError:
+            return None
+        except TypeError:
+            for i in val_list:
+                if i["Name"] == search:
+                    return i["Value"]
         return None
 
     @staticmethod
