@@ -273,7 +273,7 @@ class ControllerPlugin(ABC):
     @staticmethod
     def _srch_4_val(val_list, search):
         try:
-            return val_list[option]["Value"]
+            return val_list[search]["Value"]
         except IndexError:
             return None
         except TypeError:
