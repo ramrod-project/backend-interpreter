@@ -22,12 +22,9 @@ CLIENT = docker.from_env()
 @fixture(scope='module')
 def rethink():
     sleep(3) #prior test docker needs to shut down
-    try:
-        tag = environ.get("TRAVIS_BRANCH", "dev").replace("master", "latest")
-    except KeyError:
-        tag = "latest"
+    tag = environ.get("TRAVIS_BRANCH", "dev").replace("master", "latest")
     container_name = "brain_minimal"
-    CLIENT.containers.run(
+    container = CLIENT.containers.run(
         "ramrodpcp/database-brain:{}".format(tag),
         name=container_name,
         detach=True,
@@ -36,12 +33,7 @@ def rethink():
     )
     yield True
     # Teardown for module tests
-    containers = CLIENT.containers.list()
-    for container in containers:
-        if container.name == container_name:
-            container.stop()
-            break
-
+    container.stop(timeout=5)
 
 def test_minimal_jobs(rethink):
     self_test()
