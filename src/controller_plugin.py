@@ -237,26 +237,26 @@ class ControllerPlugin(ABC):
             return None
 
     @staticmethod
-    def value_of_input(job, input):
+    def value_of_input(job, option):
         """Get the value of an input by index or name
 
         Arguments:
             job {dict} -- A dict in the format of a job
-            input {int|str} -- The index of an input or the name of an input.
+            option {int|str} -- The index of an input or the name of an input.
 
         Returns:
             str|None -- The value of the given input. None if no input found.
         """
 
-        for i in job["JobCommand"]["Inputs"]:
-            if i["Name"] == input:
-                return i["Value"]
         try:
-            return job["JobCommand"]["Inputs"][input]["Value"]
+            return job["JobCommand"]["Inputs"][option]["Value"]
         except IndexError:
             return None
         except TypeError:
-            return None
+            return ControllerPlugin._srch_4_val(
+                job["JobCommand"]["Inputs"],
+                option
+            )
 
     @staticmethod
     def value_of_option(job, option):
@@ -270,15 +270,22 @@ class ControllerPlugin(ABC):
             str|None -- The value of the given input. None if no input found.
         """
 
-        for i in job["JobCommand"]["OptionalInputs"]:
-            if i["Name"] == option:
-                return i["Value"]
         try:
             return job["JobCommand"]["OptionalInputs"][option]["Value"]
         except IndexError:
             return None
         except TypeError:
-            return None
+            return ControllerPlugin._srch_4_val(
+                job["JobCommand"]["OptionalInputs"],
+                option
+            )
+
+    @staticmethod
+    def _srch_4_val(val_list, search):
+        for i in val_list:
+            if i["Name"] == search:
+                return i["Value"]
+        return None
 
     @staticmethod
     def get_args(job):
