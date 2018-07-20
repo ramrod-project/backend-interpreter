@@ -3,6 +3,7 @@
 from json import dump, load
 from os import environ, makedirs, remove, removedirs
 from time import time, sleep
+from copy import deepcopy
 
 import brain
 import docker
@@ -32,7 +33,20 @@ SAMPLE_JOB = {
     "JobTarget": SAMPLE_TARGET,
     "Status": "Ready",
     "StartTime": NOW,
-    "JobCommand": "Do stuff"
+    "JobCommand":  {
+        "CommandName": "TestCommand",
+        "Tooltip": " testing command",
+        "Output": True,
+        "Inputs": [
+            {
+                "Name": "testinput",
+                "Type": "textbox",
+                "Tooltip": "fortesting",
+                "Value": "Test Input 1"
+            }
+        ],
+        "OptionalInputs": []
+    }
 }
 
 SAMPLE_JOB_PENDING = {
@@ -40,7 +54,20 @@ SAMPLE_JOB_PENDING = {
     "JobTarget": SAMPLE_TARGET,
     "Status": "Pending",
     "StartTime": NOW,
-    "JobCommand": "Do stuff"
+    "JobCommand":  {
+        "CommandName": "TestCommand",
+        "Tooltip": " testing command",
+        "Output": True,
+        "Inputs": [
+            {
+                "Name": "testinput",
+                "Type": "textbox",
+                "Tooltip": "fortesting",
+                "Value": "Test Input 1"
+            }
+        ],
+        "OptionalInputs": []
+    }
 }
 
 SAMPLE_FILE = {
@@ -163,7 +190,7 @@ def test_instantiate(give_brain):
     assert isinstance(plugin, controller_plugin.ControllerPlugin)
 
 def test_job_helpers():
-    assert controller_plugin.ControllerPlugin.get_command(SAMPLE_JOB) == SAMPLE_JOB["JobCommand"]
+    assert controller_plugin.ControllerPlugin.get_command(SAMPLE_JOB) == SAMPLE_JOB["JobCommand"]["CommandName"]
     assert controller_plugin.ControllerPlugin.get_job_id(SAMPLE_JOB) == SAMPLE_JOB["id"]
 
 def test_read_functionality(give_brain, clear_dbs):
@@ -431,9 +458,8 @@ def test_get_file(plugin_base, give_brain, clear_dbs, conn):
     with raises(LookupError):
         plugin_base.get_file("testfile2.txt", encoding="MYNEWSTANDARD")
 
-def test_get_value():
-    plugin_base.db_conn = conn
-    input_job = SAMPLE_JOB
+def test_get_value(plugin_base):
+    input_job = deepcopy(SAMPLE_JOB)
     input_job["JobCommand"] = {
         "CommandName": "TestCommand",
         "Tooltip": " testing command",
@@ -455,7 +481,26 @@ def test_get_value():
             }
         ]
     }
+
     assert controller_plugin.ControllerPlugin.value_of_input(input_job, 0) == "Test Input 1"
+    assert controller_plugin.ControllerPlugin.value_of_input(input_job, "testinput") == "Test Input 1"
+    assert controller_plugin.ControllerPlugin.value_of_input(input_job, "bad") == None
     assert controller_plugin.ControllerPlugin.value_of_option(input_job, 0) == "Test Input 2"
+    assert controller_plugin.ControllerPlugin.value_of_option(input_job, "testinput2") == "Test Input 2"
+    assert controller_plugin.ControllerPlugin.value_of_option(input_job, "bad") == None
+
+    assert controller_plugin.ControllerPlugin.value_of(input_job, "testinput") == "Test Input 1"
+    assert controller_plugin.ControllerPlugin.value_of(input_job, "testinput2") == "Test Input 2"
+    assert controller_plugin.ControllerPlugin.value_of(input_job, 0) == None
+
     assert controller_plugin.ControllerPlugin.value_of_input(input_job, 5) == None
     assert controller_plugin.ControllerPlugin.value_of_option(input_job, 5) == None
+
+    inputs, optional = controller_plugin.ControllerPlugin.get_args(input_job)
+    assert inputs[0] == "Test Input 1"
+    assert optional[0] == "Test Input 2"
+
+    assert controller_plugin.ControllerPlugin.get_status(input_job) == "Ready"
+    assert controller_plugin.ControllerPlugin.job_location(input_job) == "127.0.0.1"
+    assert controller_plugin.ControllerPlugin.job_port(input_job) == "8080"
+    assert controller_plugin.ControllerPlugin.has_output(input_job) == True

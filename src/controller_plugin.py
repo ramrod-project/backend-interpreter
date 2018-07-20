@@ -261,7 +261,7 @@ class ControllerPlugin(ABC):
             string -- the name of the command for that job
         """
 
-        return job["JobCommand"]
+        return job["JobCommand"]["CommandName"]
 
     @staticmethod
     def get_job_id(job):
@@ -275,20 +275,153 @@ class ControllerPlugin(ABC):
         """
 
         return job["id"]
+
+    @staticmethod
+    def get_status(job):
+        """returns a job's status
+
+        Arguments:
+            job {dict} -- A dict in the format of a job
+
+        Returns:
+            str -- the job's current status
+        """
+
+        return job["Status"]
     
     @staticmethod
-    def value_of_input(job, input):
-        try:
-            return job["JobCommand"]["Inputs"][input]["Value"]
-        except IndexError:
+    def value_of(job, input):
+        """returns the value of an input name
+
+        Arguments:
+            job {dict} -- A dict in the format of a job
+            input {str} -- the name of an input or optional input
+
+        Returns:
+            str -- The value of the first input or optional input with the
+            given name. If there is an input or an optional input with the
+            same name, the input's value will be returned. None if no inputs
+            found.
+        """
+
+        if isinstance(input, str):
+            value = ControllerPlugin.value_of_input(job, input)
+            if value is None:
+                value = ControllerPlugin.value_of_option(job, input)
+            return value
+        else:
             return None
 
     @staticmethod
+    def value_of_input(job, option):
+        """Get the value of an input by index or name
+
+        Arguments:
+            job {dict} -- A dict in the format of a job
+            option {int|str} -- The index of an input or the name of an input.
+
+        Returns:
+            str|None -- The value of the given input. None if no input found.
+        """
+
+        return ControllerPlugin._srch_4_val(
+            job["JobCommand"]["Inputs"],
+            option
+        )
+
+    @staticmethod
     def value_of_option(job, option):
+        """Get the value of an optional input by index or name
+
+        Arguments:
+            job {dict} -- A dict in the format of a job
+            input {int|str} -- The index of an input or the name of an input.
+
+        Returns:
+            str|None -- The value of the given input. None if no input found.
+        """
+
+        return ControllerPlugin._srch_4_val(
+            job["JobCommand"]["OptionalInputs"],
+            option
+        )
+
+    @staticmethod
+    def _srch_4_val(val_list, search):
         try:
-            return job["JobCommand"]["OptionalInputs"][option]["Value"]
+            return val_list[search]["Value"]
         except IndexError:
             return None
+        except TypeError:
+            for i in val_list:
+                if i["Name"] == search:
+                    return i["Value"]
+        return None
+
+    @staticmethod
+    def get_args(job):
+        """Get a tuple containing a list of all input values and a list of all
+        optional input values.
+
+        Arguments:
+            job {dict} -- A dict in the format of a job
+
+        Returns:
+            list, list -- Two lists each containing the values of the command's
+            input list and optional input list.
+        """
+
+        inputs = ControllerPlugin._get_value_list(job["JobCommand"]["Inputs"])
+        optional = ControllerPlugin._get_value_list(
+                    job["JobCommand"]["OptionalInputs"])
+        return (inputs, optional)
+
+    @staticmethod
+    def _get_value_list(inputs):
+        val_list = []
+        for i in inputs:
+            val_list.append(i["Value"])
+        return val_list
+    
+    @staticmethod
+    def job_location(job):
+        """Get the target location of a job
+
+        Arguments:
+            job {dict} -- A dict in the format of a job
+
+        Returns:
+            str -- The target's location. typically an IP address
+        """
+
+        return job["JobTarget"]["Location"]
+
+    @staticmethod
+    def job_port(job):
+        """Get the target's port on which the plugin is cummunicating
+
+        Arguments:
+            job {dict} -- A dict in the format of a job
+
+        Returns:
+            str -- The port the plugin is communicating on.
+        """
+
+        return job["JobTarget"]["Port"]
+
+    @staticmethod
+    def has_output(job):
+        """Returns whether a job can send output back to the database.
+
+        Arguments:
+            job {dict} -- A dict in the format of a job
+
+        Returns:
+            Bool -- True if the job should respond with output, false
+            otherwise.
+        """
+
+        return job["JobCommand"]["Output"]
 
     def _advertise_functionality(self):
         """Advertises functionality to database
@@ -340,16 +473,16 @@ class ControllerPlugin(ABC):
             self._update_job(job["id"])
             job["Status"] = transition_success(job["Status"])
         return job
-    
+
     def request_job_for_client(self, location):
         """Attempts to get a job with the same plugin name at the specified
         location (typically an IP). Use this for communicating for multiple
         plugins
-        
+
         Arguments:
             location {str} -- The location (usually the IP) of the plugin's
             client the get a job for.
-        
+
         Returns:
             dict|None -- a job with the given location as its target or None
             {
