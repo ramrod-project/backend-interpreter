@@ -5,6 +5,7 @@ import multiprocessing
 from os import environ
 from threading import Thread
 from time import time, sleep
+from copy import deepcopy
 
 from pytest import fixture, raises
 
@@ -28,7 +29,20 @@ SAMPLE_JOB = {
     "JobTarget": SAMPLE_TARGET,
     "Status": "Ready",
     "StartTime": int(time()),
-    "JobCommand": "Do stuff"
+    "JobCommand":  {
+        "CommandName": "TestCommand",
+        "Tooltip": " testing command",
+        "Output": True,
+        "Inputs": [
+            {
+                "Name": "testinput",
+                "Type": "textbox",
+                "Tooltip": "fortesting",
+                "Value": "Test Input 1"
+            }
+        ],
+        "OptionalInputs": []
+    }
 }
 
 SAMPLE_FILE = {
@@ -196,7 +210,7 @@ def test_respond_to_job(plugin_base):
     assert plugin_base.DBI.result["job"] == SAMPLE_JOB["id"]
     assert plugin_base.DBI.result["output"] == "Sample Job Response"
     assert plugin_base.get_job_id(SAMPLE_JOB) == SAMPLE_JOB["id"]
-    assert plugin_base.get_command(SAMPLE_JOB) == SAMPLE_JOB["JobCommand"]
+    assert plugin_base.get_command(SAMPLE_JOB) == SAMPLE_JOB["JobCommand"]["CommandName"]
 
     plugin_base.respond_output(SAMPLE_JOB, bytes("Sample Job Response", "utf-8"))
     assert plugin_base.DBI.result["job"] == SAMPLE_JOB["id"]
@@ -226,7 +240,7 @@ def test_get_file(plugin_base):
         plugin_base.get_file("testfile.txt","MYNEWSTANDARD")
 
 def test_get_value(plugin_base):
-    input_job = SAMPLE_JOB
+    input_job = deepcopy(SAMPLE_JOB)
     input_job["JobCommand"] = {
         "CommandName": "TestCommand",
         "Tooltip": " testing command",
@@ -249,6 +263,24 @@ def test_get_value(plugin_base):
         ]
     }
     assert plugin_base.value_of_input(input_job, 0) == "Test Input 1"
+    assert plugin_base.value_of_input(input_job, "testinput") == "Test Input 1"
+    assert plugin_base.value_of_input(input_job, "bad") == None
     assert plugin_base.value_of_option(input_job, 0) == "Test Input 2"
+    assert plugin_base.value_of_option(input_job, "testinput2") == "Test Input 2"
+    assert plugin_base.value_of_option(input_job, "bad") == None
+
+    assert plugin_base.value_of(input_job, "testinput") == "Test Input 1"
+    assert plugin_base.value_of(input_job, "testinput2") == "Test Input 2"
+    assert plugin_base.value_of(input_job, 0) == None
+
     assert plugin_base.value_of_input(input_job, 5) == None
     assert plugin_base.value_of_option(input_job, 5) == None
+
+    inputs, optional = plugin_base.get_args(input_job)
+    assert inputs[0] == "Test Input 1"
+    assert optional[0] == "Test Input 2"
+
+    assert plugin_base.get_status(input_job) == "Ready"
+    assert plugin_base.job_location(input_job) == "127.0.0.1"
+    assert plugin_base.job_port(input_job) == "8080"
+    assert plugin_base.has_output(input_job) == True
