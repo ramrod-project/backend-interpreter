@@ -81,7 +81,7 @@ class Harness(cp.ControllerPlugin):
         else:
             self._advertise_functionality()
         _G_LOCK.release()
-
+        
         self._start_webserver()
         try:
             self._processing_loop(logger, ext_signal) #blocks until ext_signal.value == True
@@ -102,9 +102,8 @@ class Harness(cp.ControllerPlugin):
         """
         while not ext_signal.value:
             if _G_LOCK.acquire(timeout=_LOCK_WAIT):
-                if self.DBI:  # check we're not testing
-                    self._collect_new_jobs()
-                    self._push_complete_output()
+                self._collect_new_jobs()
+                self._push_complete_output()
                 _G_LOCK.release()
             sleep(3)
 
