@@ -15,7 +15,7 @@ from pytest import fixture
 import docker
 
 
-EXT_SIGNAL = Value(c_bool(False))
+EXT_SIGNAL = Value(c_bool, False)
 CLIENT = docker.from_env()
 
 @fixture(scope='module')
