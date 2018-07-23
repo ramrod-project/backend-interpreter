@@ -1,4 +1,4 @@
-"""Unit testing for the linked_process module.
+"""Unit testing for the controller_plugin module.
 """
 from json import dump, load
 from os import environ, makedirs, remove, removedirs
@@ -128,7 +128,7 @@ class SamplePlugin(controller_plugin.ControllerPlugin):
             functionality=functionality
         )
 
-    def _start(self, logger, signal):
+    def _start(self):
         """abstractmethod overload"""
         pass
 

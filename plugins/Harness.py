@@ -50,25 +50,22 @@ class Harness(cp.ControllerPlugin):
         self._clients = defaultdict(list)
         super().__init__(self.name, self.functionality)
 
-    def _stop(self, logger, httpd):
-        logger.send([
+    def _stop(self):
+        self.LOGGER.send([
             self.name,
             self.name + " server shutting down...",
             20,
             time()
         ])
-        httpd.shutdown()
         exit(0)
 
 
-    def _start(self, logger, ext_signal):
+    def _start(self, *args):
         """
         Start function is called by the supervisor only
         This function may assume the logger and the db is already start()ed
-        This function should include all calls required to run until ext_signal says to stop.
+        This function should include all calls required to run until SIGTERM
 
-        :param logger: <central logger> object for all log handling
-        :param ext_signal: <ctypes.bool> the kill signal
         :return: This function calls exit! when complete
         """
         global _G_LOCK
@@ -84,23 +81,20 @@ class Harness(cp.ControllerPlugin):
         
         self._start_webserver()
         try:
-            self._processing_loop(logger, ext_signal) #blocks until ext_signal.value == True
+            self._processing_loop() #blocks until ext_signal.value == True
         except KeyboardInterrupt:
-            self._stop(logger, _app)
+            self._stop()
         finally:
             exit(0)
 
-    def _processing_loop(self, logger, ext_signal):
+    def _processing_loop(self):
         """
         The main processing loop of this class.
-        This loop will run forever until signaled by the
-        <ctypes.bool> ext signal object is not set to true
+        This loop will run forever until SIGTERM
 
-        :param logger: <central_logger> class from this project
-        :param ext_signal: <ctypes.bool> signal to externally stop this function
         :return: None
         """
-        while not ext_signal.value:
+        while True:
             if _G_LOCK.acquire(timeout=_LOCK_WAIT):
                 self._collect_new_jobs()
                 self._push_complete_output()
@@ -452,4 +446,4 @@ if __name__ == "__main__":
         __STANDALONE__ = True
         ext_signal = Value(c_bool, False)
         test_harness = Harness()
-        test_harness._start(None, ext_signal)
+        test_harness._start()

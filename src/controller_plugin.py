@@ -44,11 +44,9 @@ class ControllerPlugin(ABC):
     where it should be running its server.
     #
     The abstract methods '_start' and '_stop' *MUST BE* overridden by
-    the inheriting class.
-    #
-    '_start' and must take two arguments, a logger and a Value
-    of boolean type, which serves as a kill signal for the process (when
-    signal.value set to True).
+    the inheriting class. _start is not passed any arguments by default,
+    but has been written for the possibility in the future. _stop will be
+    called when SIGTERM is raised by the OS (container is told to stop).
     #
     The remainder of the module can contain whatever classes
     and methods are needed for the functionality of the plugin,
@@ -129,36 +127,22 @@ class ControllerPlugin(ABC):
                 "OptionalInputs": []
             }]
 
-    def start(self, signal):
+    def start(self, *args):
         host = "rethinkdb"
         if environ["STAGE"] == "TESTING":
             host = "127.0.0.1"
         self.db_conn = connect(host=host)
         self._advertise_functionality()
-        self._start(self.LOGGER, signal)
+        self._start(args)
 
     @abstractmethod
-    def _start(self, logger, signal):
+    def _start(self, *args):
         """Start the plugin
 
         The 'start' method is what begins the control loop for the
         plugin (whatever it needs to do). It will be used as a target
-        for the container entrypoint. The process will be handed a
-        logger. Logger usage:
-
-        logger.send([
-            self.name,
-            <string: message_body>,
-            <int: 10(DEBUG)|20(INFO)|30(WARN)|40(ERR)|50(CRIT)>,
-            <unix epoch: time.time()>
-        ])
-
-        This method is also passed 'signal', a boolean multiprocessing
-        Value (accessed via the signal.value attribute) which is
-        used as a 'kill signal' for the processes running in this
-        plugin container. When set to 'True', the mprocess is expected
-        to gracefullly tear itself down, or else the Supervisor will
-        terminate it after a timeout period.
+        for the container entrypoint. The process is not handed any
+        arguments by default.
         """
         pass
 
