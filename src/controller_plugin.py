@@ -427,7 +427,7 @@ class ControllerPlugin(ABC):
                 "JobCommand": {dict} -- command to run
             }
         """
-        job = get_next_job(self.name, False, conn=self.db_conn)
+        job = get_next_job(self.name, conn=self.db_conn)
         if job:
             self._update_job(job["id"])
             job["Status"] = transition_success(job["Status"])
