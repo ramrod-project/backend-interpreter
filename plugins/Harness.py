@@ -61,7 +61,7 @@ class Harness(cp.ControllerPlugin):
         exit(0)
 
 
-    def start(self, logger, ext_signal):
+    def _start(self, logger, ext_signal):
         """
         Start function is called by the supervisor only
         This function may assume the logger and the db is already start()ed
@@ -452,4 +452,4 @@ if __name__ == "__main__":
         __STANDALONE__ = True
         ext_signal = Value(c_bool, False)
         test_harness = Harness()
-        test_harness.start(None, ext_signal)
+        test_harness._start(None, ext_signal)

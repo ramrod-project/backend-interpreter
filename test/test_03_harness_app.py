@@ -48,7 +48,7 @@ def proc():
     import server
     plugin_instance = server.get_class_instance("Harness")
     signal = Value(c_bool, False)
-    process = Process(target=plugin_instance._start, args=(signal,))
+    process = Process(target=plugin_instance.start, args=(signal,))
     yield (signal, process)
     try:
         process.terminate()

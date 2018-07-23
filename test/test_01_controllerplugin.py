@@ -128,7 +128,7 @@ class SamplePlugin(controller_plugin.ControllerPlugin):
             functionality=functionality
         )
 
-    def start(self, logger, signal):
+    def _start(self, logger, signal):
         """abstractmethod overload"""
         pass
 

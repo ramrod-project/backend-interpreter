@@ -53,9 +53,9 @@ def main():  # pragma: no cover
 
     # Start process as main thread with dummy signal
     try:
-        plugin_instance._start(Value(c_bool, False))
+        plugin_instance.start(Value(c_bool, False))
     except KeyboardInterrupt:
-        plugin_instance._stop()
+        plugin_instance.stop()
 
 if __name__ == '__main__':  # pragma: no cover
     main()

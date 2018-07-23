@@ -61,7 +61,7 @@ class IntegrationTest(controller_plugin.ControllerPlugin):
         ]
         super().__init__(self.name, self.functionality)
 
-    def start(self, logger, signal):
+    def _start(self, logger, signal):
         """Run the integration tests
 
         This method is called by the supervisor, so it will contain
@@ -151,7 +151,7 @@ def env():
 def proc():
     plugin_instance = IntegrationTest()
     signal = Value(c_bool, False)
-    process = Process(target=plugin_instance._start, args=(signal,))
+    process = Process(target=plugin_instance.start, args=(signal,))
     yield (signal, process)
     try:
         process.terminate()

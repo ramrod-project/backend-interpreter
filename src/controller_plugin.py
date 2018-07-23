@@ -43,16 +43,12 @@ class ControllerPlugin(ABC):
     instantiation the plugin will be given a PORT environment variable
     where it should be running its server.
     #
-    The initialize_queues method *SHOUD NOT* be overridden by the
-    inheriting class, as the Supervisor will attempt to initialize
-    the command queues in the exact way prescribed below. The abstract
-    methods 'start' and '_stop' *MUST BE* overridden by the inheriting
-    class.
+    The abstract methods '_start' and '_stop' *MUST BE* overridden by
+    the inheriting class.
     #
-    'start' and must take two arguments, a multiprocesing Pipe()
-    connecting the process to a central application logger, and a Value
+    '_start' and must take two arguments, a logger and a Value
     of boolean type, which serves as a kill signal for the process (when
-    set to True).
+    signal.value set to True).
     #
     The remainder of the module can contain whatever classes
     and methods are needed for the functionality of the plugin,
@@ -81,6 +77,7 @@ class ControllerPlugin(ABC):
             self.functionality = functionality
         else:
             self._read_functionality()
+        self.stop_args = {}
         self.LOGGER.send = self.log
         signal(SIGTERM, self.sigterm_handler)
         super().__init__()
@@ -132,24 +129,22 @@ class ControllerPlugin(ABC):
                 "OptionalInputs": []
             }]
 
-    def _start(self, signal):
+    def start(self, signal):
         host = "rethinkdb"
         if environ["STAGE"] == "TESTING":
             host = "127.0.0.1"
         self.db_conn = connect(host=host)
         self._advertise_functionality()
-        self.start(self.LOGGER, signal)
+        self._start(self.LOGGER, signal)
 
     @abstractmethod
-    def start(self, logger, signal):
+    def _start(self, logger, signal):
         """Start the plugin
 
         The 'start' method is what begins the control loop for the
         plugin (whatever it needs to do). It will be used as a target
-        for the creation of a LinkedProcess by the Supervisor. The
-        Supervisor will also hand it a 'logger' Pipe() object which
-        the plugin can optionally use for logging to the central
-        logger. Usage:
+        for the container entrypoint. The process will be handed a
+        logger. Logger usage:
 
         logger.send([
             self.name,
@@ -506,15 +501,21 @@ class ControllerPlugin(ABC):
             job {dict} -- The job that errored
             msg {str|int|byte|float} -- (optional) The error message to display
         """
-
         self.respond_output(job, msg)
         self._update_job_status(job["id"], "Error")
 
     def stop(self):
         """Stop the plugin
 
-        This method can be used if any teardown is needed
-        before the plugin exits. It will be called automatically
-        when the SIGTERM is received for tearing the container down.
+        This method will be called upon SIGTERM , when the container is told to
+        stop. It will then call the _stop function which can
+        be overridden to perform teardown (Optional).
+        """
+        self._stop()
+
+    def _stop(self):
+        """Default teardown funtion.
+
+        Can be overridden to perform any necessary teardown if needed.
         """
         exit(0)
