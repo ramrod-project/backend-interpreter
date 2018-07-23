@@ -7,17 +7,16 @@ TODO:
 from abc import ABC, abstractmethod
 import json
 import logging
-from os import environ, path as ospath, name as osname
+from os import environ, path as ospath
 from signal import signal, SIGTERM
-from sys import stderr
 from time import asctime, gmtime, time
 
 from brain import connect
 from brain.binary import get as brain_binary_get
-from brain.jobs import STATES, transition_success
+from brain.jobs import transition_success
 from brain.queries import get_next_job_by_location
 from brain.queries import advertise_plugin_commands, create_plugin
-from brain.queries import get_next_job, get_job_status, VALID_STATES
+from brain.queries import get_next_job, get_job_status
 from brain.queries import update_job_status as brain_update_job_status
 from brain.queries import write_output
 
@@ -128,6 +127,8 @@ class ControllerPlugin(ABC):
             }]
 
     def start(self, *args):
+        """The entrypoint for the docker container
+        """
         host = "rethinkdb"
         if environ["STAGE"] == "TESTING":
             host = "127.0.0.1"
@@ -226,14 +227,14 @@ class ControllerPlugin(ABC):
         """
 
         return job["Status"]
-    
+
     @staticmethod
-    def value_of(job, input):
-        """returns the value of an input name
+    def value_of(job, command_input):
+        """returns the value of a commaand input name
 
         Arguments:
             job {dict} -- A dict in the format of a job
-            input {str} -- the name of an input or optional input
+            command_input {str} -- the name of an input or optional input
 
         Returns:
             str -- The value of the first input or optional input with the
@@ -242,10 +243,10 @@ class ControllerPlugin(ABC):
             found.
         """
 
-        if isinstance(input, str):
-            value = ControllerPlugin.value_of_input(job, input)
+        if isinstance(command_input, str):
+            value = ControllerPlugin.value_of_input(job, command_input)
             if value is None:
-                value = ControllerPlugin.value_of_option(job, input)
+                value = ControllerPlugin.value_of_option(job, command_input)
             return value
         else:
             return None
@@ -311,7 +312,8 @@ class ControllerPlugin(ABC):
 
         inputs = ControllerPlugin._get_value_list(job["JobCommand"]["Inputs"])
         optional = ControllerPlugin._get_value_list(
-                    job["JobCommand"]["OptionalInputs"])
+            job["JobCommand"]["OptionalInputs"]
+        )
         return (inputs, optional)
 
     @staticmethod
