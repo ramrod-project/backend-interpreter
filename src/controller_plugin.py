@@ -433,7 +433,7 @@ class ControllerPlugin(ABC):
             job["Status"] = transition_success(job["Status"])
         return job
 
-    def request_job_for_client(self, location):
+    def request_job_for_client(self, location, port=None):
         """Attempts to get a job with the same plugin name at the specified
         location (typically an IP). Use this for communicating for multiple
         plugins
@@ -452,11 +452,12 @@ class ControllerPlugin(ABC):
                 "JobCommand": {dict} -- command to run
             }
         """
-        job = get_next_job_by_location(
+        job = get_next_job(
             self.name,
             location,
-            False,
-            self.db_conn
+            port,
+            verify_job=False,
+            conn=self.db_conn
         )
         if job:
             self._update_job(job["id"])

@@ -258,6 +258,11 @@ def test_request_job(plugin_base, give_brain, clear_dbs, conn):
     sleep(2)
     result = plugin_base.request_job_for_client("127.0.0.1")
     assert result == SAMPLE_JOB_PENDING
+    brain.r.db("Brain").table("Jobs").get(SAMPLE_JOB["id"]).update({"Status": "Ready"}).run(conn)
+    sleep(2)
+    result = plugin_base.request_job_for_client("127.0.0.1", "8080")
+    assert result == SAMPLE_JOB_PENDING
+    
 
 def test_update_job(plugin_base, give_brain, clear_dbs, conn):
     plugin_base.db_conn = conn
