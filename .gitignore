@@ -4,8 +4,8 @@
 *.vscode*
 *__pycache__*
 *.pytest*
-*key*
 *logfile*
 .coverage
+.coverage.*
 coverage.xml
 cc-test-reporter

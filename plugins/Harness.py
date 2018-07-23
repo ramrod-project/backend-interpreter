@@ -81,7 +81,7 @@ class Harness(cp.ControllerPlugin):
         else:
             self._advertise_functionality()
         _G_LOCK.release()
-
+        
         self._start_webserver()
         try:
             self._processing_loop(logger, ext_signal) #blocks until ext_signal.value == True
@@ -102,9 +102,8 @@ class Harness(cp.ControllerPlugin):
         """
         while not ext_signal.value:
             if _G_LOCK.acquire(timeout=_LOCK_WAIT):
-                if self.DBI:  # check we're not testing
-                    self._collect_new_jobs()
-                    self._push_complete_output()
+                self._collect_new_jobs()
+                self._push_complete_output()
                 _G_LOCK.release()
             sleep(3)
 
@@ -128,7 +127,7 @@ class Harness(cp.ControllerPlugin):
         Pulls at most one job from upstream and adds it to local tracking.
         :return: <bool> whether a not a job was added
         """
-        new_job = self._request_job()  # <dict> or None
+        new_job = self.request_job()  # <dict> or None
         if new_job:
             location = new_job['JobTarget']['Location']
             self._work[location].append(new_job)
@@ -165,7 +164,7 @@ class Harness(cp.ControllerPlugin):
                     output = self._complete[location].pop(0)
                     job = output['OutputJob']
                     output_content = output['Content']
-                    self._respond_output(job, output_content)
+                    self.respond_output(job, output_content)
                     self._update_job_status(job['id'], "Done")
 
     def _provide_status_update(self, job_id, status):  # pragma: no cover

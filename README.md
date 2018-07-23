@@ -1,15 +1,26 @@
-**Building controller image**
+# Plugin Interpreter
+[![Build Status](https://travis-ci.org/ramrod-project/backend-interpreter.svg?branch=dev)](https://travis-ci.org/ramrod-project/backend-interpreter)
+[![Maintainability](https://api.codeclimate.com/v1/badges/72fa8fec9d9fe43497bd/maintainability)](https://codeclimate.com/github/ramrod-project/backend-interpreter/maintainability)
+[![Test Coverage](https://api.codeclimate.com/v1/badges/72fa8fec9d9fe43497bd/test_coverage)](https://codeclimate.com/github/ramrod-project/backend-interpreter/test_coverage)
+
+## Guide
+
+**Building interpreter image**
 
 From top level repository:
 
-`docker build -t <image_name> .`
+`docker build -t ramrodpcp/interpreter-plugin:<tag> .`
 
-*Controller must be run with sudo, as it requires access to the docker control socket.*
+**Running interpreter by itself in detached mode (development)**
 
-**Running controller in interactive mode (development)**
+Create network and start database.
 
-`docker run --rm --name controller -ti -e "STAGE=DEV" -e "LOGLEVEL=<DEBUG,INFO,WARNING,ERROR,CRITICAL>" -v /var/run/docker.sock:/var/run/docker.sock <image_name>`
+```
+$ docker network create test
+$ docker run -d --rm --name rethinkdb --network test -p 28015:28015 -e "STAGE=DEV" -e "LOGLEVEL=DEBUG" ramrodpcp/datbase-brain:<dev,qa,latest>
+```
 
-**Running controller in detached mode (production)**
-
-`docker run --rm --name controller -ti -e "STAGE=PROD" -e "LOGLEVEL=<DEBUG,INFO,WARNING,ERROR,CRITICAL>" -v /var/run/docker.sock:/var/run/docker.sock <image_name>`
+Run the controller in the network you created.
+```
+$ docker run --rm --name controller --network test -ti -p <external_port>:<plugin_port> -e "STAGE=PROD" -e "LOGLEVEL=DEBUG" -e "PLUGIN=<plugin_name>" -e "PORT=<plugin_port>" ramrodpcp/interpreter-plugin:<tag>
+```
