@@ -5,8 +5,6 @@ Supervisor class object, loads all of the plugins from the ./plugins
 folder, and hands them off to the Supervisor object for
 server initialization.
 """
-from ctypes import c_bool
-from multiprocessing import Value
 from os import environ, name as osname, path as ospath
 from pkgutil import iter_modules
 
@@ -53,9 +51,9 @@ def main():  # pragma: no cover
 
     # Start process as main thread with dummy signal
     try:
-        plugin_instance._start(Value(c_bool, False))
+        plugin_instance.start()
     except KeyboardInterrupt:
-        plugin_instance._stop()
+        plugin_instance.stop()
 
 if __name__ == '__main__':  # pragma: no cover
     main()
