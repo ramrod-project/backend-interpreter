@@ -1,5 +1,4 @@
-from ctypes import c_bool
-from multiprocessing import Process, Value
+from multiprocessing import Process
 from os import environ, remove
 import re
 from time import asctime, gmtime, sleep, time
@@ -61,7 +60,7 @@ class IntegrationTest(controller_plugin.ControllerPlugin):
         ]
         super().__init__(self.name, self.functionality)
 
-    def start(self, logger, signal):
+    def _start(self, *args):
         """Run the integration tests
 
         This method is called by the supervisor, so it will contain
@@ -93,7 +92,7 @@ class IntegrationTest(controller_plugin.ControllerPlugin):
             self._update_job_status(SAMPLE_JOB["id"],"Pending")
         elif environ["TEST_SELECTION"] == "TEST4":
             """Log to logger"""
-            logger.send([
+            self.LOGGER.send([
                 "plugin",
                 "Testing out the logger.",
                 50,
@@ -102,8 +101,8 @@ class IntegrationTest(controller_plugin.ControllerPlugin):
         elif environ["TEST_SELECTION"] == "TEST5":
             self.respond_error(SAMPLE_JOB, "Testing Error")
 
-        while signal.value is not True:
-            sleep(0.1)
+        while True:
+            sleep(0.5)
         
         self._stop()
 
@@ -150,9 +149,8 @@ def env():
 @fixture(scope="function")
 def proc():
     plugin_instance = IntegrationTest()
-    signal = Value(c_bool, False)
-    process = Process(target=plugin_instance._start, args=(signal,))
-    yield (signal, process)
+    process = Process(target=plugin_instance.start)
+    yield process
     try:
         process.terminate()
     except:
@@ -182,9 +180,9 @@ def test_pull_job(proc, rethink, connection):
         SAMPLE_JOB
     ).run(connection)
     try:
-        proc[1].start()
+        proc.start()
         sleep(5)
-        proc[0].value = True
+        proc.terminate()
         sleep(2)
     except SystemExit as ex:
         assert str(ex) == "0"
@@ -219,9 +217,9 @@ def test_send_output(proc, rethink, connection):
     environ["TEST_SELECTION"] = "TEST2"
     environ["STAGE"] = "TESTING"
     try:
-        proc[1].start()
+        proc.start()
         sleep(5)
-        proc[0].value = True
+        proc.terminate()
         sleep(2)
     except SystemExit as ex:
         assert str(ex) == "0"
@@ -245,9 +243,9 @@ def test_job_status_update(proc, rethink, connection):
     environ["TEST_SELECTION"] = "TEST3"
     environ["STAGE"] = "TESTING"
     try:
-        proc[1].start()
+        proc.start()
         sleep(5)
-        proc[0].value = True
+        proc.terminate()
         sleep(2)
     except SystemExit as ex:
         assert str(ex) == "0"
@@ -271,9 +269,9 @@ def test_log_to_logger(proc, rethink):
     environ["TEST_SELECTION"] = "TEST4"
     environ["STAGE"] = "TESTING"
     try:
-        proc[1].start()
+        proc.start()
         sleep(5)
-        proc[0].value = True
+        proc.terminate()
         sleep(2)
     except SystemExit as ex:
         assert str(ex) == "0"
@@ -309,9 +307,9 @@ def test_update_error(proc, rethink, connection):
     environ["STAGE"] = "TESTING"
 
     try:
-        proc[1].start()
+        proc.start()
         sleep(5)
-        proc[0].value = True
+        proc.terminate()
         sleep(2)
     except SystemExit as ex:
         assert str(ex) == "0"
