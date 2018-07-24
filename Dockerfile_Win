@@ -1,0 +1,18 @@
+FROM stefanscherer/python-windows:nano
+
+RUN NET USER appuser /add
+RUN NET LOCALGROUP ADMINISTRATORS /add appuser
+
+USER appuser
+
+WORKDIR c:\\Users\\appuser\\approot
+
+COPY requirements.txt .
+
+RUN pip.exe install -r requirements.txt
+
+COPY . .
+
+EXPOSE 5000
+
+ENTRYPOINT python.exe server.py "${PLUGIN}"
