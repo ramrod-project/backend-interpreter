@@ -435,10 +435,10 @@ class ControllerPlugin(ABC):
         """
         job = get_next_job(
             self.name,
-            location,
-            port,
-            False,
-            self.db_conn
+            location=location,
+            port=port,
+            verify_job=False,
+            conn=self.db_conn
         )
         if job:
             self._update_job(job["id"])
