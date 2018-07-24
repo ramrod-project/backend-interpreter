@@ -456,8 +456,8 @@ class ControllerPlugin(ABC):
             self.name,
             location,
             port,
-            verify_job=False,
-            conn=self.db_conn
+            False,
+            self.db_conn
         )
         if job:
             self._update_job(job["id"])
