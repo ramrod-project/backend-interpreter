@@ -3,9 +3,6 @@ from time import sleep
 MAX_REQUEST_TIMEOUT = 120
 
 
-if __name__ == "__main__":
-  client_info = "C_127.0.0.1_1"
-  control_loop(client_info)
 
 def control_loop(client_info):
   client = client_info
@@ -41,3 +38,6 @@ def handle_resp(resp, client):
   elif "delete_file":
     pass
 
+if __name__ == "__main__":
+  client_info = "C_127.0.0.1_1"
+  control_loop(client_info)
