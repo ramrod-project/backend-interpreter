@@ -1,7 +1,7 @@
 import requests
 from time import sleep
 MAX_REQUEST_TIMEOUT = 120
-
+HARNESS_STR = "127.0.0.1:5000"
 
 
 def control_loop(client_info):
@@ -9,21 +9,22 @@ def control_loop(client_info):
   looping = True
   # loop through, GET from server and then act on the command
   while looping:
-    resp = requests.get("http://127.0.0.1:5000/harness/{}".format(client), timeout=MAX_REQUEST_TIMEOUT)
-    handle_resp(resp.text, client)
+    resp = requests.get("http://{}/harness/{}".format(HARNESS_STR, client), timeout=MAX_REQUEST_TIMEOUT)
+    cmd, args = resp.text.split(",",limit=1)
+    handle_resp(cmd, args, client)
 
-def handle_resp(resp, client):
+def handle_resp(resp, args, client):
   print(resp)
   if "terminate" in resp:
     SystemExit()
   elif "echo" in resp:
-    requests.post("http://127.0.0.1:5000/response/{}".format(client), data={"data": resp}, timeout=MAX_REQUEST_TIMEOUT)
+    requests.post("http://{}/response/{}".format(HARNESS_STR, client), data={"data": args}, timeout=MAX_REQUEST_TIMEOUT)
   elif "sleep" in resp:
     sleep(5)
   elif "list_files" in resp:
-    requests.post("http://127.0.0.1:5000/response/{}".format(client), data={"data": "data.txt\nresponse.exe\n"})
+    requests.post("http://{}/response/{}".format(HARNESS_STR, client), data={"data": "data.txt\nresponse.exe\n"})
   elif "put_file":
-    requests.get("http://127.0.0.1:5000/givemethat/{}/filename.txt".format(client), timeout=MAX_REQUEST_TIMEOUT)
+    requests.get("http://{}/givemethat/{}/{}".format(HARNESS_STR, client, args), timeout=MAX_REQUEST_TIMEOUT)
   elif "get_file":
     pass
   elif "read_registry":
