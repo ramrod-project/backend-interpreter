@@ -13,6 +13,7 @@ def control_loop(client_info):
     handle_resp(resp.text, client)
 
 def handle_resp(resp, client):
+  print(resp)
   if "terminate" in resp:
     SystemExit()
   elif "echo" in resp:
