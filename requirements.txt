@@ -33,7 +33,7 @@ pytest-cov==2.5.1
 python-magic==0.4.15
 PyYAML==3.12
 query-string==0.0.28
-ramrodbrain>=0.1.45
+ramrodbrain==0.1.45
 request==0.0.26
 requests==2.18.4
 rethinkdb==2.3.0.post6

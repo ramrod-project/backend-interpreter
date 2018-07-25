@@ -3,7 +3,7 @@ very simple plugin
 controller_plugin.py should be in your path!
 """
 
-import controller_plugin
+from . import controller_plugin
 from ctypes import c_bool
 from time import sleep
 from os import environ

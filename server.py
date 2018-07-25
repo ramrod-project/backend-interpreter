@@ -24,16 +24,10 @@ def get_class_instance(plugin_name):
     Returns:
         list -- List containing class instances of all plugins.
     """
-    if osname == "nt":  # windows
-        path = ospath.abspath(ospath.join(
-            ospath.dirname(__file__),
-            "../"
-        )+"/plugins")
-    else:  # linux
-        path = "".join((
-            ospath.dirname(ospath.abspath(__file__)),
-            "/plugins"
-        ))
+    path = "".join((
+        ospath.dirname(ospath.abspath(__file__)),
+        "/plugins"
+    ))
     modules = iter_modules(path=[path])
 
     for _, mod_name, _ in modules:
