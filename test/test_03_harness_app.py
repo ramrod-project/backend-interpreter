@@ -1,8 +1,7 @@
 """Unit testing for the supervisor module.
 """
 
-from ctypes import c_bool
-from multiprocessing import Pool, Process, Value
+from multiprocessing import Pool, Process
 from os import environ
 from time import sleep
 from pytest import fixture, raises
@@ -47,9 +46,8 @@ def proc():
     environ["PORT"] = "5000"
     import server
     plugin_instance = server.get_class_instance("Harness")
-    signal = Value(c_bool, False)
-    process = Process(target=plugin_instance._start, args=(signal,))
-    yield (signal, process)
+    process = Process(target=plugin_instance.start)
+    yield process
     try:
         process.terminate()
     except:
@@ -176,7 +174,7 @@ def the_pretend_app():
 def test_the_Harness_app(startup_brain, proc):
     environ["STAGE"] = "TESTING"
     environ["PORT"] = "5000"
-    proc[1].start()
+    proc.start()
     sleep(3)
     try:
         from brain import connect, r
@@ -200,11 +198,10 @@ def test_the_Harness_app(startup_brain, proc):
         pass
     finally:
         try:
-            proc[0].value = True
+            proc.terminate()
             sleep(2)
         except SystemExit as ex:
             assert str(ex) == "0"
 
 if __name__ == "__main__":
     test_the_Harness_app()
-

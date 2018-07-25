@@ -7,17 +7,16 @@ TODO:
 from abc import ABC, abstractmethod
 import json
 import logging
-from os import environ, path as ospath, name as osname
+from os import environ, path as ospath
 from signal import signal, SIGTERM
-from sys import stderr
 from time import asctime, gmtime, time
 
 from brain import connect
 from brain.binary import get as brain_binary_get
-from brain.jobs import STATES, transition_success
+from brain.jobs import transition_success
 from brain.queries import get_next_job_by_location
 from brain.queries import advertise_plugin_commands, create_plugin
-from brain.queries import get_next_job, get_job_status, VALID_STATES
+from brain.queries import get_next_job, get_job_status
 from brain.queries import update_job_status as brain_update_job_status
 from brain.queries import write_output
 
@@ -43,16 +42,10 @@ class ControllerPlugin(ABC):
     instantiation the plugin will be given a PORT environment variable
     where it should be running its server.
     #
-    The initialize_queues method *SHOUD NOT* be overridden by the
-    inheriting class, as the Supervisor will attempt to initialize
-    the command queues in the exact way prescribed below. The abstract
-    methods 'start' and '_stop' *MUST BE* overridden by the inheriting
-    class.
-    #
-    'start' and must take two arguments, a multiprocesing Pipe()
-    connecting the process to a central application logger, and a Value
-    of boolean type, which serves as a kill signal for the process (when
-    set to True).
+    The abstract methods '_start' and '_stop' *MUST BE* overridden by
+    the inheriting class. _start is not passed any arguments by default,
+    but has been written for the possibility in the future. _stop will be
+    called when SIGTERM is raised by the OS (container is told to stop).
     #
     The remainder of the module can contain whatever classes
     and methods are needed for the functionality of the plugin,
@@ -81,6 +74,7 @@ class ControllerPlugin(ABC):
             self.functionality = functionality
         else:
             self._read_functionality()
+        self.stop_args = {}
         self.LOGGER.send = self.log
         signal(SIGTERM, self.sigterm_handler)
         super().__init__()
@@ -132,38 +126,24 @@ class ControllerPlugin(ABC):
                 "OptionalInputs": []
             }]
 
-    def _start(self, signal):
+    def start(self, *args):
+        """The entrypoint for the docker container
+        """
         host = "rethinkdb"
         if environ["STAGE"] == "TESTING":
             host = "127.0.0.1"
         self.db_conn = connect(host=host)
         self._advertise_functionality()
-        self.start(self.LOGGER, signal)
+        self._start(args)
 
     @abstractmethod
-    def start(self, logger, signal):
+    def _start(self, *args):
         """Start the plugin
 
         The 'start' method is what begins the control loop for the
         plugin (whatever it needs to do). It will be used as a target
-        for the creation of a LinkedProcess by the Supervisor. The
-        Supervisor will also hand it a 'logger' Pipe() object which
-        the plugin can optionally use for logging to the central
-        logger. Usage:
-
-        logger.send([
-            self.name,
-            <string: message_body>,
-            <int: 10(DEBUG)|20(INFO)|30(WARN)|40(ERR)|50(CRIT)>,
-            <unix epoch: time.time()>
-        ])
-
-        This method is also passed 'signal', a boolean multiprocessing
-        Value (accessed via the signal.value attribute) which is
-        used as a 'kill signal' for the processes running in this
-        plugin container. When set to 'True', the mprocess is expected
-        to gracefullly tear itself down, or else the Supervisor will
-        terminate it after a timeout period.
+        for the container entrypoint. The process is not handed any
+        arguments by default.
         """
         pass
 
@@ -247,14 +227,14 @@ class ControllerPlugin(ABC):
         """
 
         return job["Status"]
-    
+
     @staticmethod
-    def value_of(job, input):
-        """returns the value of an input name
+    def value_of(job, command_input):
+        """returns the value of a commaand input name
 
         Arguments:
             job {dict} -- A dict in the format of a job
-            input {str} -- the name of an input or optional input
+            command_input {str} -- the name of an input or optional input
 
         Returns:
             str -- The value of the first input or optional input with the
@@ -263,10 +243,10 @@ class ControllerPlugin(ABC):
             found.
         """
 
-        if isinstance(input, str):
-            value = ControllerPlugin.value_of_input(job, input)
+        if isinstance(command_input, str):
+            value = ControllerPlugin.value_of_input(job, command_input)
             if value is None:
-                value = ControllerPlugin.value_of_option(job, input)
+                value = ControllerPlugin.value_of_option(job, command_input)
             return value
         else:
             return None
@@ -332,7 +312,8 @@ class ControllerPlugin(ABC):
 
         inputs = ControllerPlugin._get_value_list(job["JobCommand"]["Inputs"])
         optional = ControllerPlugin._get_value_list(
-                    job["JobCommand"]["OptionalInputs"])
+            job["JobCommand"]["OptionalInputs"]
+        )
         return (inputs, optional)
 
     @staticmethod
@@ -427,13 +408,13 @@ class ControllerPlugin(ABC):
                 "JobCommand": {dict} -- command to run
             }
         """
-        job = get_next_job(self.name, False, conn=self.db_conn)
+        job = get_next_job(self.name, verify_job=False, conn=self.db_conn)
         if job:
             self._update_job(job["id"])
             job["Status"] = transition_success(job["Status"])
         return job
 
-    def request_job_for_client(self, location):
+    def request_job_for_client(self, location, port=None):
         """Attempts to get a job with the same plugin name at the specified
         location (typically an IP). Use this for communicating for multiple
         plugins
@@ -452,11 +433,12 @@ class ControllerPlugin(ABC):
                 "JobCommand": {dict} -- command to run
             }
         """
-        job = get_next_job_by_location(
+        job = get_next_job(
             self.name,
-            location,
-            False,
-            self.db_conn
+            location=location,
+            port=port,
+            verify_job=False,
+            conn=self.db_conn
         )
         if job:
             self._update_job(job["id"])
@@ -506,15 +488,21 @@ class ControllerPlugin(ABC):
             job {dict} -- The job that errored
             msg {str|int|byte|float} -- (optional) The error message to display
         """
-
         self.respond_output(job, msg)
         self._update_job_status(job["id"], "Error")
 
     def stop(self):
         """Stop the plugin
 
-        This method can be used if any teardown is needed
-        before the plugin exits. It will be called automatically
-        when the SIGTERM is received for tearing the container down.
+        This method will be called upon SIGTERM , when the container is told to
+        stop. It will then call the _stop function which can
+        be overridden to perform teardown (Optional).
+        """
+        self._stop()
+
+    def _stop(self):
+        """Default teardown funtion.
+
+        Can be overridden to perform any necessary teardown if needed.
         """
         exit(0)

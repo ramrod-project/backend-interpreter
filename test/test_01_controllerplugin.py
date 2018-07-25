@@ -1,4 +1,4 @@
-"""Unit testing for the linked_process module.
+"""Unit testing for the controller_plugin module.
 """
 from json import dump, load
 from os import environ, makedirs, remove, removedirs
@@ -128,7 +128,7 @@ class SamplePlugin(controller_plugin.ControllerPlugin):
             functionality=functionality
         )
 
-    def start(self, logger, signal):
+    def _start(self):
         """abstractmethod overload"""
         pass
 
@@ -164,6 +164,8 @@ def clear_dbs():
     brain.r.db("Brain").table("Jobs").delete().run(conn)
     brain.r.db("Audit").table("Jobs").delete().run(conn)
     for table in brain.r.db("Plugins").table_list().run(conn):
+        if "test_table" in table:
+            continue
         brain.r.db("Plugins").table(table).delete().run(conn)
     sleep(1)
 
@@ -258,6 +260,11 @@ def test_request_job(plugin_base, give_brain, clear_dbs, conn):
     sleep(2)
     result = plugin_base.request_job_for_client("127.0.0.1")
     assert result == SAMPLE_JOB_PENDING
+    brain.r.db("Brain").table("Jobs").get(SAMPLE_JOB["id"]).update({"Status": "Ready"}).run(conn)
+    sleep(2)
+    result = plugin_base.request_job_for_client("127.0.0.1", "8080")
+    assert result == SAMPLE_JOB_PENDING
+    
 
 def test_update_job(plugin_base, give_brain, clear_dbs, conn):
     plugin_base.db_conn = conn
