@@ -81,28 +81,27 @@ def proc():
     environ["STAGE"] = old_stage
     environ["PORT"] = old_port
 
-# @fixture
-# def linux_harn():
-#   process = Process(target=wrap_loop())
-#   yield process
-#   try:
-#       process.terminate()
-#   except:
-#       pass
+@fixture
+def linux_harn():
+  process = Process(target=wrap_loop())
+  yield process
+  try:
+      process.terminate()
+  except:
+      pass
 
 def wrap_loop():
   client_info = "C_127.0.0.1_1"
-  sleep(10)
   linharn.control_loop(client_info)
 
-def test_linharn(startup_brain, proc):
+def test_linharn(startup_brain, proc, linux_harn):
     proc.start()
     echo_job = [SAMPLE_JOB]
     inserted = brain.queries.insert_jobs(echo_job, True, brain.connect())
     sleep(5)
-    task = linharn.get_task("C_127.0.0.1_1")
-    cmd, args = task.text.split(",",1)
-    linharn.handle_resp(cmd, args, "C_127.0.0.1_1")
-    sleep(3)
+    # task = linharn.get_task("C_127.0.0.1_1")
+    # cmd, args = task.text.split(",",1)
+    # linharn.handle_resp(cmd, args, "C_127.0.0.1_1")
+    # sleep(3)
     out = brain.queries.get_output_content(inserted["generated_keys"][0], conn=brain.connect())
     assert out == "Hello World"
