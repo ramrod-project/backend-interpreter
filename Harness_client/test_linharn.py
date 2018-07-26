@@ -68,7 +68,7 @@ def proc():
     environ["PLUGIN"] = "Harness"
     environ["STAGE"] = "TESTING"
     environ["PORT"] = "5000"
-    import server
+    from .. import server
     plugin_instance = server.get_class_instance("Harness")
     process = Process(target=plugin_instance.start)
     yield process
