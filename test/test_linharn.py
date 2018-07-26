@@ -4,7 +4,7 @@ from time import sleep, time
 from multiprocessing import Process
 import brain
 import docker
-import linharn
+from Harness_client import linharn
 
 CLIENT = docker.from_env()
 
@@ -68,7 +68,7 @@ def proc():
     environ["PLUGIN"] = "Harness"
     environ["STAGE"] = "TESTING"
     environ["PORT"] = "5000"
-    from .. import server
+    import server
     plugin_instance = server.get_class_instance("Harness")
     process = Process(target=plugin_instance.start)
     yield process
