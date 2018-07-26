@@ -94,7 +94,7 @@ def wrap_loop():
   sleep(10)
   linharn.control_loop(client_info)
 
-def test_linharn(linux_harn, proc, startup_brain):
+def test_linharn(proc, startup_brain, linux_harn):
   echo_job = [SAMPLE_JOB]
   inserted = brain.queries.insert_jobs(echo_job, True, brain.connect())
   sleep(5)
