@@ -92,7 +92,7 @@ def linux_harn():
 def wrap_loop():
   client_info = "C_127.0.0.1_1"
   sleep(10)
-  linharn.control_loop(client_info)
+  linharn.control_loop(client_info,5005)
 
 def test_linharn(startup_brain, proc, linux_harn):
   echo_job = [SAMPLE_JOB]
