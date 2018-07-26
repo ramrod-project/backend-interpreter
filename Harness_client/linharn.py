@@ -7,14 +7,20 @@ HARNESS_STR = "127.0.0.1:5000"
 def control_loop(client_info):
   client = client_info
   looping = True
+  retry = 0
   # loop through, GET from server and then act on the command
   while looping:
     try:
       resp = requests.get("http://{}/harness/{}".format(HARNESS_STR, client), timeout=MAX_REQUEST_TIMEOUT)
       cmd, args = resp.text.split(",",1)
       handle_resp(cmd, args, client)
+      retry = 0
     except requests.exceptions.ConnectionError:
+      sleep(.5)
+      retry += 1
       continue
+    if retry > 10:
+      looping = False
 
 def handle_resp(resp, args, client):
   print(resp)
