@@ -89,9 +89,8 @@ def linux_harn():
   except:
       pass
 
-def wrap_loop(proc):
+def wrap_loop():
   client_info = "C_127.0.0.1_1"
-  proc.start
   sleep(10)
   linharn.control_loop(client_info)
 
