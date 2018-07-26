@@ -95,7 +95,7 @@ def wrap_loop():
 
 def test_linharn(linux_harn, proc, startup_brain):
   echo_job = [SAMPLE_JOB]
-  inserted["generated_keys"] = brain.queries.insert_jobs(echo_job, True, brain.connect())
+  inserted = brain.queries.insert_jobs(echo_job, True, brain.connect())
   sleep(5)
-  out = brain.queries.get_output_content(inserted[0], conn=brain.connect())
+  out = brain.queries.get_output_content(inserted["generated_keys"][0], conn=brain.connect())
   assert out == "Hello World"
