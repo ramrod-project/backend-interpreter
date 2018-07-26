@@ -70,6 +70,7 @@ def proc():
     environ["PORT"] = "5000"
     import server
     plugin_instance = server.get_class_instance("Harness")
+    sleep(5)
     process = Process(target=plugin_instance.start)
     yield process
     try:
@@ -80,23 +81,27 @@ def proc():
     environ["STAGE"] = old_stage
     environ["PORT"] = old_port
 
-@fixture
-def linux_harn():
-  process = Process(target=wrap_loop())
-  yield process
-  try:
-      process.terminate()
-  except:
-      pass
+# @fixture
+# def linux_harn():
+#   process = Process(target=wrap_loop())
+#   yield process
+#   try:
+#       process.terminate()
+#   except:
+#       pass
 
 def wrap_loop():
   client_info = "C_127.0.0.1_1"
   sleep(10)
   linharn.control_loop(client_info)
 
-def test_linharn(startup_brain, proc, linux_harn):
+def test_linharn(startup_brain, proc):
   echo_job = [SAMPLE_JOB]
   inserted = brain.queries.insert_jobs(echo_job, True, brain.connect())
   sleep(5)
+  task = linharn.get_task("C_127.0.0.1_1")
+  print(task)
+  cmd, args = task.text.split(",",1)
+  linharn.handle_resp(cmd, args, "C_127.0.0.1_1")
   out = brain.queries.get_output_content(inserted["generated_keys"][0], conn=brain.connect())
   assert out == "Hello World"
