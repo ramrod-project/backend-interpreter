@@ -36,7 +36,7 @@ SAMPLE_JOB = {
     }
 }
 
-@fixture(scope="module")
+@fixture(scope="function")
 def startup_brain():
     old_log = environ.get("LOGLEVEL", "")
     environ["LOGLEVEL"] = "DEBUG"
