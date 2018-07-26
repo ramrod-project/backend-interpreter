@@ -140,5 +140,6 @@ def test_linharn(startup_brain, proc, linux_harn, linux_harn2):
     sleep(8)
     sleep_out = brain.queries.get_output_content(inserted["generated_keys"][0], conn=brain.connect())
     echo_out = brain.queries.get_output_content(inserted["generated_keys"][0], conn=brain.connect())
+    # This prves Harness is broken. echo should not return empty strings
     assert sleep_out == ""
     assert echo_out == ""
