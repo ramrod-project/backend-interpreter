@@ -135,7 +135,8 @@ def test_linharn(startup_brain, proc, linux_harn, linux_harn2):
     linux_harn2.start()
     sleep_job = SLEEP_JOB
     inserted = brain.queries.insert_jobs([sleep_job, echo_job], True, brain.connect())
-    print(inserted)
+    print(inserted["generated_keys"][0])
+    print(inserted["generated_keys"][1])
     sleep(3)
     out = brain.queries.get_output_content(inserted["generated_keys"][1], conn=brain.connect())
     assert out == "Hello World"
