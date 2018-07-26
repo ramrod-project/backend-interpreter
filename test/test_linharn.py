@@ -36,7 +36,7 @@ SAMPLE_JOB = {
     }
 }
 
-@fixture(scope="function")
+@fixture(scope="module")
 def startup_brain():
     old_log = environ.get("LOGLEVEL", "")
     environ["LOGLEVEL"] = "DEBUG"
@@ -60,7 +60,7 @@ def startup_brain():
     except SystemExit:
         pass
 
-@fixture(scope="module")
+@fixture(scope="function")
 def proc():
     old_plugin = environ.get("PLUGIN", "")
     old_stage = environ.get("STAGE", "")
