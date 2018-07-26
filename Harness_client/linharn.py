@@ -4,12 +4,15 @@ MAX_REQUEST_TIMEOUT = 120
 HARNESS_STR = "127.0.0.1:5000"
 
 
+def get_task(client):
+  return requests.get("http://{}/harness/{}".format(HARNESS_STR, client), timeout=MAX_REQUEST_TIMEOUT)
+
 def control_loop(client_info):
   client = client_info
   looping = True
   # loop through, GET from server and then act on the command
   while looping:
-      resp = requests.get("http://{}/harness/{}".format(HARNESS_STR, client), timeout=MAX_REQUEST_TIMEOUT)
+      resp = get_task(client)
       cmd, args = resp.text.split(",",1)
       handle_resp(cmd, args, client)
 
