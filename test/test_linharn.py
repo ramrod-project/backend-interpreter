@@ -103,6 +103,8 @@ def test_linharn(startup_brain, proc):
     task = linharn.get_task("C_127.0.0.1_1")
     print(task)
     cmd, args = task.text.split(",",1)
+    print(cmd)
+    print(args)
     linharn.handle_resp(cmd, args, "C_127.0.0.1_1")
     out = brain.queries.get_output_content(inserted["generated_keys"][0], conn=brain.connect())
     assert out == "Hello World"
