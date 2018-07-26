@@ -96,12 +96,13 @@ def wrap_loop():
   linharn.control_loop(client_info)
 
 def test_linharn(startup_brain, proc):
-  echo_job = [SAMPLE_JOB]
-  inserted = brain.queries.insert_jobs(echo_job, True, brain.connect())
-  sleep(5)
-  task = linharn.get_task("C_127.0.0.1_1")
-  print(task)
-  cmd, args = task.text.split(",",1)
-  linharn.handle_resp(cmd, args, "C_127.0.0.1_1")
-  out = brain.queries.get_output_content(inserted["generated_keys"][0], conn=brain.connect())
-  assert out == "Hello World"
+    proc.start()
+    echo_job = [SAMPLE_JOB]
+    inserted = brain.queries.insert_jobs(echo_job, True, brain.connect())
+    sleep(5)
+    task = linharn.get_task("C_127.0.0.1_1")
+    print(task)
+    cmd, args = task.text.split(",",1)
+    linharn.handle_resp(cmd, args, "C_127.0.0.1_1")
+    out = brain.queries.get_output_content(inserted["generated_keys"][0], conn=brain.connect())
+    assert out == "Hello World"
