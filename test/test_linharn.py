@@ -17,7 +17,7 @@ SAMPLE_TARGET = {
 
 NOW = time()
 
-SAMPLE_JOB = {
+ECHO_JOB = {
     "JobTarget": SAMPLE_TARGET,
     "Status": "Ready",
     "StartTime": NOW,
@@ -33,6 +33,19 @@ SAMPLE_JOB = {
                 "Value": "Hello World"
             }
         ],
+        "OptionalInputs": []
+    }
+}
+
+SLEEP_JOB = {
+    "JobTarget": SAMPLE_TARGET,
+    "Status": "Ready",
+    "StartTime": NOW,
+    "JobCommand":  {
+        "CommandName": "sleep",
+        "Tooltip": " testing command",
+        "Output": False,
+        "Inputs": [],
         "OptionalInputs": []
     }
 }
@@ -109,7 +122,7 @@ def test_linharn(startup_brain, proc, linux_harn, linux_harn2):
     while not proc.is_alive():
         sleep(.5)
     linux_harn.start()
-    echo_job = SAMPLE_JOB
+    echo_job = ECHO_JOB
     inserted = brain.queries.insert_jobs([echo_job], True, brain.connect())
     sleep(15)
     # task = linharn.get_task("C_127.0.0.1_1")
@@ -120,8 +133,7 @@ def test_linharn(startup_brain, proc, linux_harn, linux_harn2):
     assert out == "Hello World"
 
     linux_harn2.start()
-    sleep_job = deepcopy([SAMPLE_JOB])
-    sleep_job["JobCommand"]["CommandName"] = "sleep"
+    sleep_job = SLEEP_JOB
     inserted = brain.queries.insert_jobs([sleep_job, echo_job], True, brain.connect())
     sleep(3)
     out = brain.queries.get_output_content(inserted["generated_keys"][1], conn=brain.connect())
