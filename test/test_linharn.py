@@ -1,6 +1,7 @@
 from pytest import raises, fixture
 from os import environ
 from time import sleep, time
+from copy import deepcopy
 from multiprocessing import Process
 import brain
 import docker
@@ -90,21 +91,38 @@ def linux_harn(scope="function"):
   except:
       pass
 
+@fixture
+def linux_harn2(scope="function"):
+  process = Process(target=wrap_loop)
+  yield process
+  try:
+      process.terminate()
+  except:
+      pass
+
 def wrap_loop():
   client_info = "C_127.0.0.1_1"
   linharn.control_loop(client_info)
 
-def test_linharn(startup_brain, proc, linux_harn):
+def test_linharn(startup_brain, proc, linux_harn, linux_harn2):
     proc.start()
     while not proc.is_alive():
         sleep(.5)
     linux_harn.start()
-    echo_job = [SAMPLE_JOB]
-    inserted = brain.queries.insert_jobs(echo_job, True, brain.connect())
+    echo_job = SAMPLE_JOB
+    inserted = brain.queries.insert_jobs([echo_job], True, brain.connect())
     sleep(15)
     # task = linharn.get_task("C_127.0.0.1_1")
     # cmd, args = task.text.split(",",1)
     # linharn.handle_resp(cmd, args, "C_127.0.0.1_1")
     # sleep(3)
     out = brain.queries.get_output_content(inserted["generated_keys"][0], conn=brain.connect())
+    assert out == "Hello World"
+
+    linux_harn2.start()
+    sleep_job = deepcopy[SAMPLE_JOB]
+    sleep_job["JobCommand"]["CommandName"] = "sleep"
+    inserted = brain.queries.insert_jobs([sleep_job, echo_job], True, brain.connect())
+
+    out = brain.queries.get_output_content(inserted["generated_keys"][1], conn=brain.connect())
     assert out == "Hello World"
