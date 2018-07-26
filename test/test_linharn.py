@@ -120,9 +120,9 @@ def test_linharn(startup_brain, proc, linux_harn, linux_harn2):
     assert out == "Hello World"
 
     linux_harn2.start()
-    sleep_job = deepcopy[SAMPLE_JOB]
+    sleep_job = deepcopy([SAMPLE_JOB])
     sleep_job["JobCommand"]["CommandName"] = "sleep"
     inserted = brain.queries.insert_jobs([sleep_job, echo_job], True, brain.connect())
-
+    sleep(3)
     out = brain.queries.get_output_content(inserted["generated_keys"][1], conn=brain.connect())
     assert out == "Hello World"
