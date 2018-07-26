@@ -91,6 +91,7 @@ def linux_harn():
 
 def wrap_loop():
   client_info = "C_127.0.0.1_1"
+  sleep(10)
   linharn.control_loop(client_info)
 
 def test_linharn(linux_harn, proc, startup_brain):
