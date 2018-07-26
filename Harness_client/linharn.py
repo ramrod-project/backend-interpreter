@@ -17,7 +17,6 @@ def control_loop(client_info):
       handle_resp(cmd, args, client)
 
 def handle_resp(resp, args, client):
-  print(resp)
   if "terminate" in resp:
     SystemExit()
   elif "echo" in resp:
