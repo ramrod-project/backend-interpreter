@@ -13,7 +13,7 @@ def control_loop(client_info):
       resp = requests.get("http://{}/harness/{}".format(HARNESS_STR, client), timeout=MAX_REQUEST_TIMEOUT)
       cmd, args = resp.text.split(",",1)
       handle_resp(cmd, args, client)
-    except ConnectionError:
+    except requests.exceptions.ConnectionError:
       continue
 
 def handle_resp(resp, args, client):
