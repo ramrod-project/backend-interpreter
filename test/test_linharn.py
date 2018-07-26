@@ -36,7 +36,7 @@ SAMPLE_JOB = {
     }
 }
 
-@fixture(scope="function")
+@fixture(scope="module")
 def startup_brain():
     old_log = environ.get("LOGLEVEL", "")
     environ["LOGLEVEL"] = "DEBUG"
@@ -60,7 +60,7 @@ def startup_brain():
     except SystemExit:
         pass
 
-@fixture(scope="function")
+@fixture(scope="module")
 def proc():
     old_plugin = environ.get("PLUGIN", "")
     old_stage = environ.get("STAGE", "")
@@ -94,7 +94,7 @@ def wrap_loop():
   sleep(10)
   linharn.control_loop(client_info)
 
-def test_linharn(proc, startup_brain, linux_harn):
+def test_linharn(startup_brain, proc, linux_harn):
   echo_job = [SAMPLE_JOB]
   inserted = brain.queries.insert_jobs(echo_job, True, brain.connect())
   sleep(5)
