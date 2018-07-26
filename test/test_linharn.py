@@ -82,8 +82,8 @@ def proc():
     environ["PORT"] = old_port
 
 @fixture
-def linux_harn():
-  process = Process(target=wrap_loop())
+def linux_harn(scope="function"):
+  process = Process(target=wrap_loop)
   yield process
   try:
       process.terminate()
@@ -96,9 +96,12 @@ def wrap_loop():
 
 def test_linharn(startup_brain, proc, linux_harn):
     proc.start()
+    while not proc.is_alive():
+        sleep(.5)
+    linux_harn.start()
     echo_job = [SAMPLE_JOB]
     inserted = brain.queries.insert_jobs(echo_job, True, brain.connect())
-    sleep(5)
+    sleep(15)
     # task = linharn.get_task("C_127.0.0.1_1")
     # cmd, args = task.text.split(",",1)
     # linharn.handle_resp(cmd, args, "C_127.0.0.1_1")
