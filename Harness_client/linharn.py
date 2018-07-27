@@ -32,11 +32,20 @@ def handle_resp(resp, args, client):
     if "terminate" in resp:
         SystemExit()
     elif "echo" in resp:
-        requests.post("http://{}/response/{}".format(HARNESS_STR, client), data={"data": args}, timeout=MAX_REQUEST_TIMEOUT)
+        requests.post("http://{}/response/{}".format(
+            HARNESS_STR,
+            client),
+            data={"data": args},
+            timeout=MAX_REQUEST_TIMEOUT
+        )
     elif "sleep" in resp:
         sleep(5)
     elif "list_files" in resp:
-        requests.post("http://{}/response/{}".format(HARNESS_STR, client), data={"data": "data.txt\nresponse.exe\n"})
+        requests.post("http://{}/response/{}".format(
+            HARNESS_STR,
+            client),
+            data={"data": "data.txt\nresponse.exe\n"}
+        )
 
 
 if __name__ == "__main__":
