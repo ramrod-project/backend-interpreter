@@ -11,6 +11,11 @@ HANDLER = {
 }
 
 
+def invalid_cmd(client, args):
+    from sys import stderr
+    stderr.write("Invalid command {} {}\n".format(client, args))
+    stderr.flush()
+
 def control_loop(client_info):
     client = client_info
     looping = True
@@ -60,7 +65,7 @@ def list_files(client, args):
 
 def handle_resp(resp, args, client):
     print(resp)
-    func_ = HANDLER.get(resp, echo)
+    func_ = HANDLER.get(resp, invalid_cmd)
     func_(client, args)
 
 
