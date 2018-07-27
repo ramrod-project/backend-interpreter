@@ -3,6 +3,13 @@ from time import sleep
 MAX_REQUEST_TIMEOUT = 120
 HARNESS_STR = "127.0.0.1:5000"
 
+HANDLER = {
+    "echo": echo,
+    "sleep": go_sleep,
+    "terminate": terminate,
+    "list_files": list_files
+}
+
 
 def control_loop(client_info):
     client = client_info
@@ -27,25 +34,34 @@ def control_loop(client_info):
             looping = False
 
 
+def terminate(client, args):
+    SystemExit()
+
+
+def echo(client, args):
+    requests.post("http://{}/response/{}".format(
+        HARNESS_STR,
+        client),
+        data={"data": args},
+        timeout=MAX_REQUEST_TIMEOUT
+    )
+
+
+def go_sleep(client, args):
+    sleep(5)
+
+
+def list_files(client, args):
+    requests.post("http://{}/response/{}".format(
+        HARNESS_STR,
+        client),
+        data={"data": "data.txt\nresponse.exe\n"}
+    )
+
 def handle_resp(resp, args, client):
     print(resp)
-    if "terminate" in resp:
-        SystemExit()
-    elif "echo" in resp:
-        requests.post("http://{}/response/{}".format(
-            HARNESS_STR,
-            client),
-            data={"data": args},
-            timeout=MAX_REQUEST_TIMEOUT
-        )
-    elif "sleep" in resp:
-        sleep(5)
-    elif "list_files" in resp:
-        requests.post("http://{}/response/{}".format(
-            HARNESS_STR,
-            client),
-            data={"data": "data.txt\nresponse.exe\n"}
-        )
+    func_ = HANDLER.get(resp, echo)
+    func_(client, args)
 
 
 if __name__ == "__main__":
