@@ -122,7 +122,7 @@ def test_linharn(startup_brain, proc, linux_harn, linux_harn2):
     while not proc.is_alive():
         sleep(.5)
     linux_harn.start()
-    echo_job = brain.queries.get_plugin_command("Harness", "echo", brain.connect)
+    echo_job = brain.queries.get_plugin_command("Harness", "echo", brain.connect())
     echo_job["Status"] = "Waiting"
     echo_job["Inputs"][0]["Value"] = "Hello World"
     echo_job["StartTime"] = time()
