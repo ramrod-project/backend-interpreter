@@ -145,6 +145,5 @@ def test_linharn(startup_brain, proc, linux_harn, linux_harn2):
         if sleep_out is not None:
             loop = False
         sleep(1)
-    # This prves Harness is broken. echo should not return empty strings
     assert sleep_out == ""
-    assert echo_out == ""
+    assert echo_out == "Hello World"
