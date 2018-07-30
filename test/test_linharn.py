@@ -62,7 +62,7 @@ def startup_brain():
         ports={"28015/tcp": 28015},
         remove=True,
     )
-    sleep(3) #docker needs to start up the DB before sup starts up
+    sleep(3) #docker needs to start up the DB
     yield
     try:
         environ["LOGLEVEL"] = old_log
@@ -124,17 +124,13 @@ def test_linharn(startup_brain, proc, linux_harn, linux_harn2):
     linux_harn.start()
     sleep(8)
     echo = brain.queries.get_plugin_command("Harness", "echo", brain.connect())
-    print(echo)
     echo_job = {
         "Status" : "Waiting",
         "StartTime": time(),
         "JobTarget": SAMPLE_TARGET,
         "JobCommand": echo
     }
-    # input_dict = echo_job["Inputs"][0]
-    # input_dict
     echo_job["JobCommand"]["Inputs"][0]["Value"] = "Hello World"
-    print(echo_job)
     inserted = brain.queries.insert_jobs([echo_job], True, brain.connect())
     loop = True
     now = time()
@@ -143,10 +139,6 @@ def test_linharn(startup_brain, proc, linux_harn, linux_harn2):
         if out is not None:
             loop = False
         sleep(1)
-    # task = linharn.get_task("C_127.0.0.1_1")
-    # cmd, args = task.text.split(",",1)
-    # linharn.handle_resp(cmd, args, "C_127.0.0.1_1")
-    # sleep(3)
     assert out == "Hello World"
 
     sleep_job = {
@@ -156,24 +148,7 @@ def test_linharn(startup_brain, proc, linux_harn, linux_harn2):
         "JobCommand": brain.queries.get_plugin_command("Harness", "sleep", brain.connect())
     }
     sleep_job["JobCommand"]["Inputs"][0]["Value"] = "3000"
-    print(sleep_job)
     inserted = brain.queries.insert_jobs([sleep_job], True, brain.connect())
     sleep(15)
     out = brain.queries.get_output_content(inserted["generated_keys"][0], conn=brain.connect())
     assert out == ""
-
-    # linux_harn2.start()
-    # sleep_job = SLEEP_JOB
-    # inserted = brain.queries.insert_jobs([sleep_job, echo_job], True, brain.connect())
-    # print(inserted["generated_keys"][0])
-    # print(inserted["generated_keys"][1])
-    # loop = True
-    # now = time()
-    # while time() - now < 60 and loop is True:
-    #     sleep_out = brain.queries.get_output_content(inserted["generated_keys"][0], conn=brain.connect())
-    #     if sleep_out is not None:
-    #         echo_out = brain.queries.get_output_content(inserted["generated_keys"][1], conn=brain.connect())
-    #         loop = False
-    #     sleep(1)
-    # assert sleep_out == ""
-    # assert echo_out == "Hello World"
