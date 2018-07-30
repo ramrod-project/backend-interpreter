@@ -122,7 +122,11 @@ def test_linharn(startup_brain, proc, linux_harn, linux_harn2):
     while not proc.is_alive():
         sleep(.5)
     linux_harn.start()
-    echo_job = ECHO_JOB
+    echo_job = brain.queries.get_plugin_command("Harness", "echo", brain.connect)
+    echo_job["Status"] = "Waiting"
+    echo_job["Inputs"][0]["Value"] = "Hello World"
+    echo_job["StartTime"] = time()
+    echo_job["JobTarget"] = SAMPLE_TARGET
     inserted = brain.queries.insert_jobs([echo_job], True, brain.connect())
     sleep(15)
     # task = linharn.get_task("C_127.0.0.1_1")
@@ -132,18 +136,18 @@ def test_linharn(startup_brain, proc, linux_harn, linux_harn2):
     out = brain.queries.get_output_content(inserted["generated_keys"][0], conn=brain.connect())
     assert out == "Hello World"
 
-    linux_harn2.start()
-    sleep_job = SLEEP_JOB
-    inserted = brain.queries.insert_jobs([sleep_job, echo_job], True, brain.connect())
-    print(inserted["generated_keys"][0])
-    print(inserted["generated_keys"][1])
-    loop = True
-    now = time()
-    while time() - now < 60 and loop is True:
-        sleep_out = brain.queries.get_output_content(inserted["generated_keys"][0], conn=brain.connect())
-        if sleep_out is not None:
-            echo_out = brain.queries.get_output_content(inserted["generated_keys"][1], conn=brain.connect())
-            loop = False
-        sleep(1)
-    assert sleep_out == ""
-    assert echo_out == "Hello World"
+    # linux_harn2.start()
+    # sleep_job = SLEEP_JOB
+    # inserted = brain.queries.insert_jobs([sleep_job, echo_job], True, brain.connect())
+    # print(inserted["generated_keys"][0])
+    # print(inserted["generated_keys"][1])
+    # loop = True
+    # now = time()
+    # while time() - now < 60 and loop is True:
+    #     sleep_out = brain.queries.get_output_content(inserted["generated_keys"][0], conn=brain.connect())
+    #     if sleep_out is not None:
+    #         echo_out = brain.queries.get_output_content(inserted["generated_keys"][1], conn=brain.connect())
+    #         loop = False
+    #     sleep(1)
+    # assert sleep_out == ""
+    # assert echo_out == "Hello World"
