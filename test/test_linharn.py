@@ -150,7 +150,7 @@ def test_linharn(startup_brain, proc, linux_harn, linux_harn2):
         "JobTarget": SAMPLE_TARGET,
         "JobCommand": brain.queries.get_plugin_command("Harness", "sleep", brain.connect())
     }
-    sleep_job["JobCommand"]["Inputs"][0]["Value"] = "10000"
+    sleep_job["JobCommand"]["Inputs"][0]["Value"] = "3000"
     print(sleep_job)
     inserted = brain.queries.insert_jobs([sleep_job], True, brain.connect())
     sleep(15)
