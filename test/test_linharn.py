@@ -123,11 +123,15 @@ def test_linharn(startup_brain, proc, linux_harn, linux_harn2):
         sleep(.5)
     linux_harn.start()
     sleep(8)
-    echo_job = brain.queries.get_plugin_command("Harness", "echo", brain.connect())
-    echo_job["Status"] = "Waiting"
+    echo = brain.queries.get_plugin_command("Harness", "echo", brain.connect())
+    print(echo)
+    echo_job = {
+        "Status" : "Waiting",
+        "StartTime": time(),
+        "JobTarget": SAMPLE_TARGET,
+        "JobCommand": echo
+    }
     echo_job["Inputs"][0]["Value"] = "Hello World"
-    echo_job["StartTime"] = time()
-    echo_job["JobTarget"] = SAMPLE_TARGET
     inserted = brain.queries.insert_jobs([echo_job], True, brain.connect())
     sleep(15)
     # task = linharn.get_task("C_127.0.0.1_1")
