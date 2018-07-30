@@ -134,6 +134,7 @@ def test_linharn(startup_brain, proc, linux_harn, linux_harn2):
     # input_dict = echo_job["Inputs"][0]
     # input_dict
     echo_job["JobCommand"]["Inputs"][0]["Value"] = "Hello World"
+    print(echo_job)
     inserted = brain.queries.insert_jobs([echo_job], True, brain.connect())
     sleep(15)
     # task = linharn.get_task("C_127.0.0.1_1")
