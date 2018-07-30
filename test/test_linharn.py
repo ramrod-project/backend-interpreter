@@ -4,10 +4,12 @@ from time import sleep, time
 from copy import deepcopy
 from multiprocessing import Process
 import brain
+from brain.queries import get_plugin_commands
 import docker
 from Harness_client import linharn
 
 CLIENT = docker.from_env()
+
 
 SAMPLE_TARGET = {
     "PluginName": "Harness",
@@ -21,33 +23,14 @@ ECHO_JOB = {
     "JobTarget": SAMPLE_TARGET,
     "Status": "Ready",
     "StartTime": NOW,
-    "JobCommand":  {
-        "CommandName": "echo",
-        "Tooltip": " testing command",
-        "Output": True,
-        "Inputs": [
-            {
-                "Name": "testinput",
-                "Type": "textbox",
-                "Tooltip": "fortesting",
-                "Value": "Hello World"
-            }
-        ],
-        "OptionalInputs": []
-    }
+    "JobCommand":  None
 }
 
 SLEEP_JOB = {
     "JobTarget": SAMPLE_TARGET,
     "Status": "Ready",
     "StartTime": NOW,
-    "JobCommand":  {
-        "CommandName": "sleep",
-        "Tooltip": " testing command",
-        "Output": False,
-        "Inputs": [],
-        "OptionalInputs": []
-    }
+    "JobCommand":  None
 }
 
 @fixture(scope="module")
@@ -104,25 +87,35 @@ def linux_harn(scope="function"):
   except:
       pass
 
-@fixture
-def linux_harn2(scope="function"):
-  process = Process(target=wrap_loop)
-  yield process
-  try:
-      process.terminate()
-  except:
-      pass
 
 def wrap_loop():
   client_info = "C_127.0.0.1_1"
   linharn.control_loop(client_info)
 
-def test_linharn(startup_brain, proc, linux_harn, linux_harn2):
+def test_linharn(startup_brain, proc, linux_harn):
     proc.start()
     while not proc.is_alive():
         sleep(.5)
-    linux_harn.start()
-    echo_job = ECHO_JOB
+    sleep(10)
+    commands = [x for x in get_plugin_commands("Harness")]
+    assert commands == ""
+    for cmd in commands:
+        if "sleep" in cmd["CommandName"]:
+            sleep_cmd = cmd
+        elif "echo" in cmd["CommandName"]:
+            echo_cmd = cmd
+
+
+    echo_job = deepcopy(ECHO_JOB)
+    echo_job['JobCommand'] = echo_cmd
+    echo_job['JobCommand']["Inputs"][0]['Value'] = "Hello World"
+
+
+    sleep_job = deepcopy(SLEEP_JOB)
+    sleep_job['JobCommand'] = sleep_cmd
+    sleep_job['JobCommand']['Inputs'][0]['Value'] = "3"
+
+
     inserted = brain.queries.insert_jobs([echo_job], True, brain.connect())
     sleep(15)
     # task = linharn.get_task("C_127.0.0.1_1")
@@ -132,7 +125,6 @@ def test_linharn(startup_brain, proc, linux_harn, linux_harn2):
     out = brain.queries.get_output_content(inserted["generated_keys"][0], conn=brain.connect())
     assert out == "Hello World"
 
-    linux_harn2.start()
     sleep_job = SLEEP_JOB
     inserted = brain.queries.insert_jobs([sleep_job, echo_job], True, brain.connect())
     print(inserted["generated_keys"][0])
