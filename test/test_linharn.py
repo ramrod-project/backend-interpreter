@@ -126,7 +126,7 @@ def test_linharn(startup_brain, proc, linux_harn, linux_harn2):
     echo = brain.queries.get_plugin_command("Harness", "echo", brain.connect())
     print(echo)
     echo_job = {
-        "Status" : "Ready",
+        "Status" : "Waiting",
         "StartTime": time(),
         "JobTarget": SAMPLE_TARGET,
         "JobCommand": echo
