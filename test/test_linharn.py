@@ -136,7 +136,7 @@ def test_linharn(startup_brain, proc, linux_harn, linux_harn2):
     echo_job["JobCommand"]["Inputs"][0]["Value"] = "Hello World"
     print(echo_job)
     inserted = brain.queries.insert_jobs([echo_job], True, brain.connect())
-    sleep(30)
+    sleep(60)
     # task = linharn.get_task("C_127.0.0.1_1")
     # cmd, args = task.text.split(",",1)
     # linharn.handle_resp(cmd, args, "C_127.0.0.1_1")
@@ -144,18 +144,6 @@ def test_linharn(startup_brain, proc, linux_harn, linux_harn2):
     out = brain.queries.get_output_content(inserted["generated_keys"][0], conn=brain.connect())
     assert out == "Hello World"
 
-    sleep_job = {
-        "Status" : "Waiting",
-        "StartTime": time(),
-        "JobTarget": SAMPLE_TARGET,
-        "JobCommand": brain.queries.get_plugin_command("Harness", "sleep", brain.connect())
-    }
-    sleep_job["JobCommand"]["Inputs"][0]["Value"] = "3000"
-    print(sleep_job)
-    inserted = brain.queries.insert_jobs([sleep_job], True, brain.connect())
-    sleep(15)
-    out = brain.queries.get_output_content(inserted["generated_keys"][0], conn=brain.connect())
-    assert out == ""
 
     # linux_harn2.start()
     # sleep_job = SLEEP_JOB
