@@ -139,7 +139,7 @@ def test_linharn(startup_brain, proc, linux_harn, linux_harn2):
     print(inserted["generated_keys"][1])
     loop = True
     now = time()
-    while time() - now < 45 and loop is True:
+    while time() - now < 60 and loop is True:
         sleep_out = brain.queries.get_output_content(inserted["generated_keys"][0], conn=brain.connect())
         if sleep_out is not None:
             echo_out = brain.queries.get_output_content(inserted["generated_keys"][1], conn=brain.connect())
