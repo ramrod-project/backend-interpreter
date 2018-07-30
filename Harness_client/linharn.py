@@ -47,7 +47,7 @@ def echo(client, args):
 
 
 def go_sleep(client, args):
-    sleep(5)
+    sleep(float(args) / 1000.0)
 
 
 def list_files(client, args):

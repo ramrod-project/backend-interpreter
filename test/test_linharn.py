@@ -62,7 +62,7 @@ def startup_brain():
         ports={"28015/tcp": 28015},
         remove=True,
     )
-    sleep(3) #docker needs to start up the DB before sup starts up
+    sleep(3) #docker needs to start up the DB
     yield
     try:
         environ["LOGLEVEL"] = old_log
@@ -122,24 +122,33 @@ def test_linharn(startup_brain, proc, linux_harn, linux_harn2):
     while not proc.is_alive():
         sleep(.5)
     linux_harn.start()
-    echo_job = ECHO_JOB
+    sleep(8)
+    echo = brain.queries.get_plugin_command("Harness", "echo", brain.connect())
+    echo_job = {
+        "Status" : "Waiting",
+        "StartTime": time(),
+        "JobTarget": SAMPLE_TARGET,
+        "JobCommand": echo
+    }
+    echo_job["JobCommand"]["Inputs"][0]["Value"] = "Hello World"
     inserted = brain.queries.insert_jobs([echo_job], True, brain.connect())
-    sleep(15)
-    # task = linharn.get_task("C_127.0.0.1_1")
-    # cmd, args = task.text.split(",",1)
-    # linharn.handle_resp(cmd, args, "C_127.0.0.1_1")
-    # sleep(3)
-    out = brain.queries.get_output_content(inserted["generated_keys"][0], conn=brain.connect())
+    loop = True
+    now = time()
+    while time() - now < 30 and loop is True:
+        out = brain.queries.get_output_content(inserted["generated_keys"][0], conn=brain.connect())
+        if out is not None:
+            loop = False
+        sleep(1)
     assert out == "Hello World"
 
-    linux_harn2.start()
-    sleep_job = SLEEP_JOB
-    inserted = brain.queries.insert_jobs([sleep_job, echo_job], True, brain.connect())
-    print(inserted["generated_keys"][0])
-    print(inserted["generated_keys"][1])
-    sleep(8)
-    sleep_out = brain.queries.get_output_content(inserted["generated_keys"][0], conn=brain.connect())
-    echo_out = brain.queries.get_output_content(inserted["generated_keys"][0], conn=brain.connect())
-    # This prves Harness is broken. echo should not return empty strings
-    assert sleep_out == ""
-    assert echo_out == ""
+    sleep_job = {
+        "Status" : "Waiting",
+        "StartTime": time(),
+        "JobTarget": SAMPLE_TARGET,
+        "JobCommand": brain.queries.get_plugin_command("Harness", "sleep", brain.connect())
+    }
+    sleep_job["JobCommand"]["Inputs"][0]["Value"] = "3000"
+    inserted = brain.queries.insert_jobs([sleep_job], True, brain.connect())
+    sleep(15)
+    out = brain.queries.get_output_content(inserted["generated_keys"][0], conn=brain.connect())
+    assert out == ""
