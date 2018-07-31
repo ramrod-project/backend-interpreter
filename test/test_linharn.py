@@ -9,6 +9,15 @@ from Harness_client import linharn
 
 CLIENT = docker.from_env()
 
+class Linharn_proc:
+
+    def __init__(self):
+        self.procs = []
+    
+    def add_proc(self, func_):
+        self.procs.extend(Process(target=func_))
+        return self.procs[-1]
+
 SAMPLE_TARGET = {
     "PluginName": "Harness",
     "Location": "127.0.0.1",
@@ -97,10 +106,10 @@ def proc():
 
 @fixture
 def linux_harn(scope="function"):
-  process = Process(target=wrap_loop)
-  yield process
+  procs = Linharn_proc()
+  yield procs
   try:
-      process.terminate()
+      procs.terminate()
   except:
       pass
 
@@ -117,11 +126,15 @@ def wrap_loop():
   client_info = "C_127.0.0.1_1"
   linharn.control_loop(client_info)
 
-def test_linharn(startup_brain, proc, linux_harn, linux_harn2):
+def test_linharn(startup_brain, proc, linux_harn):
+    # procs = Linharn_proc()
+    lin1 = linux_harn.add_proc(wrap_loop)
+    lin2 = linux_harn.add_proc(wrap_loop)
     proc.start()
     while not proc.is_alive():
         sleep(.5)
-    linux_harn.start()
+    # linux_harn.start()
+    lin1.start()
     sleep(8)
     echo = brain.queries.get_plugin_command("Harness", "echo", brain.connect())
     echo_job = {
