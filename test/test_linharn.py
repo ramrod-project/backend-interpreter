@@ -88,13 +88,13 @@ def linux_harn(scope="function"):
 
 def test_linharn(startup_brain, proc, linux_harn):
     # create the processes that will contact the Harness plugin
-    lin1 = linux_harn.add_proc(Linharn_proc.wrap_loop)
+    linux_harn.add_proc(Linharn_proc.wrap_loop)
     # start the Harness plugin
     proc.start()
     while not proc.is_alive():
         sleep(.5)
     # start linux client
-    lin1.start()
+    linux_harn.procs[0].start()
     sleep(3)
     # insert an echo job into database
     echo = brain.queries.get_plugin_command("Harness", "echo", brain.connect())
