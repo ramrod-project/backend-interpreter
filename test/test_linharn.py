@@ -15,7 +15,7 @@ class Linharn_proc:
         self.procs = []
     
     def add_proc(self, func_):
-        self.procs.extend(Process(target=func_))
+        self.procs.append(Process(target=func_))
         return self.procs[-1]
 
 SAMPLE_TARGET = {
