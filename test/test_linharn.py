@@ -135,7 +135,7 @@ def test_linharn(startup_brain, proc, linux_harn):
         sleep(1)
     assert out == ""
 
-job_list = []
+    job_list = []
     for i in range(1,7):
         linux_harn.add_proc(linharn.wrap_loop)
         linux_harn.procs[i].start()
