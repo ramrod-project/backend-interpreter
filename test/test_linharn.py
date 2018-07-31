@@ -143,7 +143,7 @@ def test_linharn(startup_brain, proc, linux_harn):
         linux_harn.procs[i].start()
 
     for i in range(0,25):
-        echo_job["JobCommand"]["Inputs"][0]["Value"] = "Hello World" + i
+        echo_job["JobCommand"]["Inputs"][0]["Value"] = "Hello World" + str(i)
         job_list.append(echo_job)
     inserted = brain.queries.insert_jobs(job_list, True, brain.connect())
 
