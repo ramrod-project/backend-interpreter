@@ -14,9 +14,14 @@ class Linharn_proc:
     def __init__(self):
         self.procs = []
     
-    def add_proc(self, func_):
-        self.procs.append(Process(target=func_))
+    def add_proc(self):
+        self.procs.append(Process(target=Linharn_proc.wrap_loop))
         return self.procs[-1]
+
+    @staticmethod
+    def wrap_loop():
+        client_info = "C_127.0.0.1_1"
+        linharn.control_loop(client_info)
 
 SAMPLE_TARGET = {
     "PluginName": "Harness",
@@ -106,30 +111,18 @@ def proc():
 
 @fixture
 def linux_harn(scope="function"):
-  proc_list = Linharn_proc()
-  yield proc_list
-  try:
-      for proc in proc_list.procs:
-        proc.terminate()
-  except:
-      pass
+    proc_list = Linharn_proc()
+    yield proc_list
+    for proc in proc_list.procs:
+        try:
+            proc.terminate()
+        except:
+            pass
 
-@fixture
-def linux_harn2(scope="function"):
-  process = Process(target=wrap_loop)
-  yield process
-  try:
-      process.terminate()
-  except:
-      pass
-
-def wrap_loop():
-  client_info = "C_127.0.0.1_1"
-  linharn.control_loop(client_info)
 
 def test_linharn(startup_brain, proc, linux_harn):
     # create the processes that will contact the Harness plugin
-    lin1 = linux_harn.add_proc(wrap_loop)
+    lin1 = linux_harn.add_proc()
     # start the Harness plugin
     proc.start()
     while not proc.is_alive():
