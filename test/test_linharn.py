@@ -106,10 +106,11 @@ def proc():
 
 @fixture
 def linux_harn(scope="function"):
-  procs = Linharn_proc()
-  yield procs
+  proc_list = Linharn_proc()
+  yield proc_list
   try:
-      procs.terminate()
+      for proc in proc_list.procs:
+        proc.terminate()
   except:
       pass
 
