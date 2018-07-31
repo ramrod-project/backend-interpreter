@@ -14,8 +14,8 @@ class Linharn_proc:
     def __init__(self):
         self.procs = []
     
-    def add_proc(self):
-        self.procs.append(Process(target=Linharn_proc.wrap_loop))
+    def add_proc(self, func_):
+        self.procs.append(Process(target=func_))
         return self.procs[-1]
 
     @staticmethod
@@ -29,40 +29,6 @@ SAMPLE_TARGET = {
     "Port": "8080"
 }
 
-NOW = time()
-
-ECHO_JOB = {
-    "JobTarget": SAMPLE_TARGET,
-    "Status": "Ready",
-    "StartTime": NOW,
-    "JobCommand":  {
-        "CommandName": "echo",
-        "Tooltip": " testing command",
-        "Output": True,
-        "Inputs": [
-            {
-                "Name": "testinput",
-                "Type": "textbox",
-                "Tooltip": "fortesting",
-                "Value": "Hello World"
-            }
-        ],
-        "OptionalInputs": []
-    }
-}
-
-SLEEP_JOB = {
-    "JobTarget": SAMPLE_TARGET,
-    "Status": "Ready",
-    "StartTime": NOW,
-    "JobCommand":  {
-        "CommandName": "sleep",
-        "Tooltip": " testing command",
-        "Output": False,
-        "Inputs": [],
-        "OptionalInputs": []
-    }
-}
 
 @fixture(scope="module")
 def startup_brain():
@@ -122,7 +88,7 @@ def linux_harn(scope="function"):
 
 def test_linharn(startup_brain, proc, linux_harn):
     # create the processes that will contact the Harness plugin
-    lin1 = linux_harn.add_proc()
+    lin1 = linux_harn.add_proc(Linharn_proc.wrap_loop)
     # start the Harness plugin
     proc.start()
     while not proc.is_alive():
