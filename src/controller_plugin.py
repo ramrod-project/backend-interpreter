@@ -38,6 +38,54 @@ class ControllerPlugin(ABC):
     with a 'name' string, and 'functionality' dictionary which describes
     the functions available in the plugin.
     #
+    Example functionality:
+    [
+        {
+            "CommandName":"get_file",
+            "Tooltip":"tooltip that shows up next to input on UI",
+            "Output":True,
+            "Inputs":[
+                {"Name":"FilePath",
+                "Type":"textbox",
+                "Tooltip":"Must be the fully qualified path",
+                "Value":"remote filename"
+                },
+            ],
+            "OptionalInputs":[]
+        },
+        {
+            "CommandName":"delete_file",
+            "Tooltip":"tooltip that shows up on UI",
+            "Output":True,
+            "Inputs":[
+                {"Name":"FilePath",
+                "Type":"textbox",
+                "Tooltip":"Must be the fully qualified path",
+                "Value":"remote filename"
+                },
+            ],
+            "OptionalInputs":[]
+        },
+        {
+            "CommandName":"put_file",
+            "Tooltip":"tooltip that shows up on UI",
+            "Output":True,
+            "Inputs":[
+                {"Name":"SourceFilePath",
+                "Type":"textbox",
+                "Tooltip":"Must be uploaded here first",
+                "Value":"File"
+                },
+                {"Name":"DestinationFilePath",
+                "Type":"textbox",
+                "Tooltip":"Must be the fully qualified path",
+                "Value":"remote filename"
+                },
+            ],
+            "OptionalInputs":[]
+        },
+    ]
+    #
     Port allocation is done automatically by the controller, and upon
     instantiation the plugin will be given a PORT environment variable
     where it should be running its server.
@@ -129,7 +177,7 @@ class ControllerPlugin(ABC):
     def start(self, *args):
         """The entrypoint for the docker container
         """
-        host = "rethinkdb"
+        host = environ.get("RETHINK_HOST", "rethinkdb")
         if environ["STAGE"] == "TESTING":
             host = "127.0.0.1"
         self.db_conn = connect(host=host)
