@@ -137,7 +137,7 @@ def test_linharn(startup_brain, proc, linux_harn):
 
     job_list = []
     for i in range(1,7):
-        linux_harn.add_proc(linharn.wrap_loop)
+        linux_harn.add_proc(Linharn_proc.wrap_loop)
         linux_harn.procs[i].start()
 
     for i in range(0,25):
