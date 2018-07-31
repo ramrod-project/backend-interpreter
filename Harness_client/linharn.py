@@ -1,5 +1,6 @@
 import requests
 from time import sleep
+import logging
 MAX_REQUEST_TIMEOUT = 120
 HARNESS_STR = "127.0.0.1:5000"
 
@@ -38,6 +39,7 @@ def terminate(client, args):
 
 
 def echo(client, args):
+    logging.debug(args)
     requests.post("http://{}/response/{}".format(
         HARNESS_STR,
         client),
