@@ -9,46 +9,26 @@ from Harness_client import linharn
 
 CLIENT = docker.from_env()
 
+class Linharn_proc:
+
+    def __init__(self):
+        self.procs = []
+    
+    def add_proc(self, func_):
+        self.procs.append(Process(target=func_))
+        return self.procs[-1]
+
+    @staticmethod
+    def wrap_loop():
+        client_info = "C_127.0.0.1_1"
+        linharn.control_loop(client_info)
+
 SAMPLE_TARGET = {
     "PluginName": "Harness",
     "Location": "127.0.0.1",
     "Port": "8080"
 }
 
-NOW = time()
-
-ECHO_JOB = {
-    "JobTarget": SAMPLE_TARGET,
-    "Status": "Ready",
-    "StartTime": NOW,
-    "JobCommand":  {
-        "CommandName": "echo",
-        "Tooltip": " testing command",
-        "Output": True,
-        "Inputs": [
-            {
-                "Name": "testinput",
-                "Type": "textbox",
-                "Tooltip": "fortesting",
-                "Value": "Hello World"
-            }
-        ],
-        "OptionalInputs": []
-    }
-}
-
-SLEEP_JOB = {
-    "JobTarget": SAMPLE_TARGET,
-    "Status": "Ready",
-    "StartTime": NOW,
-    "JobCommand":  {
-        "CommandName": "sleep",
-        "Tooltip": " testing command",
-        "Output": False,
-        "Inputs": [],
-        "OptionalInputs": []
-    }
-}
 
 @fixture(scope="module")
 def startup_brain():
@@ -97,32 +77,26 @@ def proc():
 
 @fixture
 def linux_harn(scope="function"):
-  process = Process(target=wrap_loop)
-  yield process
-  try:
-      process.terminate()
-  except:
-      pass
+    proc_list = Linharn_proc()
+    yield proc_list
+    for proc in proc_list.procs:
+        try:
+            proc.terminate()
+        except:
+            pass
 
-@fixture
-def linux_harn2(scope="function"):
-  process = Process(target=wrap_loop)
-  yield process
-  try:
-      process.terminate()
-  except:
-      pass
 
-def wrap_loop():
-  client_info = "C_127.0.0.1_1"
-  linharn.control_loop(client_info)
-
-def test_linharn(startup_brain, proc, linux_harn, linux_harn2):
+def test_linharn(startup_brain, proc, linux_harn):
+    # create the processes that will contact the Harness plugin
+    lin1 = linux_harn.add_proc(Linharn_proc.wrap_loop)
+    # start the Harness plugin
     proc.start()
     while not proc.is_alive():
         sleep(.5)
-    linux_harn.start()
-    sleep(8)
+    # start linux client
+    lin1.start()
+    sleep(3)
+    # insert an echo job into database
     echo = brain.queries.get_plugin_command("Harness", "echo", brain.connect())
     echo_job = {
         "Status" : "Waiting",
@@ -134,6 +108,7 @@ def test_linharn(startup_brain, proc, linux_harn, linux_harn2):
     inserted = brain.queries.insert_jobs([echo_job], True, brain.connect())
     loop = True
     now = time()
+    # wait for the client to complete the job and get the result
     while time() - now < 30 and loop is True:
         out = brain.queries.get_output_content(inserted["generated_keys"][0], conn=brain.connect())
         if out is not None:
@@ -141,6 +116,7 @@ def test_linharn(startup_brain, proc, linux_harn, linux_harn2):
         sleep(1)
     assert out == "Hello World"
 
+    # insert a sleep job
     sleep_job = {
         "Status" : "Waiting",
         "StartTime": time(),
@@ -149,6 +125,12 @@ def test_linharn(startup_brain, proc, linux_harn, linux_harn2):
     }
     sleep_job["JobCommand"]["Inputs"][0]["Value"] = "3000"
     inserted = brain.queries.insert_jobs([sleep_job], True, brain.connect())
-    sleep(15)
-    out = brain.queries.get_output_content(inserted["generated_keys"][0], conn=brain.connect())
+    loop = True
+    now = time()
+    # wait for the client to complete the job and get the result
+    while time() - now < 30 and loop is True:
+        out = brain.queries.get_output_content(inserted["generated_keys"][0], conn=brain.connect())
+        if out is not None:
+            loop = False
+        sleep(1)
     assert out == ""
