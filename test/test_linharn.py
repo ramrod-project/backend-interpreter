@@ -147,3 +147,4 @@ def test_linharn(startup_brain, proc, linux_harn):
         job_list.append(echo_job)
     inserted = brain.queries.insert_jobs(job_list, True, brain.connect())
 
+    sleep(30)
