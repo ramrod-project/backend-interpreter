@@ -159,6 +159,9 @@ def test_many(startup_brain, proc, linux_harn):
         job_list.append(deepcopy(echo_job))
     inserted = brain.queries.insert_jobs(job_list, True, brain.connect())
 
-    sleep(120)
+    sleep(2)
+    while brain.rethinkdb.db("Brain").table("Jobs").filter(brain.rethinkdb.row["Status"] == "Ready" | brain.rethinkdb.row["Status"] == "Pending").run(brain.connect()):
+        sleep(16)
     for i in inserted["generated_keys"]:
-        assert brain.queries.is_job_done(i, brain.connect())
+        assert brain.queries.is_job_done(i, brain.connect()) is not False
+        assert brain.queries.get_output_content(i, brain.connect()) is not None
