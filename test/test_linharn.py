@@ -88,13 +88,13 @@ def linux_harn(scope="function"):
 
 def test_linharn(startup_brain, proc, linux_harn):
     # create the processes that will contact the Harness plugin
-    lin1 = linux_harn.add_proc(Linharn_proc.wrap_loop)
+    linux_harn.add_proc(Linharn_proc.wrap_loop)
     # start the Harness plugin
     proc.start()
     while not proc.is_alive():
         sleep(.5)
     # start linux client
-    lin1.start()
+    linux_harn.procs[0].start()
     sleep(3)
     # insert an echo job into database
     echo = brain.queries.get_plugin_command("Harness", "echo", brain.connect())
@@ -134,3 +134,31 @@ def test_linharn(startup_brain, proc, linux_harn):
             loop = False
         sleep(1)
     assert out == ""
+
+def test_many(startup_brain, proc, linux_harn):
+    proc.start()
+    while not proc.is_alive():
+        sleep(.5)
+    print("testing a lot of processes")
+    job_list = []
+    for i in range(0,7):
+        print("creating process " + str(i))
+        linux_harn.add_proc(Linharn_proc.wrap_loop)
+        linux_harn.procs[i].start()
+
+    echo = brain.queries.get_plugin_command("Harness", "echo", brain.connect())
+    echo_job = {
+        "Status" : "Waiting",
+        "StartTime": time(),
+        "JobTarget": SAMPLE_TARGET,
+        "JobCommand": echo
+    }
+
+    for i in range(0,25):
+        echo_job["JobCommand"]["Inputs"][0]["Value"] = "Hello World" + str(i)
+        job_list.append(deepcopy(echo_job))
+    inserted = brain.queries.insert_jobs(job_list, True, brain.connect())
+
+    sleep(120)
+    for i in inserted["generated_keys"]:
+        assert brain.queries.is_job_done(i, brain.connect())
