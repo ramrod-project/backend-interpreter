@@ -136,12 +136,24 @@ def test_linharn(startup_brain, proc, linux_harn):
         sleep(1)
     assert out == ""
 
+def test_many(startup_brain, proc, linux_harn):
+    proc.start()
+    while not proc.is_alive():
+        sleep(.5)
     print("testing a lot of processes")
     job_list = []
-    for i in range(1,7):
+    for i in range(0,7):
         print(colored("creating process " + str(i), "blue"))
         linux_harn.add_proc(Linharn_proc.wrap_loop)
         linux_harn.procs[i].start()
+
+    echo = brain.queries.get_plugin_command("Harness", "echo", brain.connect())
+    echo_job = {
+        "Status" : "Waiting",
+        "StartTime": time(),
+        "JobTarget": SAMPLE_TARGET,
+        "JobCommand": echo
+    }
 
     for i in range(0,25):
         echo_job["JobCommand"]["Inputs"][0]["Value"] = "Hello World" + str(i)
