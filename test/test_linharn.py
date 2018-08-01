@@ -161,3 +161,5 @@ def test_many(startup_brain, proc, linux_harn):
     inserted = brain.queries.insert_jobs(job_list, True, brain.connect())
 
     sleep(120)
+    for i in inserted["generated_keys"]:
+        assert brain.queries.is_job_done(i, brain.connect())
