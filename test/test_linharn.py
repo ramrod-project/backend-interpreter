@@ -160,7 +160,7 @@ def test_many(startup_brain, proc, linux_harn):
     inserted = brain.queries.insert_jobs(job_list, True, brain.connect())
 
     sleep(2)
-    while brain.rethinkdb.db("Brain").table("Jobs").filter((brain.rethinkdb.row["Status"] == "Ready") | (brain.rethinkdb.row["Status"] == "Pending")).is_empty.run(brain.connect()) is False:
+    while brain.rethinkdb.db("Brain").table("Jobs").filter((brain.rethinkdb.row["Status"] == "Ready") | (brain.rethinkdb.row["Status"] == "Pending")).is_empty().run(brain.connect()) is False:
         print(brain.rethinkdb.db("Brain").table("Jobs").filter((brain.rethinkdb.row["Status"] == "Ready") | (brain.rethinkdb.row["Status"] == "Pending")).run(brain.connect()))
         sleep(16)
     for i in inserted["generated_keys"]:
