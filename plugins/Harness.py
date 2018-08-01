@@ -387,7 +387,7 @@ def _checkin(serial):
     validated = parse_serial(serial)
     remote = json.loads(json.dumps(request.args)) #formatted copy op
     validated['telemetry'] = remote
-    print ( validated )
+    # print ( validated )
     global _G_HARNESS
     global _G_LOCK
     command_string = "sleep,15000"
