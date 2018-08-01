@@ -161,8 +161,7 @@ def test_many(startup_brain, proc, linux_harn):
 
     sleep(2)
     while brain.rethinkdb.db("Brain").table("Jobs").filter((brain.rethinkdb.row["Status"] == "Ready") | (brain.rethinkdb.row["Status"] == "Pending")).is_empty().run(brain.connect()) is False:
-        print(brain.rethinkdb.db("Brain").table("Jobs").filter((brain.rethinkdb.row["Status"] == "Ready") | (brain.rethinkdb.row["Status"] == "Pending")).run(brain.connect()))
         sleep(16)
     for i in inserted["generated_keys"]:
         assert brain.queries.is_job_done(i, brain.connect()) is not False
-        assert brain.queries.get_output_content(i, brain.connect()) is not None
+        assert brain.queries.get_output_content(i, conn=brain.connect()) is not None
