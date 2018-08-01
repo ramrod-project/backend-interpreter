@@ -6,6 +6,7 @@ from multiprocessing import Process
 import brain
 import docker
 from Harness_client import linharn
+from termcolor import colored
 
 CLIENT = docker.from_env()
 
@@ -138,7 +139,7 @@ def test_linharn(startup_brain, proc, linux_harn):
     print("testing a lot of processes")
     job_list = []
     for i in range(1,7):
-        print("creating process " + str(i))
+        print(colored("creating process " + str(i), "blue"))
         linux_harn.add_proc(Linharn_proc.wrap_loop)
         linux_harn.procs[i].start()
 

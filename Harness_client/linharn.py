@@ -1,6 +1,7 @@
 import requests
 from time import sleep
 import logging
+import coloredlogs
 MAX_REQUEST_TIMEOUT = 120
 HARNESS_STR = "127.0.0.1:5000"
 
@@ -12,6 +13,7 @@ def invalid_cmd(client, args):
 
 
 def control_loop(client_info):
+    coloredlogs.install()
     client = client_info
     looping = True
     retry = 0
@@ -61,7 +63,6 @@ def list_files(client, args):
 
 
 def handle_resp(resp, args, client):
-    print(resp)
     func_ = HANDLER.get(resp, invalid_cmd)
     func_(client, args)
 
