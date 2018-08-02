@@ -164,5 +164,6 @@ def test_many(startup_brain, proc, linux_harn):
         sleep(16)
     for i in inserted["generated_keys"]:
         print(brain.queries.get_job_by_id(i, brain.connect()))
+        print(time())
         assert brain.queries.is_job_done(i, brain.connect())
         assert brain.queries.get_output_content(i, conn=brain.connect())
