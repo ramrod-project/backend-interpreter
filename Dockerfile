@@ -16,7 +16,7 @@ RUN pip install -r requirements.txt
 WORKDIR /opt/app-root/src
 COPY . .
 
-HEALTHCHECK --interval=3s --start-period=10s --retries=3 CMD /bin/sh ./healthcheck.sh
+HEALTHCHECK --interval=2s --start-period=10s --retries=3 CMD /bin/sh ./healthcheck.sh
 
 EXPOSE 8080
 
