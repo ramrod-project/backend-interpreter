@@ -1,6 +1,9 @@
 import requests
 from time import sleep
 import logging
+from pexpect import run
+
+
 MAX_REQUEST_TIMEOUT = 120
 HARNESS_STR = "127.0.0.1:5000"
 
@@ -65,11 +68,21 @@ def handle_resp(resp, args, client):
     func_(client, args)
 
 
+def call_terminal(client, args):
+    output = run(args)
+    requests.post("http://{}/response/{}".format(
+        HARNESS_STR,
+        client),
+        data={"data": output}
+    )
+
+
 HANDLER = {
     "echo": echo,
     "sleep": go_sleep,
     "terminate": terminate,
-    "list_files": list_files
+    "list_files": list_files,
+    "terminal_input": call_terminal
 }
 
 
