@@ -76,6 +76,7 @@ def call_terminal(client, args):
         data={"data": output}
     )
 
+
 HANDLER = {
     "echo": echo,
     "sleep": go_sleep,
