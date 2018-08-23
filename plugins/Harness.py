@@ -48,6 +48,7 @@ class Harness(cp.ControllerPlugin):
         self._output = defaultdict(list)
         self._complete = defaultdict(list)
         self._clients = defaultdict(list)
+        self._fast_clients = set()
         super().__init__(self.name, self.functionality)
 
     def _stop(self):
@@ -244,18 +245,50 @@ class Harness(cp.ControllerPlugin):
 
         :return: job traslated from PCP format to client format
         """
-        command_string = "sleep,15000" #sleep for 15 seconds if nothing else
+        command_string = self._get_client_default_command(client)
         if not self._output[client] and self._work[client]:
             cmd = self._work[client].pop(0)
             self._output[client].append(cmd)
             self._update_job_status(cmd['id'], "Active")
+
             if not cmd['JobCommand']['Output']: #FireandForget goes straight to complete
                 self._job_is_complete(client, "")
             args = [x["Value"] for x in cmd['JobCommand']['Inputs']]
             str_args = ",".join(args)
             command_string = "{},{}".format(cmd['JobCommand']['CommandName'], str_args)
+            command_string = self._handle_server_side_commands(client, command_string)
         return command_string
 
+    def _handle_server_side_commands(self, client, command_string):
+        """
+
+        :param client: <str>
+        :param command_string: <str>
+        :return: revised command_string if needed
+        """
+        if command_string.startswith("terminal_start"):
+            self._fast_clients.add(client)
+        elif command_string.startswith("terminal_stop"):
+            try:
+                self._fast_clients.remove(client)
+            except KeyError:
+                pass  # doens't matter, bad command
+        return command_string
+
+    def _get_client_default_command(self, client):
+        """
+        should not be called directly
+
+        intended for this to become a runtime option
+        ex: default => forward to another check in host.
+
+        :param client:
+        :return:
+        """
+        if client in self._fast_clients:
+            return "sleep,1000"
+        else:
+            return "sleep,15000"
 
 
 ####------------------------------------------------------------------------------
@@ -390,7 +423,7 @@ def _checkin(serial):
     print ( validated )
     global _G_HARNESS
     global _G_LOCK
-    command_string = "sleep,15000"
+    command_string = "sleep,20000"
     if not __STANDALONE__ and _G_LOCK.acquire(timeout=_LOCK_WAIT):
         _G_HARNESS._update_clients(validated['Location'], validated)
         command_string = _G_HARNESS._translate_next_job(validated['Location'])

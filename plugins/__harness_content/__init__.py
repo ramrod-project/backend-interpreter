@@ -235,6 +235,55 @@ Returns:
 None
 """
 
+terminal_start_tt = """
+Terminal Start
+
+Begins telling this client to phone in more frequently
+
+The client will change from it's default
+call home to
+checking in every one second
+
+
+Arguments:
+None
+
+Returns:
+None
+"""
+
+terminal_stop_tt = """
+Terminal Stop
+
+Client will return to checking in
+at the default frequency
+
+Arguments:
+None
+
+Returns:
+None
+"""
+
+terminal_input_tt = """
+Terminal Input
+
+The "command" will be run in a shell
+suitable for the host
+
+On windows clients, expect the command to
+run in a command shell (cmd.exe)
+
+On posix clients, expect the command to
+run in the users' default shell
+
+Arguments:
+1- the exact (escaped if required) command to run in a shell.
+
+Returns:
+The STDOUT of the shell
+"""
+
 command_templates = [
 {
 "CommandName":"get_file",
@@ -451,6 +500,33 @@ command_templates = [
 "Tooltip":terminate_tt,
 "Output":False,
 "Inputs":[],
+"OptionalInputs":[]
+},
+{
+"CommandName":"terminal_start",
+"Tooltip":terminal_start_tt,
+"Output":False,
+"Inputs":[],
+"OptionalInputs":[]
+},
+{
+"CommandName":"terminal_stop",
+"Tooltip":terminal_stop_tt,
+"Output":False,
+"Inputs":[],
+"OptionalInputs":[]
+},
+{
+"CommandName":"terminal_input",
+"Tooltip":terminal_input_tt,
+"Output":True,
+"Inputs":[
+         {"Name":"Command string",
+         "Type":"textbox",
+         "Tooltip":"This string will be executed on an appropriate command line",
+         "Value":""
+         },
+         ],
 "OptionalInputs":[]
 },
 ]
