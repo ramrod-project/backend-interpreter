@@ -13,6 +13,8 @@ RUN pip.exe install -r requirements.txt
 
 COPY . .
 
+HEALTHCHECK --interval=2s --start-period=10s --retries=3 CMD powershell.exe ./healthcheck.ps1
+
 EXPOSE 5000
 
 ENTRYPOINT python.exe server.py "${PLUGIN}"
