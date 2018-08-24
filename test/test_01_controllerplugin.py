@@ -179,6 +179,12 @@ def plugin_base():
     plugin = SamplePlugin({})
     yield plugin
 
+def test_brain_not_ready():
+    plugin = SamplePlugin(SAMPLE_FUNCTIONALITY)
+    with raises(SystemExit):
+        plugin.start()
+
+
 def test_instantiate(give_brain):
     """Test plugin instancing
 
