@@ -122,7 +122,10 @@ class SamplePlugin(controller_plugin.ControllerPlugin):
 
 
     def __init__(self, functionality):
-        self.db_conn = brain.connect()
+        try:
+            self.db_conn = brain.connect()
+        except(brain.connection.BrainNotReady):
+            raise SystemExit
         super().__init__(
             "SamplePlugin",
             functionality=functionality
@@ -180,9 +183,10 @@ def plugin_base():
     yield plugin
 
 def test_brain_not_ready():
-    plugin = SamplePlugin(SAMPLE_FUNCTIONALITY)
     with raises(SystemExit):
-        plugin.start()
+        plugin = SamplePlugin(SAMPLE_FUNCTIONALITY)
+        with raises(SystemExit):
+            plugin.start()
 
 
 def test_instantiate(give_brain):

@@ -185,7 +185,7 @@ class ControllerPlugin(ABC):
             self.db_conn = connect(host=host)
         except (BrainNotReady):
             self._log("Brain is not ready.", 50)
-            SystemExit()
+            exit(1)
         self._advertise_functionality()
         self._start(args)
 
