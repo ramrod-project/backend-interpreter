@@ -19,6 +19,7 @@ from brain.queries import advertise_plugin_commands, create_plugin
 from brain.queries import get_next_job, get_job_status
 from brain.queries import update_job_status as brain_update_job_status
 from brain.queries import write_output
+from brain.connection import BrainNotReady
 
 
 class InvalidStatus(Exception):
@@ -180,7 +181,11 @@ class ControllerPlugin(ABC):
         host = environ.get("RETHINK_HOST", "rethinkdb")
         if environ["STAGE"] == "TESTING":
             host = "127.0.0.1"
-        self.db_conn = connect(host=host)
+        try:
+            self.db_conn = connect(host=host)
+        except (BrainNotReady):
+            self._log("Brain is not ready.", 50)
+            exit(1)
         self._advertise_functionality()
         self._start(args)
 
