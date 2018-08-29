@@ -196,7 +196,7 @@ def test_the_Harness_app(startup_brain, proc):
             test_time = time()
             job_target = {"PluginName": "Harness",
                           "Location": "127.0.0.1",
-                          "Port": "000"}
+                          "Port": environ["PORT"]}
             job = {"JobTarget": job_target,
                    "Status": "Ready",
                    "StartTime": test_time,
