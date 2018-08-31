@@ -31,7 +31,7 @@ pylint==1.8.3
 pytest==3.5.0
 pytest-cov==2.5.1
 python-magic==0.4.15
-PyYAML==3.12
+PyYAML==3.13
 query-string==0.0.28
 ramrodbrain==0.1.45
 request==0.0.26
@@ -44,3 +44,4 @@ urllib3==1.22
 websocket-client==0.47.0
 Werkzeug==0.14.1
 wrapt==1.10.11
+pexpect==4.6.0
