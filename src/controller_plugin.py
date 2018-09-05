@@ -116,6 +116,7 @@ class ControllerPlugin(ABC):
     def __init__(self, name, functionality=None):
         self.signal = None
         self.db_conn = None
+        self.tracked_jobs = {}
         self.name = name
         self.port = int(environ["PORT"])
         self.functionality = None
@@ -241,6 +242,56 @@ class ControllerPlugin(ABC):
         if isinstance(content, bytes) and encoding:
             return content.decode(encoding)
         return content
+
+    def track_job(self, job):
+        """ Tracks a job by location to prevent request_job_for_client from
+            returning new jobs for locations being tracked. Raises a value
+            error if attempting to insert a job that has a location that is
+            already tracked.
+
+        Arguments:
+            job {dict} -- A job for which its location will be tracked until
+                          respond output is called or the tracking is cleared
+        """
+
+        if self.job_location(job) not in self.tracked_jobs:
+            self.tracked_jobs[self.job_location(job)] = job
+        else:
+            raise ValueError("The location: {} is already being tracked."
+            .format(self.job_location(job)))
+
+    def clear_tracking(self, location, is_error=False):
+        """Removes a job from tracking and updates the database
+            To Done or Error
+
+        Arguments:
+            location {str} -- the IP address or hostname to remove
+
+        Keyword Arguments:
+            is_error {bool} -- if the response should indicate an error occured.
+                             (default: {False})
+        """
+
+        if is_error:
+           self.respond_error(
+               self.tracked_jobs[location],
+               "Tracked job at {} has errored".format(location)
+            )
+        else:
+            self.respond_output(
+                self.tracked_jobs[location],
+                "Tracked job at {} has been cleared".format(location)
+            )
+
+        del self.tracked_jobs[location]
+    
+    def _untrack(self, job):
+        del self.tracked_jobs[self.job_location(job)]
+    
+    def is_tracked(self, location):
+        if location in self.tracked_jobs:
+            return True
+        return False
 
     @staticmethod
     def get_command(job):
@@ -486,6 +537,8 @@ class ControllerPlugin(ABC):
                 "JobCommand": {dict} -- command to run
             }
         """
+        if self.is_tracked(location):
+            return self.tracked_jobs[location]
         job = get_next_job(
             self.name,
             location=location,
@@ -509,7 +562,8 @@ class ControllerPlugin(ABC):
         command.
 
         This method also performs some basic type
-        checking on the output.
+        checking on the output. It will untrack the job if it is being
+        tracked.
 
         Arguments:
             job {dict} -- the dictionary object for
@@ -518,6 +572,8 @@ class ControllerPlugin(ABC):
             transition_state {bool} -- If True, transition to
             "Done" (no more output).
         """
+        if self.is_tracked(job_location(job)):
+            self._untrack(job)
         if isinstance(output, bytes):
             write_output(job["id"], output, conn=self.db_conn)
         elif isinstance(output, (str, int, float)):
