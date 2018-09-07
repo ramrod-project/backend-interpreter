@@ -285,8 +285,17 @@ class ControllerPlugin(ABC):
 
         del self.tracked_jobs[location]
     
-    def _untrack(self, job):
-        del self.tracked_jobs[self.job_location(job)]
+    def untrack(self, location):
+        try:
+            del self.tracked_jobs[location]
+        except KeyError:
+            raise ValueError("No job job found for {}".format(location)) 
+
+    def get_tracked_job(self, location):
+        try:
+            return self.tracked_jobs[location]
+        except KeyError:
+            raise ValueError("No job job found for {}".format(location)) 
     
     def is_tracked(self, location):
         if location in self.tracked_jobs:
@@ -537,8 +546,6 @@ class ControllerPlugin(ABC):
                 "JobCommand": {dict} -- command to run
             }
         """
-        if self.is_tracked(location):
-            return self.tracked_jobs[location]
         job = get_next_job(
             self.name,
             location=location,
@@ -572,8 +579,6 @@ class ControllerPlugin(ABC):
             transition_state {bool} -- If True, transition to
             "Done" (no more output).
         """
-        if self.is_tracked(self.job_location(job)):
-            self._untrack(job)
         if isinstance(output, bytes):
             write_output(job["id"], output, conn=self.db_conn)
         elif isinstance(output, (str, int, float)):

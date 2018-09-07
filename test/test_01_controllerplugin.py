@@ -501,20 +501,35 @@ def test_track_job(plugin_base):
     plugin_base.track_job(SAMPLE_JOB)
     assert plugin_base.tracked_jobs["127.0.0.1"] == SAMPLE_JOB
 
+def test_track_job_dupe(plugin_base):
+    with raises(ValueError):
+        plugin_base.track_job(SAMPLE_JOB)
+
 def test_is_tracked(plugin_base):
     assert plugin_base.is_tracked("127.0.0.1")
 
 def test_is_tracked_bad(plugin_base):
     assert plugin_base.is_tracked("fhkjdlabflkha") == False
 
-def test_tracked_request_job(plugin_base, give_brain, clear_dbs, conn):
-    brain.r.db("Brain").table("Jobs").insert(SAMPLE_JOB_2).run(conn)
-    job = plugin_base.request_job_for_client("127.0.0.1")
-    assert job == SAMPLE_JOB
+def test_get_tracked_job(plugin_base):
+    assert plugin_base.get_tracked_job("127.0.0.1") == SAMPLE_JOB
 
-def test_untrack_respond(plugin_base, give_brain, clear_dbs, conn):
-    plugin_base.respond_output(SAMPLE_JOB_PENDING, "Sample Job Response")
+def test_untrack(plugin_base):
+    plugin_base.untrack("127.0.0.1")
     assert plugin_base.is_tracked("127.0.0.1") == False
+
+def test_untrack_bad(plugin_base):
+    with raises(ValueError):
+        plugin_base.untrack("127.0.0.1")
+
+# def test_tracked_request_job(plugin_base, give_brain, clear_dbs, conn):
+#     brain.r.db("Brain").table("Jobs").insert(SAMPLE_JOB_2).run(conn)
+#     job = plugin_base.request_job_for_client("127.0.0.1")
+#     assert job == SAMPLE_JOB
+
+# def test_untrack_respond(plugin_base, give_brain, clear_dbs, conn):
+#     plugin_base.respond_output(SAMPLE_JOB_PENDING, "Sample Job Response")
+#     assert plugin_base.is_tracked("127.0.0.1") == False
 
 def test_clear_tracking_done(plugin_base, give_brain, clear_dbs, conn):
     plugin_base.track_job(SAMPLE_JOB_2)
@@ -530,7 +545,17 @@ def test_clear_tracking_done(plugin_base, give_brain, clear_dbs, conn):
     assert db_updated
 
 def test_clear_tracking_error(plugin_base, give_brain, clear_dbs, conn):
-    pass
+    plugin_base.track_job(SAMPLE_JOB_2)
+    plugin_base.clear_tracking("127.0.0.1", True)
+
+    db_updated = False
+    now = time()
+    while time() - now < 3:
+        result = brain.queries.get_output_content(SAMPLE_JOB_PENDING["id"], conn=conn)
+        if result is not None and result == "Tracked job at 127.0.0.1 has errored":
+            db_updated = True
+        sleep(0.3)
+    assert db_updated
 
 def test_get_value(plugin_base):
     input_job = deepcopy(SAMPLE_JOB)
