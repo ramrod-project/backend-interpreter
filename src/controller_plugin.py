@@ -572,7 +572,7 @@ class ControllerPlugin(ABC):
             transition_state {bool} -- If True, transition to
             "Done" (no more output).
         """
-        if self.is_tracked(job_location(job)):
+        if self.is_tracked(self.job_location(job)):
             self._untrack(job)
         if isinstance(output, bytes):
             write_output(job["id"], output, conn=self.db_conn)
