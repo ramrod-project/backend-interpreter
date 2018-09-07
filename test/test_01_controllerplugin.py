@@ -502,19 +502,24 @@ def test_track_job(plugin_base):
     assert plugin_base.tracked_jobs["127.0.0.1"] == SAMPLE_JOB
 
 def test_track_job_dupe(plugin_base):
+    plugin_base.track_job(SAMPLE_JOB)
     with raises(ValueError):
         plugin_base.track_job(SAMPLE_JOB)
 
 def test_is_tracked(plugin_base):
+    plugin_base.track_job(SAMPLE_JOB)
     assert plugin_base.is_tracked("127.0.0.1")
 
 def test_is_tracked_bad(plugin_base):
+    plugin_base.track_job(SAMPLE_JOB)
     assert plugin_base.is_tracked("fhkjdlabflkha") == False
 
 def test_get_tracked_job(plugin_base):
+    plugin_base.track_job(SAMPLE_JOB)
     assert plugin_base.get_tracked_job("127.0.0.1") == SAMPLE_JOB
 
 def test_untrack(plugin_base):
+    plugin_base.track_job(SAMPLE_JOB)
     plugin_base.untrack("127.0.0.1")
     assert plugin_base.is_tracked("127.0.0.1") == False
 
