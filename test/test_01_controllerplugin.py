@@ -537,26 +537,32 @@ def test_untrack_bad(plugin_base):
 #     assert plugin_base.is_tracked("127.0.0.1") == False
 
 def test_clear_tracking_done(plugin_base, give_brain, clear_dbs, conn):
+    plugin_base.db_conn = conn
+    brain.r.db("Brain").table("Jobs").insert(SAMPLE_JOB_2).run(conn)
+
     plugin_base.track_job(SAMPLE_JOB_2)
     plugin_base.clear_tracking("127.0.0.1")
 
     db_updated = False
     now = time()
     while time() - now < 3:
-        result = brain.queries.get_output_content(SAMPLE_JOB_PENDING["id"], conn=conn)
+        result = brain.queries.get_output_content(SAMPLE_JOB_2["id"], conn=conn)
         if result is not None and result == "Tracked job at 127.0.0.1 has been cleared":
             db_updated = True
         sleep(0.3)
     assert db_updated
 
 def test_clear_tracking_error(plugin_base, give_brain, clear_dbs, conn):
+    plugin_base.db_conn = conn
+    brain.r.db("Brain").table("Jobs").insert(SAMPLE_JOB_2).run(conn)
+    
     plugin_base.track_job(SAMPLE_JOB_2)
     plugin_base.clear_tracking("127.0.0.1", True)
 
     db_updated = False
     now = time()
     while time() - now < 3:
-        result = brain.queries.get_output_content(SAMPLE_JOB_PENDING["id"], conn=conn)
+        result = brain.queries.get_output_content(SAMPLE_JOB_2["id"], conn=conn)
         if result is not None and result == "Tracked job at 127.0.0.1 has errored":
             db_updated = True
         sleep(0.3)
