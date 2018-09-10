@@ -536,6 +536,7 @@ def test_tracked_request_job(plugin_base, give_brain, clear_dbs, conn):
 def test_untrack_respond(plugin_base, give_brain, clear_dbs, conn):
     brain.r.db("Brain").table("Jobs").insert(SAMPLE_JOB_PENDING).run(conn)
     plugin_base.respond_output(SAMPLE_JOB_PENDING, "Sample Job Response")
+    plugin_base.untrack(plugin_base.job_location(SAMPLE_JOB_PENDING))
     assert plugin_base.is_tracked("127.0.0.1") == False
 
 def test_clear_tracking_done(plugin_base, give_brain, clear_dbs, conn):

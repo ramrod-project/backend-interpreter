@@ -286,6 +286,8 @@ class ControllerPlugin(ABC):
                     "Tracked job at {} has been cleared".format(location)
                 )
 
+            self.untrack(location)
+
     def untrack(self, location):
         """removes a job from tracking. Raises ValueError if the location
             was not tracked. Should be called to remove a tracking normally
@@ -579,8 +581,6 @@ class ControllerPlugin(ABC):
             }
             If the location is being tracked returns None
         """
-        if self.is_tracked(location):
-            return None
         job = get_next_job(
             self.name,
             location=location,
@@ -627,8 +627,6 @@ class ControllerPlugin(ABC):
         if transition_state:
             job["Status"] = transition_success(job["Status"])
             self._update_job(job["id"])
-        if self.is_tracked(self.job_location(job)):
-            self.untrack(self.job_location(job))
 
     def respond_error(self, job, msg=""):
         """updates a job's status to error and outputs an error message
