@@ -14,7 +14,6 @@ from time import asctime, gmtime, time
 from brain import connect
 from brain.binary import get as brain_binary_get
 from brain.jobs import transition_success
-from brain.queries import get_next_job_by_location
 from brain.queries import advertise_plugin_commands, create_plugin
 from brain.queries import get_next_job, get_job_status
 from brain.queries import update_job_status as brain_update_job_status
@@ -184,7 +183,7 @@ class ControllerPlugin(ABC):
             host = "127.0.0.1"
         try:
             self.db_conn = connect(host=host)
-        except (BrainNotReady):
+        except BrainNotReady:
             self._log("Brain is not ready.", 50)
             exit(1)
         self._advertise_functionality()
@@ -252,7 +251,7 @@ class ControllerPlugin(ABC):
         Arguments:
             job {dict} -- A job for which its location will be tracked until
                           respond output is called or the tracking is cleared
-            
+
         Raises:
             ValueError -- if the location is already being tracked
         """
@@ -261,7 +260,7 @@ class ControllerPlugin(ABC):
             self.tracked_jobs[self.job_location(job)] = job
         else:
             raise ValueError("The location: {} is already being tracked."
-                                .format(self.job_location(job)))
+                             .format(self.job_location(job)))
 
     def clear_tracking(self, location, is_error=False):
         """Removes a job from tracking and updates the database
@@ -286,7 +285,7 @@ class ControllerPlugin(ABC):
                     self.tracked_jobs[location],
                     "Tracked job at {} has been cleared".format(location)
                 )
-    
+
     def untrack(self, location):
         """removes a job from tracking. Raises ValueError if the location
             was not tracked. Should be called to remove a tracking normally
@@ -311,7 +310,7 @@ class ControllerPlugin(ABC):
 
         Raises:
             ValueError -- if the location is not tracked
-        
+
         Returns:
             dict -- Job formatted dictionary for the tracked location
         """
@@ -320,7 +319,7 @@ class ControllerPlugin(ABC):
             return self.tracked_jobs[location]
         except KeyError:
             raise ValueError("No job job found for {}".format(location))
-    
+
     def is_tracked(self, location):
         """Checks if a location is being tracked
 
@@ -468,7 +467,7 @@ class ControllerPlugin(ABC):
         for i in inputs:
             val_list.append(i["Value"])
         return val_list
-    
+
     @staticmethod
     def job_location(job):
         """Get the target location of a job
