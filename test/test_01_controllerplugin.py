@@ -527,14 +527,16 @@ def test_untrack_bad(plugin_base):
     with raises(ValueError):
         plugin_base.untrack("127.0.0.1")
 
-# def test_tracked_request_job(plugin_base, give_brain, clear_dbs, conn):
-#     brain.r.db("Brain").table("Jobs").insert(SAMPLE_JOB_2).run(conn)
-#     job = plugin_base.request_job_for_client("127.0.0.1")
-#     assert job == SAMPLE_JOB
+def test_tracked_request_job(plugin_base, give_brain, clear_dbs, conn):
+    brain.r.db("Brain").table("Jobs").insert(SAMPLE_JOB).run(conn)
+    plugin_base.track_job(SAMPLE_JOB)
+    job = plugin_base.request_job_for_client("127.0.0.1")
+    assert job == None
 
-# def test_untrack_respond(plugin_base, give_brain, clear_dbs, conn):
-#     plugin_base.respond_output(SAMPLE_JOB_PENDING, "Sample Job Response")
-#     assert plugin_base.is_tracked("127.0.0.1") == False
+def test_untrack_respond(plugin_base, give_brain, clear_dbs, conn):
+    brain.r.db("Brain").table("Jobs").insert(SAMPLE_JOB_PENDING).run(conn)
+    plugin_base.respond_output(SAMPLE_JOB_PENDING, "Sample Job Response")
+    assert plugin_base.is_tracked("127.0.0.1") == False
 
 def test_clear_tracking_done(plugin_base, give_brain, clear_dbs, conn):
     plugin_base.db_conn = conn

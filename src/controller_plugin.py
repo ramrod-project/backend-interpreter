@@ -252,6 +252,9 @@ class ControllerPlugin(ABC):
         Arguments:
             job {dict} -- A job for which its location will be tracked until
                           respond output is called or the tracking is cleared
+            
+        Raises:
+            ValueError -- if the location is already being tracked
         """
 
         if self.job_location(job) not in self.tracked_jobs:
@@ -272,32 +275,64 @@ class ControllerPlugin(ABC):
                              (default: {False})
         """
 
-        if is_error:
-           self.respond_error(
-               self.tracked_jobs[location],
-               "Tracked job at {} has errored".format(location)
-            )
-        else:
-            self.respond_output(
-                self.tracked_jobs[location],
-                "Tracked job at {} has been cleared".format(location)
-            )
+        if self.is_tracked(location):
+            if is_error:
+                self.respond_error(
+                    self.tracked_jobs[location],
+                    "Tracked job at {} has errored".format(location)
+                    )
+            else:
+                self.respond_output(
+                    self.tracked_jobs[location],
+                    "Tracked job at {} has been cleared".format(location)
+                )
 
-        del self.tracked_jobs[location]
+            del self.tracked_jobs[location]
     
     def untrack(self, location):
+        """removes a job from tracking. Raises ValueError if the location
+            was not tracked. Should be called to remove a tracking normally
+
+        Arguments:
+            location {str} -- the IP of the job to untrack
+
+        Raises:
+            ValueError -- if the location is not tracked
+        """
+
         try:
             del self.tracked_jobs[location]
         except KeyError:
             raise ValueError("No job job found for {}".format(location)) 
 
     def get_tracked_job(self, location):
+        """returns the job associated with the location being tracked
+
+        Arguments:
+            location {str} -- the IP of the job to fetch
+
+        Raises:
+            ValueError -- if the location is not tracked
+        
+        Returns:
+            dict -- Job formatted dictionary for the tracked location
+        """
+
         try:
             return self.tracked_jobs[location]
         except KeyError:
             raise ValueError("No job job found for {}".format(location)) 
     
     def is_tracked(self, location):
+        """Checks if a location is being tracked
+
+        Arguments:
+            location {str} -- the IP address to check
+
+        Returns:
+            bool -- Whether the location is tracked or not
+        """
+
         if location in self.tracked_jobs:
             return True
         return False
@@ -545,7 +580,10 @@ class ControllerPlugin(ABC):
                 "StartTime": {int} -- unix epoch start time,
                 "JobCommand": {dict} -- command to run
             }
+            If the location is being tracked returns None
         """
+        if self.is_tracked(location):
+            return None
         job = get_next_job(
             self.name,
             location=location,
@@ -592,6 +630,8 @@ class ControllerPlugin(ABC):
         if transition_state:
             job["Status"] = transition_success(job["Status"])
             self._update_job(job["id"])
+        if self.is_tracked(self.job_location(job)):
+            self.untrack(self.job_location(job))
 
     def respond_error(self, job, msg=""):
         """updates a job's status to error and outputs an error message
