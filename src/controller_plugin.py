@@ -261,7 +261,7 @@ class ControllerPlugin(ABC):
             self.tracked_jobs[self.job_location(job)] = job
         else:
             raise ValueError("The location: {} is already being tracked."
-            .format(self.job_location(job)))
+                .format(self.job_location(job)))
 
     def clear_tracking(self, location, is_error=False):
         """Removes a job from tracking and updates the database
@@ -271,8 +271,8 @@ class ControllerPlugin(ABC):
             location {str} -- the IP address or hostname to remove
 
         Keyword Arguments:
-            is_error {bool} -- if the response should indicate an error occured.
-                             (default: {False})
+            is_error {bool} -- if the response should indicate an error
+                            occured. (default: {False})
         """
 
         if self.is_tracked(location):
@@ -301,7 +301,7 @@ class ControllerPlugin(ABC):
         try:
             del self.tracked_jobs[location]
         except KeyError:
-            raise ValueError("No job job found for {}".format(location)) 
+            raise ValueError("No job job found for {}".format(location))
 
     def get_tracked_job(self, location):
         """returns the job associated with the location being tracked
@@ -319,7 +319,7 @@ class ControllerPlugin(ABC):
         try:
             return self.tracked_jobs[location]
         except KeyError:
-            raise ValueError("No job job found for {}".format(location)) 
+            raise ValueError("No job job found for {}".format(location))
     
     def is_tracked(self, location):
         """Checks if a location is being tracked
