@@ -261,7 +261,7 @@ class ControllerPlugin(ABC):
             self.tracked_jobs[self.job_location(job)] = job
         else:
             raise ValueError("The location: {} is already being tracked."
-                .format(self.job_location(job)))
+                            .format(self.job_location(job)))
 
     def clear_tracking(self, location, is_error=False):
         """Removes a job from tracking and updates the database
