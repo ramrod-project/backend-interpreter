@@ -286,8 +286,6 @@ class ControllerPlugin(ABC):
                     self.tracked_jobs[location],
                     "Tracked job at {} has been cleared".format(location)
                 )
-
-            del self.tracked_jobs[location]
     
     def untrack(self, location):
         """removes a job from tracking. Raises ValueError if the location
