@@ -19,7 +19,7 @@ from brain.queries import get_next_job, get_job_status
 from brain.queries import update_job_status as brain_update_job_status
 from brain.queries import write_output
 from brain.connection import BrainNotReady
-from brain.controller import recover_state, record_state
+from brain.controller.plugins import recover_state, record_state
 
 
 class InvalidStatus(Exception):

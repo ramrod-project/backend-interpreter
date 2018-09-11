@@ -200,7 +200,7 @@ def plugin_base():
     This fixture instances a SamplePlugin
     for use in testing.
     """
-    temp_env = environ["PLUGIN_NAME"]
+    temp_env = environ.get("PLUGIN_NAME","")
     environ["PLUGIN_NAME"] = "SamplePlugin-8080"
     plugin = SamplePlugin({})
     yield plugin
