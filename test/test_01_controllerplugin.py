@@ -602,8 +602,8 @@ def test_record_tracker(plugin_base, give_brain, clear_dbs, conn):
     assert state == plugin_base.tracked_jobs
 
 def test_recover(plugin_base, give_brain, clear_dbs, conn):
-    brain.controller.plugins.record_state(plugin_base.serv_name,{"127.0.0.1": SAMPLE_JOB}, plugin_base.db_conn)
     brain.controller.plugins.create_plugin(TEST_PLUGIN, conn=conn)
+    brain.controller.plugins.record_state(plugin_base.serv_name,{"127.0.0.1": SAMPLE_JOB}, plugin_base.db_conn)
     plugin_base.recover()
     assert plugin_base.tracked_jobs["127.0.0.1"] == SAMPLE_JOB
 
