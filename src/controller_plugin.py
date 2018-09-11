@@ -549,8 +549,8 @@ class ControllerPlugin(ABC):
             location {str} -- IPv4 address of the target
         
         Keyword Arguments:
-            common {dict} -- arbitrary, specific data to store with the
-            telemetry for the target (default: {None})
+            common {dict} -- data common among all plugins 
+            (default: {None})
             specific {dict} -- arbitrary, specific data to store with the
             telemetry for the target (default: {None})
         """
