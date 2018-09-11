@@ -565,7 +565,7 @@ class ControllerPlugin(ABC):
             common["Checkin"] = time()
         else:
             common = {"Checkin": time()}
-        return common     
+        return common
 
     def send_telemetry(self, location, common=None, specific=None):
         """send_telemetry sends an update to the Brain.Telemetry table
@@ -588,10 +588,7 @@ class ControllerPlugin(ABC):
                 conn=self.db_conn
             )
         except AttributeError as ex:
-            self._log(
-                "Target id not found: {}".format(ex),
-                40
-            )
+            self._log( "Target id not found: {}".format(ex), 40)
             return
 
         common = self._validate_common_telemetry(common)
