@@ -17,9 +17,11 @@ from brain.jobs import transition_success
 from brain.queries import get_next_job_by_location
 from brain.queries import advertise_plugin_commands, create_plugin
 from brain.queries import get_next_job, get_job_status
+from brain.queries import get_target_by_location
 from brain.queries import update_job_status as brain_update_job_status
 from brain.queries import write_output
 from brain.connection import BrainNotReady
+from brain.telemetry import update_telemetry
 
 
 class InvalidStatus(Exception):
@@ -543,6 +545,35 @@ class ControllerPlugin(ABC):
         """
         self.respond_output(job, msg)
         self._update_job_status(job["id"], "Error")
+
+    def send_telemetry(self, location, checkin, admin, user, data={}):
+        """send_telemetry sends an update to the Brain.Telemetry table
+        with both common and specific data (data)
+        
+        Arguments:
+            location {str} -- IPv4 address of the target
+            checkin {int} -- checkin number
+            admin {bool} -- admin
+            user {string} -- user string
+        
+        Keyword Arguments:
+            data {dict} -- arbitrary, specific data to store with the
+            telemetry for the target (default: {None})
+        """
+        target = get_target_by_location(self.name, location, conn=self.db_conn)
+        if target:
+            update_telemetry(
+                conn=self.db_conn,
+                target_id=target["id"],
+                common={
+                    "Checkin": checkin,
+                    "Admin": admin,
+                    "User": user
+                },
+                specific=data,
+                verify_telemetry=True
+            )
+        
 
     def stop(self):
         """Stop the plugin
