@@ -187,6 +187,8 @@ def clear_dbs():
     brain.r.db("Brain").table("Outputs").delete().run(conn)
     brain.r.db("Brain").table("Jobs").delete().run(conn)
     brain.r.db("Audit").table("Jobs").delete().run(conn)
+    brain.r.db("Controller").table("Plugins").delete().run(conn)
+    brain.r.db("Controller").table("Ports").delete().run(conn)
     for table in brain.r.db("Plugins").table_list().run(conn):
         if "test_table" in table:
             continue
