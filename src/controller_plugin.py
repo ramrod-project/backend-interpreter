@@ -541,6 +541,32 @@ class ControllerPlugin(ABC):
         self.respond_output(job, msg)
         self._update_job_status(job["id"], "Error")
 
+    def _validate_common_telemetry(self, common):
+        """validates common telemetry data
+        
+        Arguments:
+            common {dict} -- common telemetry
+            data dict
+        
+        Raises:
+            TypeError -- common is not dict
+        
+        Returns:
+            {dict} -- the validated common dict
+        """
+
+        if common and not isinstance(common, dict):
+            self._log(
+                "Invalid common telemetry type! expects <dict>",
+                50
+            )
+            raise TypeError
+        elif common:
+            common["Checkin"] = time()
+        else:
+            common = {"Checkin": time()}
+        return common     
+
     def send_telemetry(self, location, common=None, specific=None):
         """send_telemetry sends an update to the Brain.Telemetry table
         with both common and specific data (data)
@@ -549,7 +575,7 @@ class ControllerPlugin(ABC):
             location {str} -- IPv4 address of the target
         
         Keyword Arguments:
-            common {dict} -- data common among all plugins 
+            common {dict} -- data common among all plugins
             (default: {None})
             specific {dict} -- arbitrary, specific data to store with the
             telemetry for the target (default: {None})
@@ -568,16 +594,7 @@ class ControllerPlugin(ABC):
             )
             return
 
-        if common and not isinstance(common, dict):
-            self._log(
-                "Invalid common telemetry type! expects <dict>",
-                50
-            )
-            raise TypeError
-        elif common:
-            common["Checkin"] = time()
-        else:
-            common = {"Checkin": time()}
+        common = self._validate_common_telemetry(common)
 
         if specific and not isinstance(specific, dict):
             self._log(

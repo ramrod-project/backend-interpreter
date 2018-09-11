@@ -566,7 +566,6 @@ def test_send_telemetry(plugin_base, give_brain, clear_dbs, conn):
         doc = None
         for doc in results:
             if doc["Location"] == other_target["Location"]:
-                print(doc)
                 with raises(KeyError):
                     s = doc["Optional"]["Specific"]
                 try:
@@ -574,7 +573,7 @@ def test_send_telemetry(plugin_base, give_brain, clear_dbs, conn):
                 except:
                     continue
                 db_updated2 = True
-        sleep(1)
+        sleep(0.3)
     assert db_updated2
 
 def test_get_value(plugin_base):
