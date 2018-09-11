@@ -200,8 +200,11 @@ def plugin_base():
     This fixture instances a SamplePlugin
     for use in testing.
     """
+    temp_env = environ["PLUGIN_NAME"]
+    environ["PLUGIN_NAME"] = "SamplePlugin-8080"
     plugin = SamplePlugin({})
     yield plugin
+    environ["PLUGIN_NAME"] = temp_env
 
 def test_brain_not_ready():
     with raises(SystemExit):
@@ -570,6 +573,17 @@ def test_clear_tracking_error(plugin_base, give_brain, clear_dbs, conn):
             db_updated = True
         sleep(0.3)
     assert db_updated
+
+def test_record_tracker(plugin_base, give_brain, clear_dbs, conn):
+    plugin_base.tracked_jobs = {"127.0.0.1": SAMPLE_JOB}
+    plugin_base.record_tracker()
+    state = brain.controller.plugins.recover_state(plugin_base.serv_name, plugin_base.conn)
+    assert state == plugin_base.tracked_jobs
+
+def test_recover(plugin_base, give_brain, clear_dbs, conn):
+    brain.controller.plugins.record_state(plugin_base.serv_name,{"127.0.0.1": SAMPLE_JOB}, plugin_base.conn)
+    plugin_base.recover()
+    assert plugin_base.tracked_jobs["127.0.0.1"] == SAMPLE_JOB
 
 def test_get_value(plugin_base):
     input_job = deepcopy(SAMPLE_JOB)

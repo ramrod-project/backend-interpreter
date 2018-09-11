@@ -19,6 +19,7 @@ from brain.queries import get_next_job, get_job_status
 from brain.queries import update_job_status as brain_update_job_status
 from brain.queries import write_output
 from brain.connection import BrainNotReady
+from brain.controller import recover_state, record_state
 
 
 class InvalidStatus(Exception):
@@ -124,6 +125,7 @@ class ControllerPlugin(ABC):
         else:
             self._read_functionality()
         self.stop_args = {}
+        self.serv_name = environ["PLUGIN_NAME"]
         self.LOGGER.send = self.log
         signal(SIGTERM, self.sigterm_handler)
         super().__init__()
@@ -241,6 +243,14 @@ class ControllerPlugin(ABC):
         if isinstance(content, bytes) and encoding:
             return content.decode(encoding)
         return content
+
+    def recover(self):
+        state = recover_state(self.serv_name, self.db_conn)
+        if state is not None:
+            self.tracked_jobs = state
+
+    def record_tracker(self):
+        record_state(self.serv_name, self.tracked_jobs, self.db_conn)
 
     def track_job(self, job):
         """ Tracks a job by location to prevent request_job_for_client from
