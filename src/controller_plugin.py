@@ -125,7 +125,7 @@ class ControllerPlugin(ABC):
         else:
             self._read_functionality()
         self.stop_args = {}
-        self.serv_name = environ["PLUGIN_NAME"]
+        self.serv_name = environ.get("PLUGIN_NAME", self.name + str(self.port))
         self.LOGGER.send = self.log
         signal(SIGTERM, self.sigterm_handler)
         super().__init__()
