@@ -19,11 +19,19 @@ SAMPLE_TARGET = {
     "id": "w93hyh-vc83j5i-v82h54u-b6eu4n",
     "PluginName": "SamplePlugin",
     "Location": "127.0.0.1",
-    "Port": "8080",
-    "Optional": {
-        "TestVal1": "Test value",
-        "TestVal2": "Test value 2"
-    }
+    "Port": "8080"
+}
+
+TELEMETRY_COMMON_TEST = {
+    "Admin": True,
+    "User": "someuser123"
+}
+
+TELEMETRY_SPECIFIC_TEST = {
+    "SpecificString": "a specific string",
+    "SpecificInteger": 1,
+    "SpecificFloat": 99.999,
+    "SpecificBinary": b'some bytes to test with'
 }
 
 NOW = int(time())
@@ -179,8 +187,11 @@ def plugin_base():
     This fixture instances a SamplePlugin
     for use in testing.
     """
+    old_port = environ.get("PORT", "")
+    environ["PORT"] = SAMPLE_TARGET["Port"]
     plugin = SamplePlugin({})
     yield plugin
+    environ["PORT"] = old_port
 
 def test_brain_not_ready():
     with raises(SystemExit):
@@ -475,6 +486,96 @@ def test_get_file(plugin_base, give_brain, clear_dbs, conn):
     # bad codec
     with raises(LookupError):
         plugin_base.get_file("testfile2.txt", encoding="MYNEWSTANDARD")
+
+def test_send_telemetry(plugin_base, give_brain, clear_dbs, conn):
+    """Test sending telemetry
+
+    Arguments:
+        plugin_base {fixture} -- yields the SamplePlugin
+        instance needed for testing.
+    """
+    plugin_base.db_conn = conn
+    brain.queries.insert_target(SAMPLE_TARGET, conn=conn)
+    target_in_db = False
+    now = time()
+    while time() - now < 3 and not target_in_db:
+        results = brain.queries.get_targets(conn=conn)
+        doc = None
+        for doc in results:
+            continue
+        if doc:
+            target_in_db = True
+        sleep(0.3)
+    assert target_in_db
+    plugin_base.send_telemetry("127.0.0.2") # shouldn't do anything since target doesnt exist
+    with raises(TypeError):
+        plugin_base.send_telemetry(SAMPLE_TARGET["Location"], common=1)
+    with raises(TypeError):
+        plugin_base.send_telemetry(SAMPLE_TARGET["Location"], common={}, specific=1)
+    plugin_base.send_telemetry(
+        SAMPLE_TARGET["Location"],
+        common=TELEMETRY_COMMON_TEST,
+        specific=TELEMETRY_SPECIFIC_TEST
+    )
+
+    # Telemetry with stuff
+    db_updated1 = False
+    now = time()
+    while time() - now < 3 and not db_updated1:
+        results = brain.queries.get_targets(conn=conn)
+        doc = None
+        for doc in results:
+            continue
+        if doc:
+            if not doc["Optional"]["Common"]["Admin"] == TELEMETRY_COMMON_TEST["Admin"]:
+                continue
+            if not doc["Optional"]["Common"]["User"] == TELEMETRY_COMMON_TEST["User"]:
+                continue
+            try:
+                float(doc["Optional"]["Common"]["Checkin"])
+            except:
+                continue
+            if not doc["Optional"]["Specific"] == TELEMETRY_SPECIFIC_TEST:
+                continue
+            db_updated1 = True
+        sleep(0.3)
+    assert db_updated1
+
+    # Telemetry with just target
+    other_target = deepcopy(SAMPLE_TARGET)
+    other_target["Location"] = "10.10.10.10"
+    del other_target["id"]
+    brain.queries.insert_target(other_target, conn=conn)
+    other_target_in_db = False
+    now = time()
+    while time() - now < 3 and not other_target_in_db:
+        results = brain.queries.get_targets(conn=conn)
+        doc = None
+        for doc in results:
+            if doc["Location"] == other_target["Location"]:
+                other_target_in_db = True
+        sleep(0.3)
+    assert other_target_in_db
+    plugin_base.send_telemetry(
+        other_target["Location"]
+    )
+    db_updated2 = False
+    now = time()
+    while time() - now < 3 and not db_updated2:
+        results = brain.queries.get_targets(conn=conn)
+        doc = None
+        for doc in results:
+            if doc["Location"] == other_target["Location"]:
+                print(doc)
+                with raises(KeyError):
+                    s = doc["Optional"]["Specific"]
+                try:
+                    float(doc["Optional"]["Common"]["Checkin"])
+                except:
+                    continue
+                db_updated2 = True
+        sleep(1)
+    assert db_updated2
 
 def test_get_value(plugin_base):
     input_job = deepcopy(SAMPLE_JOB)

@@ -1,9 +1,5 @@
 """Plugin Template Module
-TODO:
-- add helper function for function advertisement
-- add helper function for job request
 """
-
 from abc import ABC, abstractmethod
 import json
 import logging
@@ -17,11 +13,10 @@ from brain.jobs import transition_success
 from brain.queries import get_next_job_by_location
 from brain.queries import advertise_plugin_commands, create_plugin
 from brain.queries import get_next_job, get_job_status
-from brain.queries import get_target_by_location
 from brain.queries import update_job_status as brain_update_job_status
 from brain.queries import write_output
 from brain.connection import BrainNotReady
-from brain.telemetry import update_telemetry
+from brain.telemetry import update_telemetry, get_target_id
 
 
 class InvalidStatus(Exception):
@@ -546,34 +541,58 @@ class ControllerPlugin(ABC):
         self.respond_output(job, msg)
         self._update_job_status(job["id"], "Error")
 
-    def send_telemetry(self, location, checkin, admin, user, data={}):
+    def send_telemetry(self, location, common=None, specific=None):
         """send_telemetry sends an update to the Brain.Telemetry table
         with both common and specific data (data)
         
         Arguments:
             location {str} -- IPv4 address of the target
-            checkin {int} -- checkin number
-            admin {bool} -- admin
-            user {string} -- user string
         
         Keyword Arguments:
-            data {dict} -- arbitrary, specific data to store with the
+            common {dict} -- arbitrary, specific data to store with the
+            telemetry for the target (default: {None})
+            specific {dict} -- arbitrary, specific data to store with the
             telemetry for the target (default: {None})
         """
-        target = get_target_by_location(self.name, location, conn=self.db_conn)
-        if target:
-            update_telemetry(
-                conn=self.db_conn,
-                target_id=target["id"],
-                common={
-                    "Checkin": checkin,
-                    "Admin": admin,
-                    "User": user
-                },
-                specific=data,
-                verify_telemetry=True
+        try:
+            target_id = get_target_id(
+                self.name,
+                str(self.port),
+                location,
+                conn=self.db_conn
             )
-        
+        except AttributeError as ex:
+            self._log(
+                "Target id not found: {}".format(ex),
+                40
+            )
+            return
+
+        if common and not isinstance(common, dict):
+            self._log(
+                "Invalid common telemetry type! expects <dict>",
+                50
+            )
+            raise TypeError
+        elif common:
+            common["Checkin"] = time()
+        else:
+            common = {"Checkin": time()}
+
+        if specific and not isinstance(specific, dict):
+            self._log(
+                "Invalid specific telemetry type! expects <dict>",
+                50
+            )
+            raise TypeError
+
+        update_telemetry(
+            conn=self.db_conn,
+            target_id=target_id,
+            common=common,
+            specific=specific,
+            verify_telemetry=True
+        )
 
     def stop(self):
         """Stop the plugin
