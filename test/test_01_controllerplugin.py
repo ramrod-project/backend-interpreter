@@ -217,7 +217,6 @@ def plugin_base():
     temp_env = environ.get("PLUGIN_NAME","")
     environ["PLUGIN_NAME"] = "SamplePlugin-8080tcp"
     plugin = SamplePlugin({})
-    print(plugin.__dict__)
     yield plugin
     environ["PLUGIN_NAME"] = temp_env
 
@@ -596,8 +595,6 @@ def test_record_tracker(plugin_base, give_brain, clear_dbs, conn):
     plugin_base.tracked_jobs = {"127.0.0.1": SAMPLE_JOB}
     brain.controller.plugins.create_plugin(TEST_PLUGIN, conn=conn)
     plugin_base.record_tracker()
-    print(plugin_base.serv_name)
-    print(environ.get("PLUGIN_NAME","does not exist"))
     state = brain.controller.plugins.recover_state(plugin_base.serv_name, plugin_base.db_conn)
     assert state == plugin_base.tracked_jobs
 
