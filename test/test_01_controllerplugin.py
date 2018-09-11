@@ -533,6 +533,7 @@ def test_untrack_bad(plugin_base):
 def test_tracked_request_job(plugin_base, give_brain, clear_dbs, conn):
     brain.r.db("Brain").table("Jobs").insert(SAMPLE_JOB).run(conn)
     plugin_base.track_job(SAMPLE_JOB)
+    job = None
     if not plugin_base.is_tracked(plugin_base.job_location(SAMPLE_JOB)):
         job = plugin_base.request_job_for_client("127.0.0.1")
     assert job == None
@@ -579,6 +580,8 @@ def test_clear_tracking_error(plugin_base, give_brain, clear_dbs, conn):
 def test_record_tracker(plugin_base, give_brain, clear_dbs, conn):
     plugin_base.tracked_jobs = {"127.0.0.1": SAMPLE_JOB}
     plugin_base.record_tracker()
+    print(plugin_base.serv_name)
+    print(environ.get("PLUGIN_NAME","does not exist"))
     state = brain.controller.plugins.recover_state(plugin_base.serv_name, plugin_base.db_conn)
     assert state == plugin_base.tracked_jobs
 
