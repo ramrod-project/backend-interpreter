@@ -203,7 +203,7 @@ def plugin_base():
     temp_env = environ.get("PLUGIN_NAME","")
     environ["PLUGIN_NAME"] = "SamplePlugin-8080"
     plugin = SamplePlugin({})
-    print(plugin)
+    print(plugin.__dict__)
     yield plugin
     environ["PLUGIN_NAME"] = temp_env
 

@@ -119,13 +119,13 @@ class ControllerPlugin(ABC):
         self.tracked_jobs = {}
         self.name = name
         self.port = int(environ["PORT"])
+        self.serv_name = environ.get("PLUGIN_NAME", self.name + str(self.port))
         self.functionality = None
         if functionality:
             self.functionality = functionality
         else:
             self._read_functionality()
         self.stop_args = {}
-        self.serv_name = environ.get("PLUGIN_NAME", self.name + str(self.port))
         self.LOGGER.send = self.log
         signal(SIGTERM, self.sigterm_handler)
         super().__init__()
