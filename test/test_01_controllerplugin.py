@@ -126,6 +126,18 @@ SAMPLE_FUNCTIONALITY = [
 
 environ["PORT"] = "8080"
 
+TEST_PLUGIN = {
+    "Name": "SamplePlugin",
+    "State": "Active",
+    "DesiredState": "",
+    "Interface": "",
+    "ExternalPorts": ["8080/tcp"],
+    "InternalPorts": [],
+    "OS": "posix",
+    "ServiceName": "SamplePlugin-8080tcp",
+    "Environment": []
+}
+
 
 class SamplePlugin(controller_plugin.ControllerPlugin):
     """Sample plugin for testing
@@ -203,7 +215,7 @@ def plugin_base():
     for use in testing.
     """
     temp_env = environ.get("PLUGIN_NAME","")
-    environ["PLUGIN_NAME"] = "SamplePlugin-8080"
+    environ["PLUGIN_NAME"] = "SamplePlugin-8080tcp"
     plugin = SamplePlugin({})
     print(plugin.__dict__)
     yield plugin
@@ -582,6 +594,7 @@ def test_clear_tracking_error(plugin_base, give_brain, clear_dbs, conn):
 
 def test_record_tracker(plugin_base, give_brain, clear_dbs, conn):
     plugin_base.tracked_jobs = {"127.0.0.1": SAMPLE_JOB}
+    brain.controller.plugins.create_plugin(TEST_PLUGIN, conn=conn)
     plugin_base.record_tracker()
     print(plugin_base.serv_name)
     print(environ.get("PLUGIN_NAME","does not exist"))
@@ -590,6 +603,7 @@ def test_record_tracker(plugin_base, give_brain, clear_dbs, conn):
 
 def test_recover(plugin_base, give_brain, clear_dbs, conn):
     brain.controller.plugins.record_state(plugin_base.serv_name,{"127.0.0.1": SAMPLE_JOB}, plugin_base.db_conn)
+    brain.controller.plugins.create_plugin(TEST_PLUGIN, conn=conn)
     plugin_base.recover()
     assert plugin_base.tracked_jobs["127.0.0.1"] == SAMPLE_JOB
 
