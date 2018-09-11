@@ -194,6 +194,11 @@ class Harness(cp.ControllerPlugin):
         :return: None
         """
         self._clients[client] = telemetry
+        common_telemetry = {"Admin": telemetry['Admin'],
+                            "User": telemetry['user']}
+        self.send_telemetry(client,
+                            common=common_telemetry,
+                            specific=telemetry)
 
     def _populate_work(self, location):  # pragma: no cover
         '''
