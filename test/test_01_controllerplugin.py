@@ -709,9 +709,9 @@ def test_stream(plugin_base, give_brain, clear_dbs, conn):
     job_id = plugin_base.get_job_id(job)
     plugin_base.respond_output(job, "first ")
     plugin_base.respond_output(job, "second ")
-    res = brain.r.db("Brain").table("Jobs").get(job_id).run(conn)
+    res = brain.r.db("Brain").table("Outputs").get(job_id).run(conn)
     print(res)
-    assert res == "first second "
+    assert res["Content"] == "first second "
 
 def test_get_value(plugin_base):
     input_job = deepcopy(SAMPLE_JOB)
