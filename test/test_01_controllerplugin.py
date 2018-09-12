@@ -238,7 +238,7 @@ def test_brain_not_ready():
             plugin.start()
 
 
-def test_instantiate(give_brain):
+def test_instantiate(plugin_base, give_brain):
     """Test plugin instancing
 
     Instantiates the SamplePlugin and attempts
@@ -254,7 +254,7 @@ def test_job_helpers():
     assert controller_plugin.ControllerPlugin.get_command(SAMPLE_JOB) == SAMPLE_JOB["JobCommand"]["CommandName"]
     assert controller_plugin.ControllerPlugin.get_job_id(SAMPLE_JOB) == SAMPLE_JOB["id"]
 
-def test_read_functionality(give_brain, clear_dbs):
+def test_read_functionality(plugin_base, give_brain, clear_dbs):
     makedirs("plugins/__SamplePlugin")
     with open("plugins/__SamplePlugin/SamplePlugin.json", "w") as openfile:
         dump(SAMPLE_FUNCTIONALITY, openfile)

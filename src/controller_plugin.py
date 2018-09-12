@@ -116,7 +116,7 @@ class ControllerPlugin(ABC):
         self.tracked_jobs = {}
         self.name = name
         self.port = int(environ["PORT"])
-        self.serv_name = environ.get("PLUGIN_NAME", self.name + str(self.port))
+        self.serv_name = environ.["PLUGIN_NAME"]
         self.functionality = None
         if functionality:
             self.functionality = functionality
