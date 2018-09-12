@@ -10,12 +10,12 @@ from time import asctime, gmtime, time
 from brain import connect
 from brain.binary import get as brain_binary_get
 from brain.jobs import transition_success
-from brain.queries import get_next_job_by_location
 from brain.queries import advertise_plugin_commands, create_plugin
 from brain.queries import get_next_job, get_job_status
 from brain.queries import update_job_status as brain_update_job_status
 from brain.queries import write_output
 from brain.connection import BrainNotReady
+from brain.controller.plugins import recover_state, record_state
 from brain.telemetry import update_telemetry, get_target_id
 
 
@@ -113,8 +113,10 @@ class ControllerPlugin(ABC):
     def __init__(self, name, functionality=None):
         self.signal = None
         self.db_conn = None
+        self.tracked_jobs = {}
         self.name = name
         self.port = int(environ["PORT"])
+        self.serv_name = environ["PLUGIN_NAME"]
         self.functionality = None
         if functionality:
             self.functionality = functionality
@@ -180,7 +182,7 @@ class ControllerPlugin(ABC):
             host = "127.0.0.1"
         try:
             self.db_conn = connect(host=host)
-        except (BrainNotReady):
+        except BrainNotReady:
             self._log("Brain is not ready.", 50)
             exit(1)
         self._advertise_functionality()
@@ -238,6 +240,14 @@ class ControllerPlugin(ABC):
         if isinstance(content, bytes) and encoding:
             return content.decode(encoding)
         return content
+
+    def recover(self):
+        state = recover_state(self.serv_name, self.db_conn)
+        if state is not None:
+            self.tracked_jobs = state
+
+    def record_tracker(self):
+        record_state(self.serv_name, self.tracked_jobs, self.db_conn)
 
     @staticmethod
     def get_command(job):
@@ -372,7 +382,7 @@ class ControllerPlugin(ABC):
         for i in inputs:
             val_list.append(i["Value"])
         return val_list
-    
+
     @staticmethod
     def job_location(job):
         """Get the target location of a job
