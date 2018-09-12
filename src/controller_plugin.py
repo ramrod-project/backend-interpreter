@@ -249,8 +249,6 @@ class ControllerPlugin(ABC):
     def record_tracker(self):
         record_state(self.serv_name, self.tracked_jobs, self.db_conn)
 
-    
-
     @staticmethod
     def get_command(job):
         """return's the job's command name
