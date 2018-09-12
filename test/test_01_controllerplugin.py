@@ -706,9 +706,9 @@ def test_send_telemetry(plugin_base, give_brain, clear_dbs, conn):
 def test_stream(plugin_base, give_brain, clear_dbs, conn):
     brain.r.db("Brain").table("Jobs").insert(SAMPLE_JOB).run(conn)
     job = plugin_base.request_job()
-    job_id = plugin_base.job_id(job)
-    plugin_base.respond_output("first ")
-    plugin_base.respond_output("second ")
+    job_id = plugin_base.get_job_id(job)
+    plugin_base.respond_output(job, "first ")
+    plugin_base.respond_output(job, "second ")
     res = brain.r.db("Brain").table("Jobs").get(job_id).run(conn)
     print(res)
     assert res == "first second "
