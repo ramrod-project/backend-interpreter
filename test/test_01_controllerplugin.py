@@ -57,6 +57,27 @@ SAMPLE_JOB = {
     }
 }
 
+SAMPLE_JOB_2 = {
+    "id": "6fgf4w-jk887f5-9ujgfd3-9js24n0",
+    "JobTarget": SAMPLE_TARGET,
+    "Status": "Ready",
+    "StartTime": NOW,
+    "JobCommand":  {
+        "CommandName": "TestCommand2",
+        "Tooltip": " testing command 2",
+        "Output": True,
+        "Inputs": [
+            {
+                "Name": "testinput",
+                "Type": "textbox",
+                "Tooltip": "fortesting",
+                "Value": "Test Input 1"
+            }
+        ],
+        "OptionalInputs": []
+    }
+}
+
 SAMPLE_JOB_PENDING = {
     "id": "138thg-eg98198-sf98gy3-feh8h8",
     "JobTarget": SAMPLE_TARGET,
@@ -112,6 +133,18 @@ SAMPLE_FUNCTIONALITY = [
 ]
 
 environ["PORT"] = "8080"
+
+TEST_PLUGIN = {
+    "Name": "SamplePlugin",
+    "State": "Active",
+    "DesiredState": "",
+    "Interface": "",
+    "ExternalPorts": ["8080/tcp"],
+    "InternalPorts": [],
+    "OS": "posix",
+    "ServiceName": "SamplePlugin-8080tcp",
+    "Environment": []
+}
 
 
 class SamplePlugin(controller_plugin.ControllerPlugin):
@@ -174,6 +207,8 @@ def clear_dbs():
     brain.r.db("Brain").table("Outputs").delete().run(conn)
     brain.r.db("Brain").table("Jobs").delete().run(conn)
     brain.r.db("Audit").table("Jobs").delete().run(conn)
+    brain.r.db("Controller").table("Plugins").delete().run(conn)
+    brain.r.db("Controller").table("Ports").delete().run(conn)
     for table in brain.r.db("Plugins").table_list().run(conn):
         if "test_table" in table:
             continue
@@ -187,10 +222,13 @@ def plugin_base():
     This fixture instances a SamplePlugin
     for use in testing.
     """
+    temp_env = environ.get("PLUGIN_NAME","")
     old_port = environ.get("PORT", "")
     environ["PORT"] = SAMPLE_TARGET["Port"]
+    environ["PLUGIN_NAME"] = "SamplePlugin-8080tcp"
     plugin = SamplePlugin({})
     yield plugin
+    environ["PLUGIN_NAME"] = temp_env
     environ["PORT"] = old_port
 
 def test_brain_not_ready():
@@ -200,7 +238,7 @@ def test_brain_not_ready():
             plugin.start()
 
 
-def test_instantiate(give_brain):
+def test_instantiate(plugin_base, give_brain):
     """Test plugin instancing
 
     Instantiates the SamplePlugin and attempts
@@ -216,7 +254,7 @@ def test_job_helpers():
     assert controller_plugin.ControllerPlugin.get_command(SAMPLE_JOB) == SAMPLE_JOB["JobCommand"]["CommandName"]
     assert controller_plugin.ControllerPlugin.get_job_id(SAMPLE_JOB) == SAMPLE_JOB["id"]
 
-def test_read_functionality(give_brain, clear_dbs):
+def test_read_functionality(plugin_base, give_brain, clear_dbs):
     makedirs("plugins/__SamplePlugin")
     with open("plugins/__SamplePlugin/SamplePlugin.json", "w") as openfile:
         dump(SAMPLE_FUNCTIONALITY, openfile)
@@ -487,6 +525,19 @@ def test_get_file(plugin_base, give_brain, clear_dbs, conn):
     with raises(LookupError):
         plugin_base.get_file("testfile2.txt", encoding="MYNEWSTANDARD")
 
+
+def test_record_tracker(plugin_base, give_brain, clear_dbs, conn):
+    plugin_base.tracked_jobs = {"127.0.0.1": SAMPLE_JOB}
+    brain.controller.plugins.create_plugin(TEST_PLUGIN, conn=conn)
+    plugin_base.record_tracker()
+    state = brain.controller.plugins.recover_state(plugin_base.serv_name, plugin_base.db_conn)
+    assert state == plugin_base.tracked_jobs
+
+def test_recover(plugin_base, give_brain, clear_dbs, conn):
+    brain.controller.plugins.create_plugin(TEST_PLUGIN, conn=conn)
+    brain.controller.plugins.record_state(plugin_base.serv_name,{"127.0.0.1": SAMPLE_JOB}, plugin_base.db_conn)
+    plugin_base.recover()
+    assert plugin_base.tracked_jobs["127.0.0.1"] == SAMPLE_JOB
 def test_send_telemetry(plugin_base, give_brain, clear_dbs, conn):
     """Test sending telemetry
 
