@@ -703,6 +703,16 @@ def test_send_telemetry(plugin_base, give_brain, clear_dbs, conn):
         sleep(0.3)
     assert db_updated2
 
+def test_stream(plugin_base, give_brain, clear_dbs, conn):
+    brain.r.db("Brain").table("Jobs").insert(SAMPLE_JOB).run(conn)
+    job = plugin_base.request_job()
+    job_id = plugin_base.job_id(job)
+    plugin_base.respond_output("first ")
+    plugin_base.respond_output("second ")
+    res = brain.r.db("Brain").table("Jobs").get(job_id).run(conn)
+    print(res)
+    assert res == "first second "
+
 def test_get_value(plugin_base):
     input_job = deepcopy(SAMPLE_JOB)
     input_job["JobCommand"] = {
