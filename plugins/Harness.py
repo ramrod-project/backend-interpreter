@@ -194,10 +194,10 @@ class Harness(cp.ControllerPlugin):
         :return: None
         """
         self._clients[client] = telemetry
-        common_telemetry = {"Admin": bool(telemetry.get("Admin")),
-                            "User": telemetry.get('telemetry', {}).get('user', "")}
+        common= {"Admin": bool(telemetry.get("Admin")),
+                 "User": telemetry.get('telemetry', {}).get('user', "")}
         self.send_telemetry(client,
-                            common=common_telemetry,
+                            common=common,
                             specific=telemetry)
 
     def _populate_work(self, location):  # pragma: no cover
@@ -405,7 +405,7 @@ def parse_serial(serial):
         validated["Drive"] = potential[0]
         validated["InternalLocation"] = potential[1]
         validated["Location"] = request.environ['REMOTE_ADDR']
-        validated['Admin'] = potential[2]
+        validated['Admin'] = True if potential[2] == "1" else False
         validated['ContactTime'] = time()
     return validated
 
