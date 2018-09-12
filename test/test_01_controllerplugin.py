@@ -709,7 +709,7 @@ def test_stream(plugin_base, give_brain, clear_dbs, conn):
     job_id = plugin_base.get_job_id(job)
     plugin_base.respond_output(job, "first ")
     plugin_base.respond_output(job, "second ")
-    res = brain.r.db("Brain").table("Outputs").get(job_id).run(conn)
+    res = brain.queries.get_output_content(plugin_base.get_job_id(job), conn=conn)
     print(res)
     assert res["Content"] == "first second "
 
