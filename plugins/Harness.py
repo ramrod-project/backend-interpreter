@@ -194,8 +194,8 @@ class Harness(cp.ControllerPlugin):
         :return: None
         """
         self._clients[client] = telemetry
-        common_telemetry = {"Admin": telemetry['Admin'],
-                            "User": telemetry['user']}
+        common_telemetry = {"Admin": bool(telemetry.get("Admin")),
+                            "User": telemetry.get('telemetry', {}).get('user', "")}
         self.send_telemetry(client,
                             common=common_telemetry,
                             specific=telemetry)
