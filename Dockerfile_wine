@@ -1,4 +1,4 @@
-FROM ramrodpcp-wine-base:latest
+FROM ramrodpcp/wine-base:latest
 
 WORKDIR /tmp
 COPY ./requirements.txt .
