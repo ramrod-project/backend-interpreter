@@ -2,7 +2,7 @@
 .idea*
 .vscode*
 README.md
-Dockerfile
+Dockerfile*
 .gitignore
 *.pyc
 venv*
@@ -13,3 +13,6 @@ coverage*
 *logfile*
 LICENSE
 .travis.yml
+healthcheck.ps1
+plugin_logfile
+.coveragerc
