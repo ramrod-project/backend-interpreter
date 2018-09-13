@@ -19,11 +19,19 @@ SAMPLE_TARGET = {
     "id": "w93hyh-vc83j5i-v82h54u-b6eu4n",
     "PluginName": "SamplePlugin",
     "Location": "127.0.0.1",
-    "Port": "8080",
-    "Optional": {
-        "TestVal1": "Test value",
-        "TestVal2": "Test value 2"
-    }
+    "Port": "8080"
+}
+
+TELEMETRY_COMMON_TEST = {
+    "Admin": True,
+    "User": "someuser123"
+}
+
+TELEMETRY_SPECIFIC_TEST = {
+    "SpecificString": "a specific string",
+    "SpecificInteger": 1,
+    "SpecificFloat": 99.999,
+    "SpecificBinary": b'some bytes to test with'
 }
 
 NOW = int(time())
@@ -36,6 +44,27 @@ SAMPLE_JOB = {
     "JobCommand":  {
         "CommandName": "TestCommand",
         "Tooltip": " testing command",
+        "Output": True,
+        "Inputs": [
+            {
+                "Name": "testinput",
+                "Type": "textbox",
+                "Tooltip": "fortesting",
+                "Value": "Test Input 1"
+            }
+        ],
+        "OptionalInputs": []
+    }
+}
+
+SAMPLE_JOB_2 = {
+    "id": "6fgf4w-jk887f5-9ujgfd3-9js24n0",
+    "JobTarget": SAMPLE_TARGET,
+    "Status": "Ready",
+    "StartTime": NOW,
+    "JobCommand":  {
+        "CommandName": "TestCommand2",
+        "Tooltip": " testing command 2",
         "Output": True,
         "Inputs": [
             {
@@ -105,6 +134,18 @@ SAMPLE_FUNCTIONALITY = [
 
 environ["PORT"] = "8080"
 
+TEST_PLUGIN = {
+    "Name": "SamplePlugin",
+    "State": "Active",
+    "DesiredState": "",
+    "Interface": "",
+    "ExternalPorts": ["8080/tcp"],
+    "InternalPorts": [],
+    "OS": "posix",
+    "ServiceName": "SamplePlugin-8080tcp",
+    "Environment": []
+}
+
 
 class SamplePlugin(controller_plugin.ControllerPlugin):
     """Sample plugin for testing
@@ -166,6 +207,8 @@ def clear_dbs():
     brain.r.db("Brain").table("Outputs").delete().run(conn)
     brain.r.db("Brain").table("Jobs").delete().run(conn)
     brain.r.db("Audit").table("Jobs").delete().run(conn)
+    brain.r.db("Controller").table("Plugins").delete().run(conn)
+    brain.r.db("Controller").table("Ports").delete().run(conn)
     for table in brain.r.db("Plugins").table_list().run(conn):
         if "test_table" in table:
             continue
@@ -179,8 +222,14 @@ def plugin_base():
     This fixture instances a SamplePlugin
     for use in testing.
     """
+    temp_env = environ.get("PLUGIN_NAME","")
+    old_port = environ.get("PORT", "")
+    environ["PORT"] = SAMPLE_TARGET["Port"]
+    environ["PLUGIN_NAME"] = "SamplePlugin-8080tcp"
     plugin = SamplePlugin({})
     yield plugin
+    environ["PLUGIN_NAME"] = temp_env
+    environ["PORT"] = old_port
 
 def test_brain_not_ready():
     with raises(SystemExit):
@@ -189,7 +238,7 @@ def test_brain_not_ready():
             plugin.start()
 
 
-def test_instantiate(give_brain):
+def test_instantiate(plugin_base, give_brain):
     """Test plugin instancing
 
     Instantiates the SamplePlugin and attempts
@@ -205,7 +254,7 @@ def test_job_helpers():
     assert controller_plugin.ControllerPlugin.get_command(SAMPLE_JOB) == SAMPLE_JOB["JobCommand"]["CommandName"]
     assert controller_plugin.ControllerPlugin.get_job_id(SAMPLE_JOB) == SAMPLE_JOB["id"]
 
-def test_read_functionality(give_brain, clear_dbs):
+def test_read_functionality(plugin_base, give_brain, clear_dbs):
     makedirs("plugins/__SamplePlugin")
     with open("plugins/__SamplePlugin/SamplePlugin.json", "w") as openfile:
         dump(SAMPLE_FUNCTIONALITY, openfile)
@@ -475,6 +524,108 @@ def test_get_file(plugin_base, give_brain, clear_dbs, conn):
     # bad codec
     with raises(LookupError):
         plugin_base.get_file("testfile2.txt", encoding="MYNEWSTANDARD")
+
+
+def test_record_tracker(plugin_base, give_brain, clear_dbs, conn):
+    plugin_base.tracked_jobs = {"127.0.0.1": SAMPLE_JOB}
+    brain.controller.plugins.create_plugin(TEST_PLUGIN, conn=conn)
+    plugin_base.record_tracker()
+    state = brain.controller.plugins.recover_state(plugin_base.serv_name, plugin_base.db_conn)
+    assert state == plugin_base.tracked_jobs
+
+def test_recover(plugin_base, give_brain, clear_dbs, conn):
+    brain.controller.plugins.create_plugin(TEST_PLUGIN, conn=conn)
+    brain.controller.plugins.record_state(plugin_base.serv_name,{"127.0.0.1": SAMPLE_JOB}, plugin_base.db_conn)
+    plugin_base.recover()
+    assert plugin_base.tracked_jobs["127.0.0.1"] == SAMPLE_JOB
+def test_send_telemetry(plugin_base, give_brain, clear_dbs, conn):
+    """Test sending telemetry
+
+    Arguments:
+        plugin_base {fixture} -- yields the SamplePlugin
+        instance needed for testing.
+    """
+    plugin_base.db_conn = conn
+    brain.queries.insert_target(SAMPLE_TARGET, conn=conn)
+    target_in_db = False
+    now = time()
+    while time() - now < 3 and not target_in_db:
+        results = brain.queries.get_targets(conn=conn)
+        doc = None
+        for doc in results:
+            continue
+        if doc:
+            target_in_db = True
+        sleep(0.3)
+    assert target_in_db
+    plugin_base.send_telemetry("127.0.0.2") # shouldn't do anything since target doesnt exist
+    with raises(TypeError):
+        plugin_base.send_telemetry(SAMPLE_TARGET["Location"], common=1)
+    with raises(TypeError):
+        plugin_base.send_telemetry(SAMPLE_TARGET["Location"], common={}, specific=1)
+    plugin_base.send_telemetry(
+        SAMPLE_TARGET["Location"],
+        common=TELEMETRY_COMMON_TEST,
+        specific=TELEMETRY_SPECIFIC_TEST
+    )
+
+    # Telemetry with stuff
+    db_updated1 = False
+    now = time()
+    while time() - now < 3 and not db_updated1:
+        results = brain.queries.get_targets(conn=conn)
+        doc = None
+        for doc in results:
+            continue
+        if doc:
+            if not doc["Optional"]["Common"]["Admin"] == TELEMETRY_COMMON_TEST["Admin"]:
+                continue
+            if not doc["Optional"]["Common"]["User"] == TELEMETRY_COMMON_TEST["User"]:
+                continue
+            try:
+                float(doc["Optional"]["Common"]["Checkin"])
+            except:
+                continue
+            if not doc["Optional"]["Specific"] == TELEMETRY_SPECIFIC_TEST:
+                continue
+            db_updated1 = True
+        sleep(0.3)
+    assert db_updated1
+
+    # Telemetry with just target
+    other_target = deepcopy(SAMPLE_TARGET)
+    other_target["Location"] = "10.10.10.10"
+    del other_target["id"]
+    brain.queries.insert_target(other_target, conn=conn)
+    other_target_in_db = False
+    now = time()
+    while time() - now < 3 and not other_target_in_db:
+        results = brain.queries.get_targets(conn=conn)
+        doc = None
+        for doc in results:
+            if doc["Location"] == other_target["Location"]:
+                other_target_in_db = True
+        sleep(0.3)
+    assert other_target_in_db
+    plugin_base.send_telemetry(
+        other_target["Location"]
+    )
+    db_updated2 = False
+    now = time()
+    while time() - now < 3 and not db_updated2:
+        results = brain.queries.get_targets(conn=conn)
+        doc = None
+        for doc in results:
+            if doc["Location"] == other_target["Location"]:
+                with raises(KeyError):
+                    s = doc["Optional"]["Specific"]
+                try:
+                    float(doc["Optional"]["Common"]["Checkin"])
+                except:
+                    continue
+                db_updated2 = True
+        sleep(0.3)
+    assert db_updated2
 
 def test_get_value(plugin_base):
     input_job = deepcopy(SAMPLE_JOB)
