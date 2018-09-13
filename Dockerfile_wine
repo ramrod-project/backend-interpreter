@@ -3,7 +3,7 @@ FROM ramrodpcp/wine-base:latest
 WORKDIR /tmp
 COPY ./requirements.txt .
 
-RUN pip install -r requirements.txt
+RUN pip3 install -r requirements.txt
 
 WORKDIR /opt/app-root/src
 COPY . .
