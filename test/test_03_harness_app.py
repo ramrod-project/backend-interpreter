@@ -3,7 +3,7 @@
 
 from multiprocessing import Pool, Process
 from os import environ
-from time import sleep
+from time import sleep, time
 from pytest import fixture, raises
 import docker
 
@@ -193,12 +193,13 @@ def test_the_Harness_app(startup_brain, proc):
         conn = connect()
         sleep(5)
         for command in TEST_COMMANDS:
+            test_time = time()
             job_target = {"PluginName": "Harness",
                           "Location": "127.0.0.1",
-                          "Port": "000"}
+                          "Port": environ["PORT"]}
             job = {"JobTarget": job_target,
                    "Status": "Ready",
-                   "StartTime": 0,
+                   "StartTime": test_time,
                    "JobCommand": command}
             print(job)
             r.db("Brain").table("Jobs").insert(job).run(conn)
