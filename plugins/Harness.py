@@ -253,7 +253,6 @@ class Harness(cp.ControllerPlugin):
         if not self._output[client]:
             # cmd = self._work[client].pop(0)
             cmd = self.request_job_for_client(client, port=str(self.port))
-            print(cmd)
             if cmd:
                 self._output[client].append(cmd)
                 # self._update_job_status(cmd['id'], "Active")
