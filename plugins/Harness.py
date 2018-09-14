@@ -257,12 +257,12 @@ class Harness(cp.ControllerPlugin):
                 self._output[client].append(cmd)
                 # self._update_job_status(cmd['id'], "Active")
 
-            if not cmd['JobCommand']['Output']:  # FireandForget goes straight to complete
-                self._job_is_complete(client, "")
-            args = [x["Value"] for x in cmd['JobCommand']['Inputs']]
-            str_args = ",".join(args)
-            command_string = "{},{}".format(cmd['JobCommand']['CommandName'], str_args)
-            command_string = self._handle_server_side_commands(client, command_string)
+                if not cmd['JobCommand']['Output']:  # FireandForget goes straight to complete
+                    self._job_is_complete(client, "")
+                args = [x["Value"] for x in cmd['JobCommand']['Inputs']]
+                str_args = ",".join(args)
+                command_string = "{},{}".format(cmd['JobCommand']['CommandName'], str_args)
+                command_string = self._handle_server_side_commands(client, command_string)
         return command_string
 
     def _handle_server_side_commands(self, client, command_string):
