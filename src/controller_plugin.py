@@ -597,7 +597,7 @@ class ControllerPlugin(ABC):
                 conn=self.db_conn
             )
         except AttributeError as ex:
-            self._log("Target id not found: {}".format(ex), 40)
+            self._log("Fail to send_telemetry for {} - {}".format(location, ex), 40)
             return
 
         common = self._validate_common_telemetry(common)

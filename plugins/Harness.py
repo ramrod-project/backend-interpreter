@@ -96,7 +96,7 @@ class Harness(cp.ControllerPlugin):
         """
         while True:
             if _G_LOCK.acquire(timeout=_LOCK_WAIT):
-                self._collect_new_jobs()
+                # self._collect_new_jobs()
                 self._push_complete_output()
                 _G_LOCK.release()
             sleep(3)
@@ -249,7 +249,13 @@ class Harness(cp.ControllerPlugin):
         :return: job traslated from PCP format to client format
         """
         command_string = self._get_client_default_command(client)
+        # TODO: implement command package (multi-command in one checkin)
+        potential_job = self.request_job_for_client(client, str(self.port))
+        if potential_job:
+            self._work[client].append(potential_job)
+        # TODO: Spool in multiple with a while loop above
         if not self._output[client] and self._work[client]:
+            # TODO: po multiple into a command string here
             cmd = self._work[client].pop(0)
             self._output[client].append(cmd)
             self._update_job_status(cmd['id'], "Active")
