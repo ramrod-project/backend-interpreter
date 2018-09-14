@@ -96,7 +96,7 @@ class Harness(cp.ControllerPlugin):
         """
         while True:
             if _G_LOCK.acquire(timeout=_LOCK_WAIT):
-                self._collect_new_jobs()
+                #  self._collect_new_jobs()
                 self._push_complete_output()
                 _G_LOCK.release()
             sleep(3)
@@ -249,10 +249,14 @@ class Harness(cp.ControllerPlugin):
         :return: job traslated from PCP format to client format
         """
         command_string = self._get_client_default_command(client)
-        if not self._output[client] and self._work[client]:
-            cmd = self._work[client].pop(0)
-            self._output[client].append(cmd)
-            self._update_job_status(cmd['id'], "Active")
+
+        if not self._output[client]:
+            # cmd = self._work[client].pop(0)
+            cmd = self.request_job_for_client(client, port=str(self.port))
+            print(cmd)
+            if cmd:
+                self._output[client].append(cmd)
+                # self._update_job_status(cmd['id'], "Active")
 
             if not cmd['JobCommand']['Output']:  # FireandForget goes straight to complete
                 self._job_is_complete(client, "")
