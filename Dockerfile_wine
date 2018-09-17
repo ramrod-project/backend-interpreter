@@ -1,8 +1,14 @@
 FROM ramrodpcp/wine-base:latest
 
+RUN mkdir /etc/zugbruecke && mkdir -p /opt/app-root/.zugbruecke/win32-python3.5.4
+COPY ./.zugbruecke.json /etc/zugbruecke/
+
+RUN wget https://www.python.org/ftp/python/3.5.4/python-3.5.4-embed-win32.zip \
+    && unzip -d /etc/zugbruecke python-3.5.4-embed-win32.zip \
+    && rm -rf python-3.5.4-embed-win32.zip
+
 WORKDIR /tmp
 COPY ./requirements.txt .
-
 RUN pip3 install -r requirements.txt
 
 WORKDIR /opt/app-root/src
