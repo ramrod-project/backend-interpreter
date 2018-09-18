@@ -39,9 +39,11 @@ def startup_brain():
 @fixture(scope="function")
 def proc():
     old_plugin = environ.get("PLUGIN", "")
+    old_plugin_name = environ.get("PLUGIN_NAME", "")
     old_stage = environ.get("STAGE", "")
     old_port = environ.get("PORT", "")
     environ["PLUGIN"] = "Harness"
+    environ["PLUGIN_NAME"] = "Harness-5000tcp"
     environ["STAGE"] = "TESTING"
     environ["PORT"] = "5000"
     import server
@@ -53,6 +55,7 @@ def proc():
     except:
         pass
     environ["PLUGIN"] = old_plugin
+    environ["PLUGIN_NAME"] = old_plugin_name
     environ["STAGE"] = old_stage
     environ["PORT"] = old_port
 
@@ -192,13 +195,15 @@ def test_the_Harness_app(startup_brain, proc):
         from brain import connect, r
         conn = connect()
         sleep(5)
+        job_start = 0
         for command in TEST_COMMANDS:
+            job_start += 1
             job_target = {"PluginName": "Harness",
                           "Location": "127.0.0.1",
-                          "Port": "000"}
+                          "Port": "5000"}
             job = {"JobTarget": job_target,
                    "Status": "Ready",
-                   "StartTime": 0,
+                   "StartTime": job_start,
                    "JobCommand": command}
             print(job)
             r.db("Brain").table("Jobs").insert(job).run(conn)
