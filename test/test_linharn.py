@@ -26,7 +26,7 @@ class Linharn_proc:
 SAMPLE_TARGET = {
     "PluginName": "Harness",
     "Location": "127.0.0.1",
-    "Port": "8080"
+    "Port": "5000"
 }
 
 
@@ -57,9 +57,11 @@ def startup_brain():
 @fixture(scope="function")
 def proc():
     old_plugin = environ.get("PLUGIN", "")
+    old_plugin_name = environ.get("PLUGIN_NAME", "")
     old_stage = environ.get("STAGE", "")
     old_port = environ.get("PORT", "")
     environ["PLUGIN"] = "Harness"
+    environ["PLUGIN_NAME"] = "Harness-5000tcp"
     environ["STAGE"] = "TESTING"
     environ["PORT"] = "5000"
     import server
@@ -72,6 +74,7 @@ def proc():
     except:
         pass
     environ["PLUGIN"] = old_plugin
+    environ["PLUGIN_NAME"] = old_plugin_name
     environ["STAGE"] = old_stage
     environ["PORT"] = old_port
 
@@ -161,7 +164,10 @@ def test_many(startup_brain, proc, linux_harn):
 
     NOW = time()
     while time() - NOW < 120:
-        if brain.rethinkdb.db("Brain").table("Jobs").filter((brain.rethinkdb.row["Status"] == "Waiting") | (brain.rethinkdb.row["Status"] == "Ready") | (brain.rethinkdb.row["Status"] == "Pending")).is_empty().run(brain.connect()):
+        if brain.rethinkdb.db("Brain").table("Jobs").filter((brain.rethinkdb.row["Status"] == "Waiting") |
+                                                            (brain.rethinkdb.row["Status"] == "Ready") |
+                                                            (brain.rethinkdb.row["Status"] == "Pending") |
+                                                            (brain.rethinkdb.row["Status"] == "Active")).is_empty().run(brain.connect()):
             break
         sleep(16)
     for i in inserted["generated_keys"]:
