@@ -1,17 +1,18 @@
-
 from os import environ as _environ
+
 try:
     from ..src import controller_plugin as cp
     from .__harness_content import content as _content
 
-except (ValueError, SystemError):  #allow this plugin to be run from commandline
+except (ValueError, SystemError):  # allow this plugin to be run from commandline
     import os.path
     import sys
+
     _path = os.path.abspath(os.path.join(os.path.abspath(__file__), "../../"))
     sys.path.append(_path)
     from src import controller_plugin as cp
     from plugins.__harness_content import content as _content, command_templates as _command_templates
-    #raise
+    # raise
 
 from threading import Thread, Lock
 from time import sleep, time
@@ -19,14 +20,13 @@ import json
 from collections import defaultdict
 from random import randint
 from os import environ
-
-
+from brain.binary.data import get, put_buffer
+from brain import connect
 
 __STANDALONE__ = False
 _G_HARNESS = None
 _G_LOCK = Lock()
 _LOCK_WAIT = 3
-
 
 
 class Harness(cp.ControllerPlugin):
@@ -60,7 +60,6 @@ class Harness(cp.ControllerPlugin):
         ])
         exit(0)
 
-
     def _start(self, *args):
         """
         Start function is called by the supervisor only
@@ -79,10 +78,10 @@ class Harness(cp.ControllerPlugin):
         else:
             self._advertise_functionality()
         _G_LOCK.release()
-        
+
         self._start_webserver()
         try:
-            self._processing_loop() #blocks until ext_signal.value == True
+            self._processing_loop()  # blocks until ext_signal.value == True
         except KeyboardInterrupt:
             self._stop()
         finally:
@@ -195,7 +194,11 @@ class Harness(cp.ControllerPlugin):
         :return: None
         """
         self._clients[client] = telemetry
-
+        common= {"Admin": bool(telemetry.get("Admin")),
+                 "User": telemetry.get('telemetry', {}).get('user', "")}
+        self.send_telemetry(client,
+                            common=common,
+                            specific=telemetry)
 
     def _populate_work(self, location):  # pragma: no cover
         '''
@@ -225,11 +228,11 @@ class Harness(cp.ControllerPlugin):
         :return:
         """
         (loc, out, cmd, args) = self._convert_job(job)
-        self._work[loc].append({"output":out,
-                                "name":cmd,
-                                "argv":args})
+        self._work[loc].append({"output": out,
+                                "name": cmd,
+                                "argv": args})
 
-    def _dump_internal_worklist(self): # pragma: no cover
+    def _dump_internal_worklist(self):  # pragma: no cover
         """
         :return: string serialized copy of the current worklist
         """
@@ -251,7 +254,7 @@ class Harness(cp.ControllerPlugin):
             self._output[client].append(cmd)
             self._update_job_status(cmd['id'], "Active")
 
-            if not cmd['JobCommand']['Output']: #FireandForget goes straight to complete
+            if not cmd['JobCommand']['Output']:  # FireandForget goes straight to complete
                 self._job_is_complete(client, "")
             args = [x["Value"] for x in cmd['JobCommand']['Inputs']]
             str_args = ",".join(args)
@@ -297,66 +300,67 @@ class Harness(cp.ControllerPlugin):
 
 
 from flask import Flask, request, stream_with_context, Response
-#from flask import g, jsonify, render_template, abort
+
+# from flask import g, jsonify, render_template, abort
 
 
 _i = 0
 
 _translated_commands = [
-    {"output":True,
+    {"output": True,
      "name": "echo",
      "argv": ["Hello World"]},
-    {"output":False,
+    {"output": False,
      "name": "sleep",
      "argv": ["4000", ]},
-    {"output":True,
+    {"output": True,
      "name": "list_processes",
      "argv": []},
-    {"output":True,
+    {"output": True,
      "name": "list_files",
      "argv": ["%appdata%\\"]},
-    {"output":True,
+    {"output": True,
      "name": "read_registry",
      "argv": ["HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion",
               "ProgramFilesDir"]},
-    {"output":False,
+    {"output": False,
      "name": "write_registry",
      "argv": ["HKEY_CURRENT_USER\\Software\\Ramrod_Example",
               "Key1",
               "REG_SZ",
               "Ramrod testing 0x000000000000000"]},
-    {"output":True,
+    {"output": True,
      "name": "read_registry",
      "argv": ["HKEY_CURRENT_USER\\Software\\Ramrod_Example",
               "Key1"]},
-    {"output":False,
+    {"output": False,
      "name": "sleep",
      "argv": ["4000", ]},
-    {"output":False,
+    {"output": False,
      "name": "delete_registry",
      "argv": ["HKEY_CURRENT_USER\\Software\\Ramrod_Example"]},
-    #this file pulls from _harness content
-    #{"output":True,
+    # this file pulls from _harness content
+    # {"output":True,
     # "name":"get_file",
     # "argv":["399",
     #         "C:\\Users\\bauma\\Documents\\ait\\dumb_exe.exe"]},
-    {"output":False,
+    {"output": False,
      "name": "put_file",
      "argv": ["399",
               "%appdata%\\test_file-9000.exe"]},
 
-    {"output":False,
+    {"output": False,
      "name": "sleep",
      "argv": ["10000", ]},
-    {"output":False,
+    {"output": False,
      "name": "create_process",
      "argv": ["%appdata%\\test_file-9000.exe"]},
-    #this file pulls from _harness content
-    #{"output":True,
+    # this file pulls from _harness content
+    # {"output":True,
     # "name": "get_file",
     # "argv": ["501",
     #          "C:\\Users\\bauma\\Documents\\ait\\dumb_sleeper.exe"]},
-    {"output":False,
+    {"output": False,
      "name": "put_file",
      "argv": ["501",
               "%appdata%\\gosleep.exe"]},
@@ -373,25 +377,26 @@ _translated_commands = [
     {"output": False,
      "name": "terminate_process",
      "argv": ["gosleep.exe"]},
-    {"output":True,
+    {"output": True,
      "name": "list_files",
      "argv": ["%appdata%"]},
-    {"output":False,
+    {"output": False,
      "name": "delete_file",
      "argv": ["%appdata%\gosleep.exe"]},
-    {"output":False,
+    {"output": False,
      "name": "delete_file",
      "argv": ["%appdata%\\test_file-9000.exe"]},
-    {"output":True,
+    {"output": True,
      "name": "list_files",
      "argv": ["%appdata%\\"]},
-    {"output":False,
+    {"output": False,
      "name": "terminate",
      "argv": []}
 ]
 
 _app = Flask(__name__)
 _app.config.from_object(__name__)
+
 
 def parse_serial(serial):
     validated = {}
@@ -400,7 +405,7 @@ def parse_serial(serial):
         validated["Drive"] = potential[0]
         validated["InternalLocation"] = potential[1]
         validated["Location"] = request.environ['REMOTE_ADDR']
-        validated['Admin'] = potential[2]
+        validated['Admin'] = True if potential[2] == "1" else False
         validated['ContactTime'] = time()
     return validated
 
@@ -418,9 +423,9 @@ def _teardown_request(exception):
 @_app.route("/harness/<serial>", methods=['GET'])
 def _checkin(serial):
     validated = parse_serial(serial)
-    remote = json.loads(json.dumps(request.args)) #formatted copy op
+    remote = json.loads(json.dumps(request.args))  # formatted copy op
     validated['telemetry'] = remote
-    print ( validated )
+    print(validated)
     global _G_HARNESS
     global _G_LOCK
     command_string = "sleep,20000"
@@ -429,8 +434,8 @@ def _checkin(serial):
         command_string = _G_HARNESS._translate_next_job(validated['Location'])
         _G_LOCK.release()
     elif __STANDALONE__:
-        #pick random sleep or echo
-        cmd = _translated_commands[randint(0,1)]
+        # pick random sleep or echo
+        cmd = _translated_commands[randint(0, 1)]
         command_string = "{},{}".format(cmd['name'],
                                         ",".join(cmd['argv']))
     return command_string
@@ -447,11 +452,16 @@ def _respond_to_work(serial):
 @_app.route("/givemethat/<serial>/<file_id>", methods=['GET'])
 def _get_blob(serial, file_id):
     validated = parse_serial(serial)
+
     def gens(file_id):
-        if file_id in _content:
-            file_content = _content[file_id]
+        conn = connect(host=environ['RETHINK_HOST'])
+        file_dict = get(file_id, conn=conn)
+        if file_dict:
+            yield "0x"
+            file_content = file_dict['Content']
             for next_byte in file_content:
-                yield next_byte
+                yield hex(next_byte)[2:].zfill(2)
+
     _handle_client_response(validated['Location'], file_id)
     return Response(stream_with_context(gens(file_id)))
 
@@ -459,22 +469,27 @@ def _get_blob(serial, file_id):
 @_app.route("/givemethat/<serial>/<file_id>", methods=['POST'])
 def _put_blob(serial, file_id):
     validated = parse_serial(serial)
-    _content[file_id] = request.form['data'] #TODO: Decide if files should be reused like this
+    file_content = bytes.fromhex(request.form['data'])
+    conn = connect(host=environ['RETHINK_HOST'])
+    put_buffer(file_id, file_content, conn=conn)
     _handle_client_response(validated['Location'], request.form['data'])
     return "1"
+
 
 def _handle_client_response(client, data):
     if not __STANDALONE__ and _G_LOCK.acquire(timeout=_LOCK_WAIT):
         _G_HARNESS._job_is_complete(client, data)
         _G_LOCK.release()
 
+
 if __name__ == "__main__":
     from sys import argv
     from multiprocessing import Value
     from ctypes import c_bool
+
     if len(argv) < 2:
         __STANDALONE__ = True
-        _app.run(debug=True, port=5005) #5005 is the non-default Debug port
+        _app.run(debug=True, port=5005)  # 5005 is the non-default Debug port
     else:
         __STANDALONE__ = True
         ext_signal = Value(c_bool, False)
