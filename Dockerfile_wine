@@ -1,11 +1,15 @@
 FROM ramrodpcp/wine-base:latest
 
-RUN mkdir /etc/zugbruecke && mkdir -p /opt/app-root/.zugbruecke/win32-python3.5.4
+RUN mkdir /etc/zugbruecke && mkdir -p /opt/app-root/.zugbruecke/{win32-python3.5.4,win64-python3.5.4}
 COPY ./.zugbruecke.json /etc/zugbruecke/
 
 RUN wget https://www.python.org/ftp/python/3.5.4/python-3.5.4-embed-win32.zip \
     && unzip -d /opt/app-root/.zugbruecke/win32-python3.5.4 python-3.5.4-embed-win32.zip \
     && rm -rf python-3.5.4-embed-win32.zip
+
+RUN wget https://www.python.org/ftp/python/3.5.4/python-3.5.4-embed-amd64.zip \
+    && unzip -d /opt/app-root/.zugbruecke/win64-python3.5.4 python-3.5.4-embed-amd64.zip \
+    && rm -rf python-3.5.4-embed-amd64.zip
 
 WORKDIR /tmp
 COPY ./requirements.txt .
