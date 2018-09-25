@@ -16,3 +16,4 @@ LICENSE
 healthcheck.ps1
 plugin_logfile
 .coveragerc
+*.tar.gz
