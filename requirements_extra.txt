@@ -28,6 +28,7 @@ ptyprocess==0.6.0
 public==0.0.65
 py==1.5.3
 pycrypto==2.6.1
+pyDes==2.0.1
 pylint==2.1.1
 python-magic==0.4.15
 PyYAML==3.13
