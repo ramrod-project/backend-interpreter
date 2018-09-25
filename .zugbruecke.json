@@ -1,0 +1,7 @@
+{
+    "log_write": true,
+    "log_level": 10,
+    "arch": "win64",
+    "version": "3.5.4",
+    "dir": "/opt/app-root/.zugbruecke"
+}

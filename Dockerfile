@@ -18,6 +18,4 @@ COPY . .
 
 HEALTHCHECK --interval=2s --start-period=10s --retries=3 CMD /bin/sh ./healthcheck.sh
 
-EXPOSE 8080
-
 ENTRYPOINT python3 server.py "${PLUGIN}"
