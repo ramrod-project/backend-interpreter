@@ -9,3 +9,5 @@
 .coverage.*
 coverage.xml
 cc-test-reporter
+*.vscode*
+*.tar.gz
