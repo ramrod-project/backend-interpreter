@@ -1,0 +1,25 @@
+FROM ramrodpcp/wine-base:latest
+
+RUN apt-get install -y libssl-dev swig
+
+RUN mkdir /etc/zugbruecke && mkdir -p /opt/app-root/.zugbruecke/{win32-python3.5.4,win64-python3.5.4}
+COPY ./.zugbruecke.json /etc/zugbruecke/
+
+RUN wget https://www.python.org/ftp/python/3.5.4/python-3.5.4-embed-win32.zip \
+    && unzip -d /opt/app-root/.zugbruecke/win32-python3.5.4 python-3.5.4-embed-win32.zip \
+    && rm -rf python-3.5.4-embed-win32.zip
+
+RUN wget https://www.python.org/ftp/python/3.5.4/python-3.5.4-embed-amd64.zip \
+    && unzip -d /opt/app-root/.zugbruecke/win64-python3.5.4 python-3.5.4-embed-amd64.zip \
+    && rm -rf python-3.5.4-embed-amd64.zip
+
+WORKDIR /tmp
+COPY ./requirements_extra.txt .
+RUN pip3 install -r requirements_extra.txt
+
+WORKDIR /opt/app-root/src
+COPY . .
+
+HEALTHCHECK --interval=2s --start-period=10s --retries=3 CMD /bin/sh ./healthcheck.sh
+
+ENTRYPOINT python3 server.py "${PLUGIN}"

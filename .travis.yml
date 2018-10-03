@@ -38,15 +38,18 @@ before_script:
 
 script:
   - docker build -t ramrodpcp/interpreter-plugin:test .
+  - docker build -t ramrodpcp/interpreter-plugin-extra:test -f Dockerfile_extra .
   # e2e tests
   - bash <(curl -s https://raw.githubusercontent.com/ramrod-project/integration-stack/$TRAVIS_BRANCH/scripts/e2e.sh)
 
 after_success:
   - docker tag ramrodpcp/interpreter-plugin:test ramrodpcp/interpreter-plugin:$TAG
+  - docker tag ramrodpcp/interpreter-plugin-extra:test ramrodpcp/interpreter-plugin-extra:$TAG
   - if [[ "$TRAVIS_PULL_REQUEST" == "false" ]];
     then echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin; fi
   - if [[ "$TRAVIS_PULL_REQUEST" == "false"  ]];
-    then docker push ramrodpcp/interpreter-plugin:$TAG; fi
+    then docker push ramrodpcp/interpreter-plugin:$TAG &&
+    docker push ramrodpcp/interpreter-plugin-extra:$TAG; fi
 
 notifications:
   slack: ramrod-project:GDF82rRYDg3KSekrT3GA24qO
