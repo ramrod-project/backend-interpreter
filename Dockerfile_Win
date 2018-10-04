@@ -2,6 +2,8 @@ FROM stefanscherer/python-windows:nano
 
 RUN NET USER appuser /add
 RUN NET LOCALGROUP ADMINISTRATORS /add appuser
+RUN NET USER appuser /expires:never
+RUN NET ACCOUNTS /MaxPWAge:unlimited
 
 USER appuser
 
