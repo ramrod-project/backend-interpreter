@@ -149,6 +149,8 @@ class ControllerPlugin(ABC):
     def _log(self, log, level):
         """Formats log
         """
+        if environ.get("STAGE") == "PROD" and level < 30:
+            return
         self.log([
             "",
             log,
@@ -222,7 +224,7 @@ class ControllerPlugin(ABC):
         try:
             brain_update_job_status(job_id, status, conn=self.db_conn)
         except ValueError as ex:
-            self._log("{} not a valid status!".format(status), 50)
+            self._log("{} not a valid status!".format(status), 40)
             raise ex
         return status
 
@@ -445,7 +447,7 @@ class ControllerPlugin(ABC):
                     self.name,
                     "'"
                 ]),
-                50
+                40
             )
             raise ValueError
 
@@ -533,7 +535,7 @@ class ControllerPlugin(ABC):
         else:
             self._log(
                 "Invalid output type! (<str>, <int>, <float>, <bytes>",
-                50)
+                40)
             raise TypeError
         if transition_state:
             job["Status"] = transition_success(job["Status"])
@@ -567,7 +569,7 @@ class ControllerPlugin(ABC):
         if common and not isinstance(common, dict):
             self._log(
                 "Invalid common telemetry type! expects <dict>",
-                50
+                40
             )
             raise TypeError
         elif common:
@@ -606,7 +608,7 @@ class ControllerPlugin(ABC):
         if specific and not isinstance(specific, dict):
             self._log(
                 "Invalid specific telemetry type! expects <dict>",
-                50
+                40
             )
             raise TypeError
 
