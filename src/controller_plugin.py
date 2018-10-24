@@ -149,8 +149,6 @@ class ControllerPlugin(ABC):
     def _log(self, log, level):
         """Formats log
         """
-        if environ.get("STAGE") == "PROD" and level < 30:
-            return
         self.log([
             "",
             log,
