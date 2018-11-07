@@ -138,9 +138,9 @@ TEST_PLUGIN = {
     "Name": "SamplePlugin",
     "State": "Active",
     "DesiredState": "",
-    "Interface": "",
+    "Interface": "0.0.0.0",
     "ExternalPorts": ["8080/tcp"],
-    "InternalPorts": [],
+    "InternalPorts": ["8080/tcp"],
     "OS": "posix",
     "ServiceName": "SamplePlugin-8080tcp",
     "Environment": []
