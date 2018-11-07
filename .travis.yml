@@ -46,10 +46,11 @@ after_success:
   - docker service rm $(docker service ls -q)
   - docker rmi $(docker images -q)
   - docker build -t ramrodpcp/interpreter-plugin:test .
+  - docker build -t ramrodpcp/interpreter-plugin-extra:test -f Dockerfile_extra .
   - docker images
   - docker tag ramrodpcp/interpreter-plugin:test ramrodpcp/interpreter-plugin:$TAG
-  - docker images
   - docker tag ramrodpcp/interpreter-plugin-extra:test ramrodpcp/interpreter-plugin-extra:$TAG
+  - docker images
   - if [[ "$TRAVIS_PULL_REQUEST" == "false" ]];
     then echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin; fi
   - if [[ "$TRAVIS_PULL_REQUEST" == "false"  ]];
