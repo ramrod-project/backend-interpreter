@@ -33,9 +33,9 @@ pylint==2.1.1
 python-magic==0.4.15
 PyYAML==3.13
 query-string==0.0.28
-ramrodbrain==0.1.59
+ramrodbrain>=0.1.67
 request==0.0.26
-requests==2.18.4
+requests>=2.20
 rethinkdb==2.3.0.post6
 six==1.11.0
 smmap2==2.0.3
