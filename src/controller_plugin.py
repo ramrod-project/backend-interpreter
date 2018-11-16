@@ -548,7 +548,7 @@ class ControllerPlugin(ABC):
             job {dict} -- The job that errored
             msg {str|int|byte|float} -- (optional) The error message to display
         """
-        self.respond_output(job, msg)
+        self.respond_output(job, msg, transition_state=False)
         self._update_job_status(job["id"], "Error")
 
     def _validate_common_telemetry(self, common):
