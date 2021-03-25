@@ -31,7 +31,7 @@ pycrypto>=2.6.1
 pyDes==2.0.1
 pylint==2.1.1
 python-magic==0.4.15
-PyYAML==3.13
+PyYAML==5.4
 query-string==0.0.28
 ramrodbrain>=0.1.67
 request==0.0.26
