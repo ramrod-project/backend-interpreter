@@ -24,7 +24,7 @@ more-itertools==4.1.0
 pbr==4.0.3
 pluggy==0.6.0
 post==0.0.26
-protobuf==3.5.2.post1
+protobuf==3.18.3
 public==0.0.65
 py==1.5.3
 pylint==1.8.3
